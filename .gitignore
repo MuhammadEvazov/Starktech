@@ -33,14 +33,13 @@ coverage*/
 # User-uploaded files (avatars, product/category/portfolio images, order photos)
 WebApi/wwwroot/uploads/
 
-# Secrets — appsettings.json contains DB/SMTP passwords and the JWT key
-WebApi/appsettings.json
-WebApi/appsettings.*.json
+# Secrets live in dotnet user-secrets / environment variables, never in appsettings
+appsettings.*.local.json
 .env
 *.env
 
 # Local tool settings
-.claude/settings.local.json
+.claude/
 
 # OS
 .DS_Store

@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: starktech-postgres
     restart: unless-stopped
     environment:
@@ -8,9 +8,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "654321"
     ports:
-      - "2004:5432"
+      # 2004 belongs to the local Windows PostgreSQL service, 5433 to amarcrm-postgres
+      - "5434:5432"
     volumes:
-      - starktech_pgdata:/var/lib/postgresql/data
+      - starktech_pg17data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d starktech"]
       interval: 5s
@@ -32,5 +33,5 @@ services:
       retries: 5
 
 volumes:
-  starktech_pgdata:
+  starktech_pg17data:
   starktech_redisdata:

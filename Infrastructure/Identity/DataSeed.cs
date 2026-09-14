@@ -38,8 +38,11 @@ public static class DataSeed
 
     private static async Task SeedRolePermissionsAsync(AppDbContext context)
     {
-        var hasAny = await context.RolePermissions.AnyAsync();
-        if (hasAny) return;
+        var existing = (await context.RolePermissions
+                .Select(p => new { p.Role, p.PermissionKey })
+                .ToListAsync())
+            .Select(p => (p.Role, p.PermissionKey))
+            .ToHashSet();
 
         var permissions = new List<RolePermission>();
 
@@ -76,7 +79,13 @@ public static class DataSeed
             permissions.Add(new RolePermission { Role = UserRole.SuperAdmin, PermissionKey = key, IsGranted = true });
         }
 
-        await context.RolePermissions.AddRangeAsync(permissions);
+        // Only missing pairs are inserted, so new permission keys reach existing databases
+        // without resetting grants an admin has already changed.
+        var missing = permissions.Where(p => !existing.Contains((p.Role, p.PermissionKey))).ToList();
+        if (missing.Count == 0)
+            return;
+
+        await context.RolePermissions.AddRangeAsync(missing);
         await context.SaveChangesAsync();
     }
 
