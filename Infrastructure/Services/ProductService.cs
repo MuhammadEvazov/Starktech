@@ -180,8 +180,9 @@ public class ProductService : IProductService
 
     public async Task<Result<GetProductDto>> UploadImageAsync(Guid id, IFormFile file)
     {
-        if (file == null || file.Length == 0)
-            return Result<GetProductDto>.Fail("File is required", ErrorType.Validation);
+        var fileError = _fileService.ValidateImage(file);
+        if (fileError != null)
+            return Result<GetProductDto>.Fail(fileError, ErrorType.Validation);
 
         var product = await _productRepository.GetByIdAsync(id);
         if (product == null)

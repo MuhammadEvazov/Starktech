@@ -13,15 +13,18 @@ public class CoinsTransactionService : ICoinsTransactionService
 {
     private readonly ICoinsTransactionRepository _transactionRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CoinsTransactionService> _logger;
 
     public CoinsTransactionService(
         ICoinsTransactionRepository transactionRepository,
         IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
         ILogger<CoinsTransactionService> logger)
     {
         _transactionRepository = transactionRepository;
         _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -49,94 +52,62 @@ public class CoinsTransactionService : ICoinsTransactionService
         return Result<GetCoinsTransactionDto>.Ok(ToDto(transaction));
     }
 
-    public async Task<Result<GetCoinsTransactionDto>> EarnAsync(Guid userId, int amount, Guid? orderId, string? description)
+    public Task<Result<GetCoinsTransactionDto>> EarnAsync(Guid userId, int amount, Guid? orderId, string? description)
     {
         if (amount <= 0)
-            return Result<GetCoinsTransactionDto>.Fail("Amount must be greater than zero", ErrorType.Validation);
+            return Task.FromResult(Result<GetCoinsTransactionDto>.Fail("Amount must be greater than zero", ErrorType.Validation));
 
-        var user = await _userRepository.GetByGuidIdAsync(userId);
-        if (user == null)
-            return Result<GetCoinsTransactionDto>.Fail("User not found", ErrorType.NotFound);
-
-        user.CoinsBalance += amount;
-        await _userRepository.UpdateAsync(user);
-
-        var transaction = new CoinsTransaction
-        {
-            UserId = userId,
-            OrderId = orderId,
-            Amount = amount,
-            Type = CoinTransactionType.Earned,
-            Description = description
-        };
-
-        await _transactionRepository.AddAsync(transaction);
-
-        _logger.LogInformation("User {UserId} earned {Amount} coins", userId, amount);
-
-        return Result<GetCoinsTransactionDto>.Ok(ToDto(transaction));
+        return ChangeBalanceAsync(userId, amount, CoinTransactionType.Earned, orderId, description, "Insufficient coins balance");
     }
 
-    public async Task<Result<GetCoinsTransactionDto>> RedeemAsync(Guid userId, int amount, Guid? orderId, string? description)
+    public Task<Result<GetCoinsTransactionDto>> RedeemAsync(Guid userId, int amount, Guid? orderId, string? description)
     {
         if (amount <= 0)
-            return Result<GetCoinsTransactionDto>.Fail("Amount must be greater than zero", ErrorType.Validation);
+            return Task.FromResult(Result<GetCoinsTransactionDto>.Fail("Amount must be greater than zero", ErrorType.Validation));
 
-        var user = await _userRepository.GetByGuidIdAsync(userId);
-        if (user == null)
-            return Result<GetCoinsTransactionDto>.Fail("User not found", ErrorType.NotFound);
-
-        if (user.CoinsBalance < amount)
-            return Result<GetCoinsTransactionDto>.Fail("Insufficient coins balance", ErrorType.Validation);
-
-        user.CoinsBalance -= amount;
-        await _userRepository.UpdateAsync(user);
-
-        var transaction = new CoinsTransaction
-        {
-            UserId = userId,
-            OrderId = orderId,
-            Amount = -amount,
-            Type = CoinTransactionType.Redeemed,
-            Description = description
-        };
-
-        await _transactionRepository.AddAsync(transaction);
-
-        _logger.LogInformation("User {UserId} redeemed {Amount} coins", userId, amount);
-
-        return Result<GetCoinsTransactionDto>.Ok(ToDto(transaction));
+        return ChangeBalanceAsync(userId, -amount, CoinTransactionType.Redeemed, orderId, description, "Insufficient coins balance");
     }
 
-    public async Task<Result<GetCoinsTransactionDto>> ManualAdjustmentAsync(ManualAdjustCoinsDto dto)
+    public Task<Result<GetCoinsTransactionDto>> ManualAdjustmentAsync(ManualAdjustCoinsDto dto)
     {
         if (dto.Amount == 0)
-            return Result<GetCoinsTransactionDto>.Fail("Amount cannot be zero", ErrorType.Validation);
+            return Task.FromResult(Result<GetCoinsTransactionDto>.Fail("Amount cannot be zero", ErrorType.Validation));
 
-        var user = await _userRepository.GetByGuidIdAsync(dto.UserId);
-        if (user == null)
-            return Result<GetCoinsTransactionDto>.Fail("User not found", ErrorType.NotFound);
+        return ChangeBalanceAsync(dto.UserId, dto.Amount, CoinTransactionType.ManualAdjustment, null, dto.Description, "Resulting balance cannot be negative");
+    }
 
-        var newBalance = user.CoinsBalance + dto.Amount;
-        if (newBalance < 0)
-            return Result<GetCoinsTransactionDto>.Fail("Resulting balance cannot be negative", ErrorType.Validation);
-
-        user.CoinsBalance = newBalance;
-        await _userRepository.UpdateAsync(user);
-
-        var transaction = new CoinsTransaction
+    // Balance change and ledger entry are saved together, or not at all.
+    private Task<Result<GetCoinsTransactionDto>> ChangeBalanceAsync(
+        Guid userId,
+        int delta,
+        CoinTransactionType type,
+        Guid? orderId,
+        string? description,
+        string insufficientBalanceMessage)
+    {
+        return _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
-            UserId = dto.UserId,
-            Amount = dto.Amount,
-            Type = CoinTransactionType.ManualAdjustment,
-            Description = dto.Description
-        };
+            if (!await _userRepository.ExistsAsync(userId))
+                return Result<GetCoinsTransactionDto>.Fail("User not found", ErrorType.NotFound);
 
-        await _transactionRepository.AddAsync(transaction);
+            if (!await _userRepository.TryAdjustCoinsBalanceAsync(userId, delta))
+                return Result<GetCoinsTransactionDto>.Fail(insufficientBalanceMessage, ErrorType.Validation);
 
-        _logger.LogInformation("Manual coins adjustment of {Amount} for user {UserId}", dto.Amount, dto.UserId);
+            var transaction = new CoinsTransaction
+            {
+                UserId = userId,
+                OrderId = orderId,
+                Amount = delta,
+                Type = type,
+                Description = description
+            };
 
-        return Result<GetCoinsTransactionDto>.Ok(ToDto(transaction));
+            await _transactionRepository.AddAsync(transaction);
+
+            _logger.LogInformation("Coins balance of user {UserId} changed by {Delta} ({Type})", userId, delta, type);
+
+            return Result<GetCoinsTransactionDto>.Ok(ToDto(transaction));
+        });
     }
 
     private static GetCoinsTransactionDto ToDto(CoinsTransaction transaction) => new()

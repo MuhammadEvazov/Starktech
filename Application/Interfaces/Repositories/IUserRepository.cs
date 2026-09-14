@@ -10,4 +10,5 @@ public interface IUserRepository
     Task AddAsync(User user);
     Task<bool> ExistsAsync(Guid id);
     Task<User?> GetByGuidIdAsync(Guid id);
+    Task<bool> TryAdjustCoinsBalanceAsync(Guid userId, int delta);
 }

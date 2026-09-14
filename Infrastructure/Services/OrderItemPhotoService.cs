@@ -17,6 +17,9 @@ public class OrderItemPhotoService : IOrderItemPhotoService
     private readonly IFileService _fileService;
     private readonly ILogger<OrderItemPhotoService> _logger;
 
+    private const string PhotoFolder = "order-photos";
+    private const string NotEditableMessage = "Photos can only be changed before the order enters production";
+
     private static readonly OrderStatus[] EditableStatuses = { OrderStatus.New, OrderStatus.Confirmed };
 
     public OrderItemPhotoService(
@@ -31,10 +34,10 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         _logger = logger;
     }
 
-    public async Task<Result<List<GetOrderItemPhotoDto>>> GetByOrderItemIdAsync(Guid orderItemId)
+    public async Task<Result<List<GetOrderItemPhotoDto>>> GetByOrderItemIdAsync(Guid orderItemId, Guid? restrictToUserId)
     {
         var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId);
-        if (orderItem == null)
+        if (!IsAccessible(orderItem, restrictToUserId))
             return Result<List<GetOrderItemPhotoDto>>.Fail("Order item not found", ErrorType.NotFound);
 
         var photos = await _photoRepository.GetByOrderItemIdAsync(orderItemId);
@@ -42,22 +45,23 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         return Result<List<GetOrderItemPhotoDto>>.Ok(photos.Select(ToDto).ToList());
     }
 
-    public async Task<Result<GetOrderItemPhotoDto>> UploadAsync(Guid orderItemId, IFormFile file)
+    public async Task<Result<GetOrderItemPhotoDto>> UploadAsync(Guid orderItemId, IFormFile file, Guid? restrictToUserId)
     {
         var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId);
-        if (orderItem == null)
+        if (!IsAccessible(orderItem, restrictToUserId))
             return Result<GetOrderItemPhotoDto>.Fail("Order item not found", ErrorType.NotFound);
 
-        if (!orderItem.ProductVariant.Product.RequiresPhotoUpload)
+        if (!orderItem!.ProductVariant.Product.RequiresPhotoUpload)
             return Result<GetOrderItemPhotoDto>.Fail("This product does not require a photo upload", ErrorType.Validation);
 
         if (!EditableStatuses.Contains(orderItem.Order.Status))
-            return Result<GetOrderItemPhotoDto>.Fail("Photos can only be uploaded before the order enters production", ErrorType.Validation);
+            return Result<GetOrderItemPhotoDto>.Fail(NotEditableMessage, ErrorType.Validation);
 
-        if (file == null || file.Length == 0)
-            return Result<GetOrderItemPhotoDto>.Fail("File is required", ErrorType.Validation);
+        var fileError = _fileService.ValidateImage(file);
+        if (fileError != null)
+            return Result<GetOrderItemPhotoDto>.Fail(fileError, ErrorType.Validation);
 
-        var url = await _fileService.UploadAsync(file, "order-photos");
+        var url = await _fileService.UploadAsync(file, PhotoFolder);
         if (string.IsNullOrWhiteSpace(url))
             return Result<GetOrderItemPhotoDto>.Fail("File upload failed", ErrorType.Unknown);
 
@@ -74,38 +78,36 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
     }
 
-    public async Task<Result<GetOrderItemPhotoDto>> UploadEditedPreviewAsync(Guid photoId, IFormFile file)
+    public async Task<Result<GetOrderItemPhotoDto>> UploadEditedPreviewAsync(Guid photoId, IFormFile file, Guid? restrictToUserId)
     {
-        var photo = await _photoRepository.GetByIdAsync(photoId);
-        if (photo == null || photo.IsDeleted)
-            return Result<GetOrderItemPhotoDto>.Fail("Photo not found", ErrorType.NotFound);
+        var (photo, error, errorType) = await GetEditablePhotoAsync(photoId, restrictToUserId);
+        if (photo == null)
+            return Result<GetOrderItemPhotoDto>.Fail(error!, errorType);
 
-        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
-        if (orderItem != null && !EditableStatuses.Contains(orderItem.Order.Status))
-            return Result<GetOrderItemPhotoDto>.Fail("Photos can only be edited before the order enters production", ErrorType.Validation);
+        var fileError = _fileService.ValidateImage(file);
+        if (fileError != null)
+            return Result<GetOrderItemPhotoDto>.Fail(fileError, ErrorType.Validation);
 
-        if (file == null || file.Length == 0)
-            return Result<GetOrderItemPhotoDto>.Fail("File is required", ErrorType.Validation);
-
-        var url = await _fileService.UploadAsync(file, "order-photos");
+        var url = await _fileService.UploadAsync(file, PhotoFolder);
         if (string.IsNullOrWhiteSpace(url))
             return Result<GetOrderItemPhotoDto>.Fail("File upload failed", ErrorType.Unknown);
+
+        var previousPreviewUrl = photo.EditedPreviewUrl;
 
         photo.EditedPreviewUrl = url;
         await _photoRepository.UpdateAsync(photo);
 
+        if (!string.IsNullOrWhiteSpace(previousPreviewUrl))
+            await _fileService.DeleteAsync(previousPreviewUrl);
+
         return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
     }
 
-    public async Task<Result<GetOrderItemPhotoDto>> UpdateCropDataAsync(Guid photoId, UpdateCropDataDto dto)
+    public async Task<Result<GetOrderItemPhotoDto>> UpdateCropDataAsync(Guid photoId, UpdateCropDataDto dto, Guid? restrictToUserId)
     {
-        var photo = await _photoRepository.GetByIdAsync(photoId);
-        if (photo == null || photo.IsDeleted)
-            return Result<GetOrderItemPhotoDto>.Fail("Photo not found", ErrorType.NotFound);
-
-        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
-        if (orderItem != null && !EditableStatuses.Contains(orderItem.Order.Status))
-            return Result<GetOrderItemPhotoDto>.Fail("Photos can only be edited before the order enters production", ErrorType.Validation);
+        var (photo, error, errorType) = await GetEditablePhotoAsync(photoId, restrictToUserId);
+        if (photo == null)
+            return Result<GetOrderItemPhotoDto>.Fail(error!, errorType);
 
         photo.CropDataJson = dto.CropDataJson;
         await _photoRepository.UpdateAsync(photo);
@@ -113,18 +115,21 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
     }
 
-    public async Task<Result<bool>> DeleteAsync(Guid photoId)
+    public async Task<Result<bool>> DeleteAsync(Guid photoId, Guid? restrictToUserId)
     {
         var photo = await _photoRepository.GetByIdAsync(photoId);
         if (photo == null)
             return Result<bool>.Fail("Photo not found", ErrorType.NotFound);
 
+        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
+        if (!IsAccessible(orderItem, restrictToUserId))
+            return Result<bool>.Fail("Photo not found", ErrorType.NotFound);
+
         if (photo.IsDeleted)
             return Result<bool>.Ok(true);
 
-        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
-        if (orderItem != null && !EditableStatuses.Contains(orderItem.Order.Status))
-            return Result<bool>.Fail("Photos can only be removed before the order enters production", ErrorType.Validation);
+        if (!EditableStatuses.Contains(orderItem!.Order.Status))
+            return Result<bool>.Fail(NotEditableMessage, ErrorType.Validation);
 
         photo.IsDeleted = true;
         photo.DeletedAt = DateTime.UtcNow;
@@ -132,6 +137,25 @@ public class OrderItemPhotoService : IOrderItemPhotoService
 
         return Result<bool>.Ok(true);
     }
+
+    private async Task<(OrderItemPhoto? Photo, string? Error, ErrorType ErrorType)> GetEditablePhotoAsync(Guid photoId, Guid? restrictToUserId)
+    {
+        var photo = await _photoRepository.GetByIdAsync(photoId);
+        if (photo == null || photo.IsDeleted)
+            return (null, "Photo not found", ErrorType.NotFound);
+
+        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
+        if (!IsAccessible(orderItem, restrictToUserId))
+            return (null, "Photo not found", ErrorType.NotFound);
+
+        if (!EditableStatuses.Contains(orderItem!.Order.Status))
+            return (null, NotEditableMessage, ErrorType.Validation);
+
+        return (photo, null, ErrorType.None);
+    }
+
+    private static bool IsAccessible(OrderItem? orderItem, Guid? restrictToUserId)
+        => orderItem != null && (!restrictToUserId.HasValue || orderItem.Order.UserId == restrictToUserId.Value);
 
     private static GetOrderItemPhotoDto ToDto(OrderItemPhoto photo) => new()
     {

@@ -315,13 +315,13 @@ public class UserService : IUserService
         }
         else
         {
-            if (!string.IsNullOrWhiteSpace(profile.AvatarUrl))
-                await _fileService.DeleteAsync(profile.AvatarUrl);
-
             var fileName = await _fileService.UploadAsync(file, "profile");
 
             if (string.IsNullOrWhiteSpace(fileName))
                 return false;
+
+            if (!string.IsNullOrWhiteSpace(profile.AvatarUrl))
+                await _fileService.DeleteAsync(profile.AvatarUrl);
 
             profile.UpdateAvatar(fileName);
         }

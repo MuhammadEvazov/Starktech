@@ -51,6 +51,8 @@ public class PromoCodeRepository(AppDbContext context) : IPromoCodeRepository
     public async Task<bool> UpdateAsync(PromoCode promoCode)
     {
         context.PromoCodes.Update(promoCode);
+        // UsedCount changes only through the atomic usage methods; never overwrite it with a stale value.
+        context.Entry(promoCode).Property(p => p.UsedCount).IsModified = false;
         await context.SaveChangesAsync();
         return true;
     }
@@ -66,5 +68,22 @@ public class PromoCodeRepository(AppDbContext context) : IPromoCodeRepository
     {
         return await context.PromoCodes.AnyAsync(p =>
             p.Code.ToLower() == code.ToLower().Trim());
+    }
+
+    // Single conditional UPDATE, so concurrent orders cannot exceed MaxUsages.
+    public async Task<bool> TryIncrementUsageAsync(Guid id)
+    {
+        var affected = await context.PromoCodes
+            .Where(p => p.Id == id && (p.MaxUsages == null || p.UsedCount < p.MaxUsages))
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.UsedCount, p => p.UsedCount + 1));
+
+        return affected == 1;
+    }
+
+    public async Task DecrementUsageAsync(Guid id)
+    {
+        await context.PromoCodes
+            .Where(p => p.Id == id && p.UsedCount > 0)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.UsedCount, p => p.UsedCount - 1));
     }
 }

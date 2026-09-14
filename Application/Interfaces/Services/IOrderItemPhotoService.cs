@@ -7,9 +7,9 @@ namespace Application.Interfaces.Services;
 
 public interface IOrderItemPhotoService
 {
-    Task<Result<List<GetOrderItemPhotoDto>>> GetByOrderItemIdAsync(Guid orderItemId);
-    Task<Result<GetOrderItemPhotoDto>> UploadAsync(Guid orderItemId, IFormFile file);
-    Task<Result<GetOrderItemPhotoDto>> UploadEditedPreviewAsync(Guid photoId, IFormFile file);
-    Task<Result<GetOrderItemPhotoDto>> UpdateCropDataAsync(Guid photoId, UpdateCropDataDto dto);
-    Task<Result<bool>> DeleteAsync(Guid photoId);
+    Task<Result<List<GetOrderItemPhotoDto>>> GetByOrderItemIdAsync(Guid orderItemId, Guid? restrictToUserId);
+    Task<Result<GetOrderItemPhotoDto>> UploadAsync(Guid orderItemId, IFormFile file, Guid? restrictToUserId);
+    Task<Result<GetOrderItemPhotoDto>> UploadEditedPreviewAsync(Guid photoId, IFormFile file, Guid? restrictToUserId);
+    Task<Result<GetOrderItemPhotoDto>> UpdateCropDataAsync(Guid photoId, UpdateCropDataDto dto, Guid? restrictToUserId);
+    Task<Result<bool>> DeleteAsync(Guid photoId, Guid? restrictToUserId);
 }

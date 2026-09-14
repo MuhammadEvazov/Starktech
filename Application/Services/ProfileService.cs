@@ -132,15 +132,12 @@ public class ProfileService : IProfileService
         if (user is null)
             return false;
 
-        if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
-        {
-            await _fileService.DeleteAsync(user.AvatarUrl);
-        }
-
         var avatarUrl = await _fileService.UploadAsync(file, "profile");
 
         if (string.IsNullOrWhiteSpace(avatarUrl))
             return false;
+
+        var previousAvatarUrl = user.AvatarUrl;
 
         user.UpdateAvatar(avatarUrl);
 
@@ -148,6 +145,9 @@ public class ProfileService : IProfileService
 
         if (!success)
             return false;
+
+        if (!string.IsNullOrWhiteSpace(previousAvatarUrl))
+            await _fileService.DeleteAsync(previousAvatarUrl);
 
         _logger.LogInformation("Avatar updated for user {UserId}", userId);
 

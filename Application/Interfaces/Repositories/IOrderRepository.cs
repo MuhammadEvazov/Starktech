@@ -13,4 +13,5 @@ public interface IOrderRepository
     Task<bool> UpdateAsync(Order order);
     Task<bool> IsOrderNumberTakenAsync(string orderNumber);
     Task<bool> HasDeliveredOrderForProductAsync(Guid userId, Guid productId);
+    Task LockForUpdateAsync(Guid id);
 }

@@ -23,6 +23,8 @@ public class UserRepository(AppDbContext context) : IUserRepository
     public async Task<bool> UpdateAsync(User user)
     {
         context.Clients.Update(user);
+        // CoinsBalance changes only through TryAdjustCoinsBalanceAsync; never overwrite it with a stale value.
+        context.Entry(user).Property(u => u.CoinsBalance).IsModified = false;
         await context.SaveChangesAsync();
         return true;
     }
@@ -41,5 +43,15 @@ public class UserRepository(AppDbContext context) : IUserRepository
     public async Task<User?> GetByGuidIdAsync(Guid id)
     {
         return await context.Clients.FirstOrDefaultAsync(u => u.Id == id);
+    }
+
+    // Single conditional UPDATE, so concurrent debits cannot push the balance below zero.
+    public async Task<bool> TryAdjustCoinsBalanceAsync(Guid userId, int delta)
+    {
+        var affected = await context.Clients
+            .Where(u => u.Id == userId && u.CoinsBalance + delta >= 0)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.CoinsBalance, u => u.CoinsBalance + delta));
+
+        return affected == 1;
     }
 }

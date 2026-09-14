@@ -12,4 +12,6 @@ public interface IPromoCodeRepository
     Task<bool> UpdateAsync(PromoCode promoCode);
     Task<bool> DeleteAsync(PromoCode promoCode);
     Task<bool> ExistsByCodeAsync(string code);
+    Task<bool> TryIncrementUsageAsync(Guid id);
+    Task DecrementUsageAsync(Guid id);
 }

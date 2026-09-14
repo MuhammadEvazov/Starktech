@@ -130,8 +130,9 @@ public class PortfolioItemService : IPortfolioItemService
 
     public async Task<Result<CreatePortfolioItemResponseDto>> CreateWithImageAsync(CreatePortfolioItemWithImageDto dto)
     {
-        if (dto.File == null || dto.File.Length == 0)
-            return Result<CreatePortfolioItemResponseDto>.Fail("File is required", ErrorType.Validation);
+        var fileError = _fileService.ValidateImage(dto.File);
+        if (fileError != null)
+            return Result<CreatePortfolioItemResponseDto>.Fail(fileError, ErrorType.Validation);
 
         if (dto.CategoryId.HasValue && await _categoryRepository.GetByIdAsync(dto.CategoryId.Value) == null)
             return Result<CreatePortfolioItemResponseDto>.Fail("Category not found", ErrorType.NotFound);
@@ -164,8 +165,9 @@ public class PortfolioItemService : IPortfolioItemService
 
     public async Task<Result<GetPortfolioItemDto>> UploadImageAsync(Guid id, IFormFile file)
     {
-        if (file == null || file.Length == 0)
-            return Result<GetPortfolioItemDto>.Fail("File is required", ErrorType.Validation);
+        var fileError = _fileService.ValidateImage(file);
+        if (fileError != null)
+            return Result<GetPortfolioItemDto>.Fail(fileError, ErrorType.Validation);
 
         var item = await _portfolioItemRepository.GetByIdAsync(id);
         if (item == null)

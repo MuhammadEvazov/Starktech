@@ -19,22 +19,33 @@ public class OrderController : BaseController
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> GetAll([FromQuery] GetOrderFilterDto filter)
     {
-        var result = await _orderService.GetAllAsync(filter);
+        var scope = await GetOwnerScopeAsync(UserPermissions.OrdersView);
+        var result = await _orderService.GetAllAsync(filter, scope);
         return HandleResult(result);
     }
 
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var result = await _orderService.GetByIdAsync(id);
+        var scope = await GetOwnerScopeAsync(UserPermissions.OrdersView);
+        var result = await _orderService.GetByIdAsync(id, scope);
         return HandleResult(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create(CreateOrderDto dto)
     {
+        // The order owner is never taken from the request body: guests get no owner,
+        // customers always order for themselves, only staff may place orders for other users.
+        if (User.Identity?.IsAuthenticated != true)
+            dto.UserId = null;
+        else if (!await HasPermissionAsync(UserPermissions.OrdersManualCreate))
+            dto.UserId = await GetCurrentProfileIdAsync();
+
         var result = await _orderService.CreateAsync(dto);
         return HandleResult(result);
     }

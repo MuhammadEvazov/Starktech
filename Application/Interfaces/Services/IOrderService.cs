@@ -6,8 +6,8 @@ namespace Application.Interfaces.Services;
 
 public interface IOrderService
 {
-    Task<Result<PageResult<GetOrderDto>>> GetAllAsync(GetOrderFilterDto filter);
-    Task<Result<GetOrderDto>> GetByIdAsync(Guid id);
+    Task<Result<PageResult<GetOrderDto>>> GetAllAsync(GetOrderFilterDto filter, Guid? restrictToUserId);
+    Task<Result<GetOrderDto>> GetByIdAsync(Guid id, Guid? restrictToUserId);
     Task<Result<CreateOrderResponseDto>> CreateAsync(CreateOrderDto dto);
     Task<Result<GetOrderDto>> UpdateStatusAsync(Guid id, UpdateOrderStatusDto dto);
     Task<Result<bool>> CancelAsync(Guid id);

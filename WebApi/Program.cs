@@ -94,6 +94,7 @@ builder.Services.AddScoped<IRolePermissionRepository, RolePermissionRepository>(
 builder.Services.AddScoped<IDeliveryCityRepository, DeliveryCityRepository>();
 builder.Services.AddScoped<IPromoCodeRepository, PromoCodeRepository>();
 builder.Services.AddScoped<IComboOfferRepository, ComboOfferRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // ─── Application Services ────────────────────────────────────────────────────
 // DIP + OCP: зависимость через интерфейс, реализации взаимозаменяемы
@@ -114,6 +115,11 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 
 
 // ─── JWT Authentication ──────────────────────────────────────────────────────
+var jwtKey = builder.Configuration["JWT:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+    throw new InvalidOperationException(
+        "JWT:Key is not configured. Set it with 'dotnet user-secrets set \"JWT:Key\" <value>' or the JWT__Key environment variable.");
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -130,8 +136,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["JWT:Issuer"],
         ValidAudience = builder.Configuration["JWT:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
 });
 

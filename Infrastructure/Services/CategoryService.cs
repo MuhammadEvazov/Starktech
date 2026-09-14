@@ -187,8 +187,9 @@ public class CategoryService : ICategoryService
 
     public async Task<Result<GetCategoryDto>> UploadImageAsync(Guid id, IFormFile file)
     {
-        if (file == null || file.Length == 0)
-            return Result<GetCategoryDto>.Fail("File is required", ErrorType.Validation);
+        var fileError = _fileService.ValidateImage(file);
+        if (fileError != null)
+            return Result<GetCategoryDto>.Fail(fileError, ErrorType.Validation);
 
         var category = await _categoryRepository.GetByIdAsync(id);
         if (category == null)

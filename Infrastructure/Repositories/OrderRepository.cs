@@ -102,4 +102,14 @@ public class OrderRepository(AppDbContext context) : IOrderRepository
             o.Status == OrderStatus.Delivered &&
             o.Items.Any(i => i.ProductVariant.ProductId == productId));
     }
+
+    // Row lock held until the surrounding transaction ends; must run before the order is loaded.
+    public async Task LockForUpdateAsync(Guid id)
+    {
+        if (context.Database.CurrentTransaction == null)
+            throw new InvalidOperationException("LockForUpdateAsync must be called inside a transaction.");
+
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT 1 FROM \"Orders\" WHERE \"Id\" = {id} FOR UPDATE");
+    }
 }
