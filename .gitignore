@@ -1,0 +1,47 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+publish/
+*.nupkg
+*.snupkg
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+
+# Test results / coverage
+[Tt]est[Rr]esult*/
+coverage*/
+*.coverage
+*.coveragexml
+
+# Logs (Serilog writes to Logs/)
+[Ll]ogs/
+*.log
+
+# User-uploaded files (avatars, product/category/portfolio images, order photos)
+WebApi/wwwroot/uploads/
+
+# Secrets — appsettings.json contains DB/SMTP passwords and the JWT key
+WebApi/appsettings.json
+WebApi/appsettings.*.json
+.env
+*.env
+
+# Local tool settings
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db

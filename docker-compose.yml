@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: starktech-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: starktech
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "654321"
+    ports:
+      - "2004:5432"
+    volumes:
+      - starktech_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d starktech"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: starktech-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - starktech_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  starktech_pgdata:
+  starktech_redisdata:

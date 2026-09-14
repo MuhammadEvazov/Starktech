@@ -1,0 +1,146 @@
+using Application.DTOs.OrderItemPhoto;
+using Application.Interfaces.Repositories;
+using Application.Interfaces.Services;
+using Application.Result;
+using Application.Results;
+using Domain.Entities;
+using Domain.Enums;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+
+namespace Infrastructure.Services;
+
+public class OrderItemPhotoService : IOrderItemPhotoService
+{
+    private readonly IOrderItemPhotoRepository _photoRepository;
+    private readonly IOrderItemRepository _orderItemRepository;
+    private readonly IFileService _fileService;
+    private readonly ILogger<OrderItemPhotoService> _logger;
+
+    private static readonly OrderStatus[] EditableStatuses = { OrderStatus.New, OrderStatus.Confirmed };
+
+    public OrderItemPhotoService(
+        IOrderItemPhotoRepository photoRepository,
+        IOrderItemRepository orderItemRepository,
+        IFileService fileService,
+        ILogger<OrderItemPhotoService> logger)
+    {
+        _photoRepository = photoRepository;
+        _orderItemRepository = orderItemRepository;
+        _fileService = fileService;
+        _logger = logger;
+    }
+
+    public async Task<Result<List<GetOrderItemPhotoDto>>> GetByOrderItemIdAsync(Guid orderItemId)
+    {
+        var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId);
+        if (orderItem == null)
+            return Result<List<GetOrderItemPhotoDto>>.Fail("Order item not found", ErrorType.NotFound);
+
+        var photos = await _photoRepository.GetByOrderItemIdAsync(orderItemId);
+
+        return Result<List<GetOrderItemPhotoDto>>.Ok(photos.Select(ToDto).ToList());
+    }
+
+    public async Task<Result<GetOrderItemPhotoDto>> UploadAsync(Guid orderItemId, IFormFile file)
+    {
+        var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId);
+        if (orderItem == null)
+            return Result<GetOrderItemPhotoDto>.Fail("Order item not found", ErrorType.NotFound);
+
+        if (!orderItem.ProductVariant.Product.RequiresPhotoUpload)
+            return Result<GetOrderItemPhotoDto>.Fail("This product does not require a photo upload", ErrorType.Validation);
+
+        if (!EditableStatuses.Contains(orderItem.Order.Status))
+            return Result<GetOrderItemPhotoDto>.Fail("Photos can only be uploaded before the order enters production", ErrorType.Validation);
+
+        if (file == null || file.Length == 0)
+            return Result<GetOrderItemPhotoDto>.Fail("File is required", ErrorType.Validation);
+
+        var url = await _fileService.UploadAsync(file, "order-photos");
+        if (string.IsNullOrWhiteSpace(url))
+            return Result<GetOrderItemPhotoDto>.Fail("File upload failed", ErrorType.Unknown);
+
+        var photo = new OrderItemPhoto
+        {
+            OrderItemId = orderItemId,
+            OriginalPhotoUrl = url
+        };
+
+        await _photoRepository.AddAsync(photo);
+
+        _logger.LogInformation("Photo uploaded for order item {OrderItemId}", orderItemId);
+
+        return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
+    }
+
+    public async Task<Result<GetOrderItemPhotoDto>> UploadEditedPreviewAsync(Guid photoId, IFormFile file)
+    {
+        var photo = await _photoRepository.GetByIdAsync(photoId);
+        if (photo == null || photo.IsDeleted)
+            return Result<GetOrderItemPhotoDto>.Fail("Photo not found", ErrorType.NotFound);
+
+        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
+        if (orderItem != null && !EditableStatuses.Contains(orderItem.Order.Status))
+            return Result<GetOrderItemPhotoDto>.Fail("Photos can only be edited before the order enters production", ErrorType.Validation);
+
+        if (file == null || file.Length == 0)
+            return Result<GetOrderItemPhotoDto>.Fail("File is required", ErrorType.Validation);
+
+        var url = await _fileService.UploadAsync(file, "order-photos");
+        if (string.IsNullOrWhiteSpace(url))
+            return Result<GetOrderItemPhotoDto>.Fail("File upload failed", ErrorType.Unknown);
+
+        photo.EditedPreviewUrl = url;
+        await _photoRepository.UpdateAsync(photo);
+
+        return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
+    }
+
+    public async Task<Result<GetOrderItemPhotoDto>> UpdateCropDataAsync(Guid photoId, UpdateCropDataDto dto)
+    {
+        var photo = await _photoRepository.GetByIdAsync(photoId);
+        if (photo == null || photo.IsDeleted)
+            return Result<GetOrderItemPhotoDto>.Fail("Photo not found", ErrorType.NotFound);
+
+        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
+        if (orderItem != null && !EditableStatuses.Contains(orderItem.Order.Status))
+            return Result<GetOrderItemPhotoDto>.Fail("Photos can only be edited before the order enters production", ErrorType.Validation);
+
+        photo.CropDataJson = dto.CropDataJson;
+        await _photoRepository.UpdateAsync(photo);
+
+        return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
+    }
+
+    public async Task<Result<bool>> DeleteAsync(Guid photoId)
+    {
+        var photo = await _photoRepository.GetByIdAsync(photoId);
+        if (photo == null)
+            return Result<bool>.Fail("Photo not found", ErrorType.NotFound);
+
+        if (photo.IsDeleted)
+            return Result<bool>.Ok(true);
+
+        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
+        if (orderItem != null && !EditableStatuses.Contains(orderItem.Order.Status))
+            return Result<bool>.Fail("Photos can only be removed before the order enters production", ErrorType.Validation);
+
+        photo.IsDeleted = true;
+        photo.DeletedAt = DateTime.UtcNow;
+        await _photoRepository.UpdateAsync(photo);
+
+        return Result<bool>.Ok(true);
+    }
+
+    private static GetOrderItemPhotoDto ToDto(OrderItemPhoto photo) => new()
+    {
+        Id = photo.Id,
+        OrderItemId = photo.OrderItemId,
+        OriginalPhotoUrl = photo.OriginalPhotoUrl,
+        EditedPreviewUrl = photo.EditedPreviewUrl,
+        CropDataJson = photo.CropDataJson,
+        IsDeleted = photo.IsDeleted,
+        CreatedAt = photo.CreatedAt
+    };
+}

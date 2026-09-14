@@ -1,0 +1,16 @@
+using Domain.Enums;
+
+namespace Application.DTOs.PromoCode;
+
+public class GetPromoCodeDto
+{
+    public Guid Id { get; set; }
+    public string Code { get; set; } = default!;
+    public DiscountType DiscountType { get; set; }
+    public decimal DiscountValue { get; set; }
+    public int? MaxUsages { get; set; }
+    public int UsedCount { get; set; }
+    public DateTime? ValidFrom { get; set; }
+    public DateTime? ValidTo { get; set; }
+    public bool IsActive { get; set; }
+}

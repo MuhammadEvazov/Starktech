@@ -1,0 +1,86 @@
+using System.Security.Claims;
+using Application.DTOs.Profile;
+using Application.Interfaces.Services;
+using Application.Results;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace WebApi.Controllers;
+
+[ApiController]
+[Route("api/profile")]
+[Authorize]
+public class ProfileController : BaseController
+{
+
+    private readonly IProfileService _profileService;
+
+    public ProfileController(IProfileService profileService)
+    {
+        _profileService = profileService;
+    }
+
+
+    // GET /api/profile
+    [HttpGet]
+    public async Task<IActionResult> GetProfile()
+    {
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
+        var result = await _profileService.GetProfileAsync(userId);
+
+        return result.IsSuccess
+            ? Ok(result)
+            : HandleResult(result);
+    }
+
+
+
+    // PUT /api/profile
+    [HttpPut]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
+    {
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
+        var result = await _profileService.UpdateProfileAsync(userId, dto);
+
+        return result.IsSuccess
+            ? Ok(result)
+            : HandleResult(result);
+    }
+
+
+    // PUT /api/profile/avatar
+    [HttpPut("avatar")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UpdateAvatar([FromForm] UpdateProfileAvatarDto dto)
+    {
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
+        if (dto.File == null || dto.File.Length == 0)
+            return BadRequest("Файл обязателен");
+
+        var success = await _profileService.UpdateUserProfileAsync(userId, dto.File);
+
+        if (!success)
+            return BadRequest("Не удалось обновить фото профиля");
+
+        return Ok(Result<bool>.Ok(true));
+    }
+
+        private string? GetUserId()
+    {
+        return User.FindFirstValue(ClaimTypes.NameIdentifier);
+    }
+
+
+}
