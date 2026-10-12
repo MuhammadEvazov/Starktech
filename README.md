@@ -1,53 +1,27 @@
 # StarkTech
 
-Backend API: ASP.NET Core 9, EF Core, PostgreSQL 17, Redis.
+Интернет-магазин печати фото на 3D-стикерах, брелках и чехлах: сайт для покупателей, личный кабинет,
+админка и чат с менеджером в реальном времени.
 
-## Требования
+| Папка | Что внутри |
+|---|---|
+| [`StarkTech Backend`](StarkTech%20Backend) | ASP.NET Core 9 Web API, EF Core + PostgreSQL, Redis, Identity + JWT, SignalR (чат) |
+| [`StarkTech Frontend`](StarkTech%20Frontend) | React 18 + Vite: сайт, личный кабинет и админка |
 
-- .NET 9 SDK
-- Docker Desktop
-- EF Core CLI: `dotnet tool install --global dotnet-ef`
+## Запуск для разработки
 
-## Локальный запуск
-
-1. Поднять Postgres (`localhost:5434`) и Redis (`localhost:6380`):
-
-   ```
-   docker compose up -d
-   ```
-
-2. Задать секреты. В репозитории их нет, они хранятся в `dotnet user-secrets` на вашей машине:
-
-   ```
-   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5434;Database=starktech;Username=postgres;Password=<POSTGRES_PASSWORD из docker-compose.yml>" --project WebApi
-   dotnet user-secrets set "JWT:Key" "<случайная строка, минимум 64 символа>" --project WebApi
-   dotnet user-secrets set "EmailSettings:Password" "<app password Gmail>" --project WebApi
-   ```
-
-   Сгенерировать JWT-ключ: `openssl rand -base64 64`
-
-3. Применить миграции:
-
-   ```
-   dotnet ef database update --project Infrastructure --startup-project WebApi
-   ```
-
-4. Запустить API:
-
-   ```
+1. **Бэкенд** — Docker (PostgreSQL и Redis) поднимается сам при старте:
+   ```bash
+   cd "StarkTech Backend"
    dotnet run --project WebApi
    ```
+   Секреты (JWT-ключ, пароль администратора, почта) хранятся в `dotnet user-secrets`, не в репозитории —
+   подробности в [README бэкенда](StarkTech%20Backend/README.md).
 
-   Swagger: http://localhost:5076/swagger
-
-При старте создаются роли, права, супер-админ `admin@starktech.tj` (пароль по умолчанию — в `Infrastructure/Identity/DataSeed.cs`, смените его после первого входа), категории и города доставки.
-
-## Продакшен
-
-`user-secrets` работают только в окружении `Development`. В других окружениях секреты задаются переменными окружения:
-
-- `ConnectionStrings__DefaultConnection`
-- `JWT__Key`
-- `EmailSettings__Password`
-
-Если `JWT:Key` не задан, приложение не запустится.
+2. **Фронтенд** — запросы `/api`, `/uploads` и `/hubs` Vite проксирует на бэкенд:
+   ```bash
+   cd "StarkTech Frontend"
+   npm install
+   npm run dev
+   ```
+   Сайт откроется на http://localhost:5173, админка — на `/admin`.

@@ -1,0 +1,1135 @@
+/* ───────── Чат «Написать нам» (SignalR) ─────────
+   cht-*   — переписка (components/chat/ChatThread.jsx), общая для сайта и админки
+   chatw-* — плавающий виджет на сайте (ChatWidget.jsx)
+   achat-* — страница «Чат» в админке (pages/admin/Chat.jsx) */
+
+/* ════════ Переписка ════════ */
+.cht {
+  --cht-bg: #eef0fa;
+  --cht-mine: var(--cobalt);
+  --cht-peer: #fff;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--cht-bg);
+  font-family: var(--font-body);
+  color: var(--ink);
+}
+
+/* Шапка */
+.cht-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  background: linear-gradient(135deg, var(--cobalt) 0%, var(--cobalt-deep) 100%);
+  color: #fff;
+  flex: none;
+}
+.cht-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.cht-avatar > svg {
+  width: 24px;
+  height: 24px;
+}
+.cht-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2fd27a;
+  box-shadow: 0 0 0 2px #fff;
+}
+.cht-head__who {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.25;
+}
+.cht-head__who strong {
+  font-size: var(--t-md);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cht-status {
+  font-size: var(--t-xs);
+  opacity: 0.8;
+}
+.cht-status.is-online {
+  opacity: 1;
+  color: #b8f5d2;
+}
+.cht-status.is-typing {
+  opacity: 1;
+  color: var(--lemon);
+}
+.cht-iconbtn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.cht-iconbtn:hover {
+  background: rgba(20, 22, 58, 0.08);
+}
+.cht-head .cht-iconbtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.cht-iconbtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.cht-iconbtn:focus-visible,
+.cht-send:focus-visible,
+.cht-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.cht-chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #fff;
+  color: var(--cobalt-deep);
+  font: 600 var(--t-sm) var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cht-chip.is-ghost {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+.cht-chip.is-danger {
+  background: var(--cherry);
+  color: #fff;
+}
+
+/* Лента */
+.cht-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.cht-list {
+  list-style: none;
+  margin: 0;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-image: radial-gradient(rgba(42, 59, 224, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.cht-loading,
+.cht-empty {
+  margin: auto;
+  padding: 20px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+}
+.cht-empty {
+  display: grid;
+  gap: 8px;
+  max-width: 320px;
+  padding: 22px 18px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 10px 24px -18px rgba(20, 22, 58, 0.5);
+  color: var(--ink);
+  line-height: 1.45;
+}
+.cht-empty strong {
+  font-family: var(--font-display);
+  font-size: var(--t-lg);
+}
+.cht-empty p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+.cht-quick {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.cht-quick button {
+  border: 1px solid var(--cobalt-tint);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: #f5f6ff;
+  color: var(--cobalt-deep);
+  font: 600 var(--t-xs) var(--font-body);
+  cursor: pointer;
+}
+.cht-quick button:hover:not(:disabled) {
+  background: var(--cobalt);
+  color: #fff;
+}
+.cht-day {
+  align-self: center;
+  margin: 10px 0 6px;
+}
+.cht-day span {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink-soft);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.08);
+}
+
+/* Сообщение */
+.cht-msg {
+  display: grid;
+  justify-items: start;
+  max-width: 100%;
+}
+.cht-msg.is-start {
+  margin-top: 8px;
+}
+.cht-msg.is-right {
+  justify-items: end;
+}
+.cht-msg__name {
+  margin: 0 12px 3px;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  color: var(--cobalt-deep);
+}
+.cht-msg__name em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.cht-msg__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(82%, 520px);
+}
+.cht-msg.is-right .cht-msg__row {
+  flex-direction: row-reverse;
+}
+.cht-bubble {
+  position: relative;
+  min-width: 64px;
+  max-width: 100%;
+  padding: 8px 12px 6px;
+  border-radius: 18px;
+  background: var(--cht-peer);
+  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.08);
+  overflow-wrap: anywhere;
+  cursor: default;
+}
+.cht-msg.is-start .cht-bubble {
+  border-top-left-radius: 6px;
+}
+.cht-msg.is-right .cht-bubble {
+  background: var(--cht-mine);
+  color: #fff;
+  border-radius: 18px;
+}
+.cht-msg.is-right.is-start .cht-bubble {
+  border-top-right-radius: 6px;
+}
+.cht-msg.is-flash .cht-bubble {
+  animation: cht-flash 1.4s ease;
+}
+@keyframes cht-flash {
+  0%,
+  60% {
+    box-shadow: 0 0 0 3px var(--lemon);
+  }
+}
+.cht-bubble.is-deleted,
+.cht-msg.is-right .cht-bubble.is-deleted {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(20, 22, 58, 0.15);
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.cht-bubble.is-photo {
+  padding: 4px;
+}
+.cht-text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.42;
+  font-size: 0.95rem;
+}
+.cht-text a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cht-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 0.7rem;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+.cht-bubble.is-photo .cht-meta {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  opacity: 1;
+}
+.cht-ticks {
+  display: inline-flex;
+}
+.cht-ticks.is-read {
+  color: #9fe7ff;
+}
+.cht-photo {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+.cht-photo img {
+  display: block;
+  max-width: min(260px, 100%);
+  max-height: 320px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+.cht-bubble:not(.is-photo) .cht-photo {
+  margin: -2px -6px 6px;
+}
+.cht-quote {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  margin: 2px 0 6px;
+  padding: 5px 9px;
+  border: 0;
+  border-left: 3px solid var(--cobalt);
+  border-radius: 8px;
+  background: rgba(42, 59, 224, 0.08);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cht-msg.is-right .cht-quote {
+  border-left-color: var(--lemon);
+  background: rgba(255, 255, 255, 0.16);
+}
+.cht-quote strong {
+  font-size: var(--t-xs);
+}
+.cht-quote span {
+  font-size: var(--t-xs);
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Действия с сообщением */
+.cht-more {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink-soft);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.cht-msg__row:hover .cht-more,
+.cht-more:focus-visible,
+.cht-more.is-open {
+  opacity: 1;
+}
+@media (hover: none) {
+  .cht-more {
+    display: none;
+  }
+}
+.cht-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 4px 2px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 22px -10px rgba(20, 22, 58, 0.45);
+  animation: cht-pop 0.14s ease-out;
+}
+.cht-menu button {
+  border: 0;
+  border-radius: 10px;
+  padding: 7px 11px;
+  background: none;
+  color: var(--ink);
+  font: 600 var(--t-xs) var(--font-body);
+  cursor: pointer;
+}
+.cht-menu button:hover {
+  background: #f1f2fa;
+}
+.cht-menu button.is-danger {
+  color: var(--cherry);
+}
+@keyframes cht-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* «печатает…» */
+.cht-typing .cht-bubble {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+}
+.cht-typing i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  opacity: 0.4;
+  animation: cht-dots 1.2s infinite ease-in-out;
+}
+.cht-typing i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.cht-typing i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes cht-dots {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  40% {
+    transform: translateY(-4px);
+    opacity: 0.9;
+  }
+}
+
+/* Кнопка «вниз» и перетаскивание фото */
+.cht-down {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--cobalt);
+  box-shadow: 0 6px 16px -6px rgba(20, 22, 58, 0.5);
+  cursor: pointer;
+}
+.cht-down b {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--cherry);
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 20px;
+}
+.cht-drop {
+  position: absolute;
+  inset: 8px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--cobalt);
+  border-radius: 18px;
+  background: rgba(223, 226, 255, 0.85);
+  color: var(--cobalt-deep);
+  font-weight: 700;
+  pointer-events: none;
+}
+
+/* Полосы над полем ввода */
+.cht-closed {
+  margin: 0;
+  padding: 8px 14px;
+  background: #fff6d6;
+  color: #7a5b00;
+  font-size: var(--t-xs);
+  text-align: center;
+  flex: none;
+}
+.cht-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+  border-top: 1px solid #e3e5ef;
+  background: #fff;
+  flex: none;
+}
+.cht-bar__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--cobalt);
+}
+.cht-bar.is-danger .cht-bar__text {
+  border-left-color: var(--cherry);
+}
+.cht-bar__text strong {
+  font-size: var(--t-xs);
+  color: var(--cobalt-deep);
+}
+.cht-bar.is-danger .cht-bar__text strong {
+  color: var(--cherry);
+}
+.cht-bar__text span {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cht-bar__actions {
+  display: flex;
+  gap: 6px;
+}
+.cht-bar .cht-chip:not(.is-danger) {
+  background: #f1f2fa;
+}
+.cht-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 12px;
+  background: #fde3ea;
+  color: #9b1638;
+  font-size: var(--t-sm);
+  flex: none;
+}
+.cht-error button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* Поле ввода */
+.cht-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid #e3e5ef;
+  background: #fff;
+  flex: none;
+}
+.cht-composer > .cht-iconbtn {
+  color: var(--ink-soft);
+  margin-bottom: 3px;
+}
+.cht-input {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  min-width: 0;
+  border-radius: 22px;
+  background: #f1f2f8;
+  transition: box-shadow 0.15s, background-color 0.15s;
+}
+.cht-input:focus-within {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--cobalt);
+}
+.cht-input textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 140px;
+  padding: 11px 4px 11px 16px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: 1rem/1.35 var(--font-body); /* 16px — iOS не зумит поле */
+  resize: none;
+  outline: none;
+}
+.cht-input__emoji {
+  width: 40px;
+  height: 42px;
+  color: var(--ink-soft);
+}
+.cht-emoji {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  width: 260px;
+  padding: 8px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 14px 30px -12px rgba(20, 22, 58, 0.45);
+  animation: cht-pop 0.14s ease-out;
+}
+.cht-emoji button {
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+.cht-emoji button:hover {
+  background: #f1f2fa;
+}
+.cht-send {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--cobalt);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.12s, background-color 0.15s, opacity 0.15s;
+}
+.cht-send:hover:not(:disabled) {
+  background: var(--cobalt-deep);
+}
+.cht-send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.cht-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Просмотр фото */
+.cht-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(10, 11, 30, 0.88);
+  cursor: zoom-out;
+}
+.cht-lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  object-fit: contain;
+}
+.cht-lightbox .cht-iconbtn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ════════ Виджет на сайте ════════ */
+.chatw-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.chatw-badge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--cherry);
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 0 0 2px #fff;
+  animation: chatw-bump 0.4s ease;
+}
+@keyframes chatw-bump {
+  50% {
+    transform: scale(1.25);
+  }
+}
+.chatw-panel {
+  width: min(390px, calc(100vw - 32px));
+  height: min(620px, calc(100dvh - 110px));
+  border-radius: 24px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 24px 60px -20px rgba(20, 22, 58, 0.55), 0 0 0 1px rgba(20, 22, 58, 0.06);
+  animation: chatw-in 0.2s ease-out;
+  transform-origin: bottom right;
+}
+@keyframes chatw-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+.chatw-brand {
+  width: 24px;
+  height: 24px;
+}
+.chatw-guest {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  height: 100%;
+  padding: 28px 24px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 85% 8%, rgba(255, 216, 74, 0.35) 0 60px, transparent 61px),
+    linear-gradient(180deg, #f3f4ff 0%, #fff 60%);
+}
+.chatw-guest h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--t-xl);
+}
+.chatw-guest p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.chatw-guest .btn {
+  width: 100%;
+}
+.chatw-guest__art {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--cobalt), var(--cobalt-deep));
+  transform: rotate(-6deg);
+  box-shadow: 0 14px 28px -14px rgba(29, 43, 176, 0.8);
+}
+.chatw-guest__art .chatw-brand {
+  width: 38px;
+  height: 38px;
+}
+.chatw-guest__close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 22, 58, 0.06);
+  color: var(--ink);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.chatw-guest .chatw-guest__or,
+.cht-empty .chatw-alt {
+  margin-top: 6px;
+  font-size: var(--t-xs);
+}
+.chatw-messengers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.chatw-messengers a {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.1), inset 0 -3px 0 var(--mc, var(--cobalt));
+}
+.chatw-messengers .is-wa {
+  --mc: #25d366;
+}
+.chatw-messengers .is-tg {
+  --mc: #229ed9;
+}
+.chatw-messengers .is-ig {
+  --mc: var(--cherry);
+}
+
+@media (max-width: 559px) {
+  .chatw.is-open .chatw-panel {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: 100dvh;
+    border-radius: 0;
+    z-index: 60;
+  }
+  .chatw.is-open .chatw-toggle {
+    display: none;
+  }
+}
+
+/* ════════ Админка → Чат ════════ */
+.achat {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  height: calc(100dvh - 92px);
+  min-height: 520px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.06), 0 16px 36px -24px rgba(20, 22, 58, 0.45);
+}
+.achat-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid #e6e8f2;
+  background: #fbfbfe;
+}
+.achat-side__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 10px;
+}
+.achat-side__head h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+.achat-count {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--cherry);
+  color: #fff;
+  font: 700 0.78rem/24px var(--font-body);
+  text-align: center;
+}
+.achat-conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+.achat-conn::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c3c6d6;
+}
+.achat-conn.is-on::before {
+  background: #2fd27a;
+  box-shadow: 0 0 0 3px rgba(47, 210, 122, 0.2);
+}
+.achat-search {
+  margin: 0 16px;
+  width: auto;
+}
+.achat-filters {
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.achat-filters button {
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 11px;
+  background: #eef0f8;
+  color: var(--ink-soft);
+  font: 600 var(--t-xs) var(--font-body);
+  cursor: pointer;
+}
+.achat-filters button.is-active {
+  background: var(--ink);
+  color: #fff;
+}
+.achat-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 4px 8px 12px;
+  list-style: none;
+  overflow-y: auto;
+}
+.achat-note {
+  padding: 24px 12px;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  text-align: center;
+}
+.achat-note.is-error {
+  color: var(--cherry);
+}
+.achat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+.achat-item:hover {
+  background: #f0f1fa;
+}
+.achat-item.is-active {
+  background: var(--cobalt-tint);
+}
+.achat-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--lilac), var(--cobalt));
+  color: #fff;
+  font-weight: 700;
+}
+.achat-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.cht-head .achat-avatar {
+  width: 42px;
+  height: 42px;
+}
+.achat-item__body {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.achat-item__top,
+.achat-item__bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.achat-item__top strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-sm);
+}
+.achat-item__top time {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+.achat-item.is-unread .achat-item__top time {
+  color: var(--cobalt);
+  font-weight: 700;
+}
+.achat-item__preview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+.achat-item.is-unread .achat-item__preview {
+  color: var(--ink);
+  font-weight: 600;
+}
+.achat-badge {
+  flex: none;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--cobalt);
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 20px;
+  text-align: center;
+}
+.achat-tag {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eceef6;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+.achat-main {
+  min-width: 0;
+  min-height: 0;
+}
+.achat-client {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e3e5ef;
+  background: #fff;
+  font-size: var(--t-xs);
+}
+.achat-client a {
+  color: var(--cobalt-deep);
+  font-weight: 600;
+  text-decoration: none;
+}
+.achat-client a:hover {
+  text-decoration: underline;
+}
+.achat-placeholder {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: var(--ink-soft);
+  background-image: radial-gradient(rgba(42, 59, 224, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.achat-placeholder svg {
+  color: var(--cobalt);
+  opacity: 0.6;
+}
+.achat-placeholder p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--t-lg);
+  color: var(--ink);
+}
+.achat-placeholder span {
+  max-width: 300px;
+  font-size: var(--t-sm);
+}
+/* Кнопка «назад» нужна только на узком экране */
+.achat .cht-head > .cht-iconbtn:first-child {
+  display: none;
+}
+@media (max-width: 899px) {
+  .achat {
+    grid-template-columns: 1fr;
+    height: calc(100dvh - 140px);
+  }
+  .achat.has-thread .achat-side,
+  .achat:not(.has-thread) .achat-main {
+    display: none;
+  }
+  .achat .cht-head > .cht-iconbtn:first-child {
+    display: grid;
+  }
+}
+
+/* Бейдж непрочитанного в меню админки */
+.admin-nav__badge {
+  float: right;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--cherry);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cht-menu,
+  .cht-emoji,
+  .chatw-panel,
+  .chatw-badge,
+  .cht-typing i,
+  .cht-msg.is-flash .cht-bubble {
+    animation: none;
+  }
+}

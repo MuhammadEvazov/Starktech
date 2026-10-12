@@ -1,44 +1,9 @@
-# Build output
-[Bb]in/
-[Oo]bj/
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-publish/
-*.nupkg
-*.snupkg
+# Общие правила для всего репозитория.
+# Свои правила у каждой части: StarkTech Backend/.gitignore и StarkTech Frontend/.gitignore.
 
-# Visual Studio / Rider
+# IDE и локальные инструменты
 .vs/
 .idea/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
-*.rsuser
-
-# Test results / coverage
-[Tt]est[Rr]esult*/
-coverage*/
-*.coverage
-*.coveragexml
-
-# Logs (Serilog writes to Logs/)
-[Ll]ogs/
-*.log
-
-# User-uploaded files (avatars, product/category/portfolio images, order photos)
-WebApi/wwwroot/uploads/
-
-# Secrets live in dotnet user-secrets / environment variables, never in appsettings
-appsettings.*.local.json
-.env
-*.env
-
-# Local tool settings
 .claude/
 
 # OS
