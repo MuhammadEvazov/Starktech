@@ -1,0 +1,528 @@
+/* ───────── Оплата переводом ─────────
+   pay-*  — блок оплаты у клиента (components/PaymentBox.jsx) и проверка чеков в админке (pages/admin/PaymentReview.jsx)
+   pset-* — страница реквизитов в админке (pages/admin/PaymentSettings.jsx) */
+
+/* ════════ Блок оплаты у клиента ════════ */
+.pay-box {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.05), 0 12px 28px -18px rgba(20, 22, 58, 0.35);
+  border-top: 4px solid var(--lilac);
+}
+.pay-box--due {
+  border-top-color: var(--lemon);
+  background: linear-gradient(180deg, var(--lemon-tint) 0%, var(--paper) 140px);
+}
+.pay-box--done {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border-top-color: var(--st-delivered);
+  background: linear-gradient(180deg, var(--green-tint) 0%, var(--paper) 120px);
+}
+.pay-box--done p {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+}
+.pay-box__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--st-delivered);
+  color: var(--paper);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+.pay-box__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+.pay-box__head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--t-lg);
+}
+.pay-box__head p {
+  margin: 6px 0 0;
+  max-width: 56ch;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.pay-box__expand {
+  justify-self: start;
+  min-height: 44px;
+}
+
+/* Суммы */
+.pay-sums {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.pay-sums > div {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--line-soft);
+}
+.pay-sums dt {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+.pay-sums dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pay-sums .is-main {
+  background: var(--ink);
+  color: var(--paper);
+}
+.pay-sums .is-main dt {
+  color: rgba(255, 255, 255, 0.8);
+}
+.pay-sums .is-main dd {
+  font-family: var(--font-display);
+  font-size: var(--t-lg);
+}
+.pay-sums--compact .is-main dd {
+  font-size: var(--t-md);
+}
+
+.pay-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--line-soft);
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  line-height: 1.45;
+}
+.pay-note--wait {
+  background: var(--lemon-tint);
+  color: var(--ink);
+}
+
+.pay-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Реквизиты */
+.pay-details {
+  display: grid;
+  gap: 2px;
+  padding: 6px 14px;
+  border: 1px dashed var(--cobalt);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--cobalt-tint) 35%, var(--paper));
+}
+.pay-details__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'label copy'
+    'value copy';
+  align-items: center;
+  column-gap: 12px;
+  padding: 8px 0;
+}
+.pay-details__row + .pay-details__row {
+  border-top: 1px solid rgba(42, 59, 224, 0.15);
+}
+.pay-details__label {
+  grid-area: label;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+.pay-details__value {
+  grid-area: value;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 0.95rem + 0.6vw, 1.35rem);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.pay-details__text {
+  grid-area: value;
+  font-weight: 600;
+}
+.pay-details__hint {
+  margin: 4px 0 8px;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  line-height: 1.45;
+}
+.pay-copy {
+  grid-area: copy;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--cobalt);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--cobalt-deep);
+  font: 600 var(--t-xs) var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pay-copy:hover {
+  background: var(--cobalt);
+  color: var(--paper);
+}
+.pay-copy.is-done {
+  border-color: var(--st-delivered);
+  background: var(--st-delivered);
+  color: var(--paper);
+}
+.pay-copy:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+/* Загрузка чека */
+.pay-upload {
+  display: grid;
+  gap: 12px;
+}
+.pay-upload__field {
+  display: grid;
+  gap: 6px;
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+.pay-upload__field small {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.pay-upload__file {
+  display: block;
+  cursor: pointer;
+}
+.pay-upload__drop {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  text-align: center;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.pay-upload__drop strong {
+  color: var(--cobalt-deep);
+}
+.pay-upload__drop small {
+  color: var(--ink-soft);
+  font-size: var(--t-xs);
+}
+.pay-upload__file:hover .pay-upload__drop {
+  border-color: var(--cobalt);
+  background: color-mix(in srgb, var(--cobalt-tint) 30%, var(--paper));
+}
+.pay-upload__file:focus-within .pay-upload__drop {
+  border-color: var(--cobalt);
+  box-shadow: var(--focus);
+}
+.pay-upload__submit {
+  justify-self: start;
+  min-height: 48px;
+  padding-inline: 28px;
+}
+@media (min-width: 640px) {
+  .pay-upload {
+    grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+    align-items: start;
+  }
+  .pay-upload__wide,
+  .pay-upload .error-box,
+  .pay-upload__submit {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 479.98px) {
+  .pay-box {
+    padding: 16px;
+  }
+  .pay-upload__submit {
+    justify-self: stretch;
+  }
+}
+
+/* Отправленные чеки (клиент) и чеки на проверке (админка) */
+.pay-proofs h4 {
+  margin: 0 0 8px;
+  font-size: var(--t-sm);
+}
+.pay-proofs ul,
+.pay-proofs__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pay-proof {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-left: 4px solid var(--st-production);
+}
+.pay-proof.is-approved {
+  border-left-color: var(--st-delivered);
+}
+.pay-proof.is-rejected {
+  border-left-color: var(--st-cancelled);
+}
+.pay-proof__img {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--line-soft);
+  cursor: zoom-in;
+}
+.pay-proof__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pay-proof__img:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.pay-proof__info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--t-sm);
+}
+.pay-proof__info > span {
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.pay-proof__comment {
+  font-style: italic;
+}
+.pay-proof__info > .pay-proof__reason {
+  color: var(--cherry-strong);
+  font-weight: 600;
+}
+.pay-proof__status {
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--st-production-tint);
+  color: var(--ink);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pay-proof.is-approved .pay-proof__status {
+  background: var(--st-delivered-tint);
+  color: #146b42;
+}
+.pay-proof.is-rejected .pay-proof__status {
+  background: var(--st-cancelled-tint);
+  color: var(--cherry-strong);
+}
+
+/* Админка: проверка чеков */
+.pay-review {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--line);
+}
+.pay-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pay-review__actions > .input {
+  flex: 1 1 220px;
+  min-height: 40px;
+}
+.pay-review__amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.pay-review__amount .input {
+  width: 110px;
+  min-height: 40px;
+}
+
+/* ════════ Админка → «Оплата» (реквизиты) ════════ */
+.pset-form {
+  display: grid;
+  gap: 16px;
+  max-width: 860px;
+}
+.pset-card {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.05), 0 12px 28px -18px rgba(20, 22, 58, 0.35);
+  border-top: 4px solid var(--lilac);
+}
+.pset-card--accent {
+  border-top-color: var(--lemon);
+  background: linear-gradient(180deg, var(--lemon-tint) 0%, var(--paper) 120px);
+}
+.pset-card h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--t-lg);
+}
+.pset-card__lead {
+  margin: -6px 0 0;
+  color: var(--ink-soft);
+}
+.pset-grid {
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 720px) {
+  .pset-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.pset-percent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.pset-percent__input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: var(--t-lg);
+}
+.pset-percent__input .input {
+  width: 96px;
+  min-height: 44px;
+  font-size: var(--t-lg);
+  text-align: center;
+}
+.pset-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Переключатель */
+.pset-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+}
+.pset-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.pset-toggle__track {
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 26px;
+  margin-top: 1px;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  transition: background-color 0.15s;
+}
+.pset-toggle__track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 3px rgba(20, 22, 58, 0.3);
+  transition: transform 0.15s;
+}
+.pset-toggle input:checked + .pset-toggle__track {
+  background: var(--st-delivered);
+}
+.pset-toggle input:checked + .pset-toggle__track::after {
+  transform: translateX(20px);
+}
+.pset-toggle input:focus-visible + .pset-toggle__track {
+  box-shadow: var(--focus);
+}
+.pset-toggle__text {
+  display: grid;
+  gap: 2px;
+}
+.pset-toggle__text small {
+  color: var(--ink-soft);
+}
+.pset-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 0;
+  background: linear-gradient(180deg, transparent, var(--sheet) 40%);
+}
+.pset-actions .error-box {
+  flex: 1 1 100%;
+}
+.pset-actions .btn {
+  min-height: 48px;
+  padding-inline: 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pset-toggle__track,
+  .pset-toggle__track::after,
+  .pay-upload__drop {
+    transition: none;
+  }
+}
+
+/* Возврат по отменённому заказу / переплата */
+.pay-box--refund {
+  border-top-color: var(--cherry-strong);
+  background: linear-gradient(180deg, var(--cherry-tint, var(--line-soft)) 0%, var(--paper) 120px);
+}
+.pay-box--refund .pay-box__icon {
+  background: var(--cherry-strong);
+}
+.pay-box--done .pay-box__over {
+  margin-top: 6px;
+  color: var(--ink);
+  font-weight: 600;
+}

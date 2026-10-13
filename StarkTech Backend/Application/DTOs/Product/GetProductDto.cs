@@ -15,4 +15,5 @@ public class GetProductDto
     public string? MainImageUrl { get; set; }
     public bool RequiresPhotoUpload { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public List<QuantityTierDto> QuantityTiers { get; set; } = new();
 }

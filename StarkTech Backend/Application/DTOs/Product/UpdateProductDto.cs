@@ -13,4 +13,7 @@ public class UpdateProductDto
     public bool IsActive { get; set; }
     public string? MainImageUrl { get; set; }
     public bool RequiresPhotoUpload { get; set; }
+
+    /// <summary>Скидки за количество: null — оставить как есть, [] — убрать все ступени.</summary>
+    public List<QuantityTierDto>? QuantityTiers { get; set; }
 }

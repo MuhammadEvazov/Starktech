@@ -17,6 +17,9 @@ public class Product : BaseEntity
     public string? MainImageUrl { get; set; }
     public bool RequiresPhotoUpload { get; set; } = true;
 
+    /// <summary>Скидки за количество одной позиции: JSON [{"minQuantity":5,"discountPercent":10}, …]. Разбор — Domain.Common.QuantityTiers.</summary>
+    public string? QuantityTiersJson { get; set; }
+
     // Мягкое удаление: товар пропадает из каталога и админки, но остаётся в старых заказах
     // и может быть восстановлен.
     public bool IsDeleted { get; set; } = false;

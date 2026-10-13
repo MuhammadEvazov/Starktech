@@ -5,6 +5,7 @@ import { useAsync } from '../../lib/hooks.js';
 import { categoriesApi, portfolioApi } from '../../api/endpoints.js';
 import { descOf, nameOf } from '../../lib/format.js';
 import { Async, Empty, Img, Pagination } from '../../components/ui.jsx';
+import { CONTACTS } from '../../lib/contacts.js';
 
 export default function Portfolio() {
   const [categoryId, setCategoryId] = useState('');
@@ -26,14 +27,14 @@ export default function Portfolio() {
 
       {cats.length > 0 && (
         <div className="pf-filter" role="group" aria-label="Фильтр по категории">
-          <button type="button" className="pf-filter__btn" aria-pressed={!categoryId} onClick={() => pick('')}>
+          <button type="button" className="site-pill" aria-pressed={!categoryId} onClick={() => pick('')}>
             Все
           </button>
           {cats.map((c) => (
             <button
               key={c.id}
               type="button"
-              className="pf-filter__btn"
+              className="site-pill"
               aria-pressed={categoryId === c.id}
               onClick={() => pick(c.id)}
             >
@@ -57,7 +58,17 @@ export default function Portfolio() {
                 ) : null
               }
             >
-              {categoryId ? 'Загляните в другие категории.' : 'Скоро покажем свежие работы. Пока загляните в наш Instagram.'}
+              {categoryId ? (
+                'Загляните в другие категории.'
+              ) : (
+                <>
+                  Скоро покажем свежие работы. Пока загляните в наш{' '}
+                  <a href={CONTACTS.instagram} target="_blank" rel="noopener noreferrer" className="text-link">
+                    Instagram {CONTACTS.instagramHandle}
+                  </a>
+                  .
+                </>
+              )}
             </Empty>
           }
         >

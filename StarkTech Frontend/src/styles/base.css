@@ -34,6 +34,59 @@
   --r-control: 10px;
   --shadow-lift: 0 1px 0 rgba(20, 22, 58, 0.06), 0 10px 24px -14px rgba(20, 22, 58, 0.35);
   --focus: 0 0 0 3px var(--paper), 0 0 0 5px var(--cobalt);
+
+  /* Вишнёвый для текста и заливок под белым текстом (контраст 5.4:1; --cherry даёт только 4.1:1) */
+  --cherry-strong: #c8284f;
+
+  /* Светлые оттенки палитры — фоны плашек, заметок, бейджей */
+  --lemon-tint: #fff4cc;
+  --cherry-tint: #fde3ea;
+  --green-tint: #dcf3e6;
+  --lilac-tint: #ece9ff;
+  --line-soft: #eef0f7;
+  --ink-a45: rgba(20, 22, 58, 0.45);
+
+  /* Статусы заказа — одна карта цветов для сайта, кабинета, админки и дашборда.
+     --st-*: заливка/полоска, --st-*-tint: светлый фон, --st-*-on: цвет текста на заливке (контраст ≥ 4.5:1). */
+  --st-new: #2a3be0;
+  --st-new-tint: #dfe2ff;
+  --st-new-on: #ffffff;
+  --st-confirmed: #5b4bea;
+  --st-confirmed-tint: #ece9ff;
+  --st-confirmed-on: #ffffff;
+  --st-production: #e0a200;
+  --st-production-tint: #fff4cc;
+  --st-production-on: #14163a;
+  --st-ready: #0b7285;
+  --st-ready-tint: #dcf5fa;
+  --st-ready-on: #ffffff;
+  --st-delivered: #1a7f4f;
+  --st-delivered-tint: #dcf3e6;
+  --st-delivered-on: #ffffff;
+  --st-cancelled: #c8284f;
+  --st-cancelled-tint: #fde3ea;
+  --st-cancelled-on: #ffffff;
+  --st-layout: #a3297a;
+  --st-layout-tint: #fbe3f2;
+  --st-layout-on: #ffffff;
+
+  /* Шкала радиусов (старые --r-card / --r-control / --site-radius* остаются как есть) */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* Слои: липкие панели < плавающая кнопка чата < панели/оверлеи < модалки < тосты < просмотр фото */
+  --z-bar: 20;
+  --z-fab: 40;
+  --z-overlay: 50;
+  --z-modal: 60;
+  --z-toast: 70;
+  --z-lightbox: 80;
+
+  /* Брейкпоинты (в media нельзя использовать переменные — это договорённость):
+     480 / 640 / 900 / 1040 — min-width для мобильного-первого, max-width = значение − 0.02px */
 }
 
 *,
@@ -85,6 +138,11 @@ textarea {
   outline: none;
   box-shadow: var(--focus);
   border-radius: 6px;
+}
+/* <main> получает фокус программно при переходе между страницами — рамку не рисуем */
+main[tabindex='-1']:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .skip-link {
@@ -199,21 +257,32 @@ textarea {
   padding-inline: 12px;
 }
 .btn--quiet:hover:not(:disabled) {
-  color: var(--cherry);
+  color: var(--cherry-strong);
 }
 .btn--danger {
   background: var(--paper);
-  border-color: var(--cherry);
-  color: var(--cherry);
+  border-color: var(--cherry-strong);
+  color: var(--cherry-strong);
 }
 .btn--danger:hover:not(:disabled) {
-  background: var(--cherry);
+  background: var(--cherry-strong);
   color: var(--paper);
 }
+/* Компактная на вид, но зона нажатия ≥ 44px — за счёт невидимого ::after */
 .btn--small {
+  position: relative;
   min-height: 34px;
   padding: 0 14px;
   font-size: var(--t-sm);
+}
+.btn--small::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
 }
 .btn--large {
   min-height: 52px;
@@ -258,7 +327,7 @@ textarea {
 }
 .field__error {
   font-size: var(--t-xs);
-  color: var(--cherry);
+  color: var(--cherry-strong);
   font-weight: 500;
 }
 .input {
@@ -279,7 +348,7 @@ textarea {
   box-shadow: 0 0 0 3px var(--cobalt-tint);
 }
 .field--error .input {
-  border-color: var(--cherry);
+  border-color: var(--cherry-strong);
 }
 .input--area {
   resize: vertical;
@@ -343,7 +412,7 @@ select.input {
 }
 .error-box {
   border-left: 4px solid var(--cherry);
-  background: #fdecef;
+  background: var(--cherry-tint);
   padding: 12px 16px;
   border-radius: 0 var(--r-control) var(--r-control) 0;
   display: grid;
@@ -352,7 +421,7 @@ select.input {
   font-size: var(--t-sm);
 }
 .notice {
-  background: #fff6d6;
+  background: var(--lemon-tint);
   border-left: 4px solid var(--lemon);
   padding: 12px 16px;
   border-radius: 0 var(--r-control) var(--r-control) 0;
@@ -360,17 +429,20 @@ select.input {
   margin-block: 12px;
 }
 .notice--ok {
-  background: #e6f5ed;
+  background: var(--green-tint);
   border-left-color: var(--green);
 }
+/* Пустое состояние — белая карточка, как остальные карточки сайта */
 .empty {
-  padding: 48px 24px;
+  padding: 40px 24px;
   text-align: center;
   display: grid;
   gap: 10px;
   justify-items: center;
-  background: var(--sheet);
-  border-radius: var(--r-card);
+  background: var(--paper);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
 }
 .empty__title {
   font-weight: 700;
@@ -405,16 +477,70 @@ select.input {
   color: var(--cobalt-deep);
 }
 .badge--yellow {
-  background: #fff1b8;
+  background: var(--lemon-tint);
   color: #6b5200;
 }
 .badge--green {
-  background: #dcf2e6;
+  background: var(--green-tint);
   color: #12623c;
 }
 .badge--red {
-  background: #fde0e7;
+  background: var(--cherry-tint);
   color: #a01a3c;
+}
+/* Статусы заказа (OrderStatusBadge): фон --st-*-tint, точка — сплошной цвет статуса,
+   текст — цвет статуса, притемнённый к --ink (на светлом фоне ≥ 4.5:1). */
+.badge--st {
+  --st: var(--ink-soft);
+  --st-tint: var(--line-soft);
+  --st-text: var(--ink);
+  gap: 6px;
+  background: var(--st-tint);
+  color: var(--ink);
+  color: var(--st-text);
+}
+.badge--st::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--st);
+  flex: none;
+}
+.badge--st-New {
+  --st: var(--st-new);
+  --st-tint: var(--st-new-tint);
+  --st-text: color-mix(in srgb, var(--st-new) 70%, var(--ink));
+}
+.badge--st-Confirmed {
+  --st: var(--st-confirmed);
+  --st-tint: var(--st-confirmed-tint);
+  --st-text: color-mix(in srgb, var(--st-confirmed) 70%, var(--ink));
+}
+.badge--st-InProduction {
+  --st: var(--st-production);
+  --st-tint: var(--st-production-tint);
+  --st-text: color-mix(in srgb, var(--st-production) 35%, var(--ink));
+}
+.badge--st-ReadyForDelivery {
+  --st: var(--st-ready);
+  --st-tint: var(--st-ready-tint);
+  --st-text: color-mix(in srgb, var(--st-ready) 70%, var(--ink));
+}
+.badge--st-Delivered {
+  --st: var(--st-delivered);
+  --st-tint: var(--st-delivered-tint);
+  --st-text: color-mix(in srgb, var(--st-delivered) 70%, var(--ink));
+}
+.badge--st-Cancelled {
+  --st: var(--st-cancelled);
+  --st-tint: var(--st-cancelled-tint);
+  --st-text: color-mix(in srgb, var(--st-cancelled) 70%, var(--ink));
+}
+.badge--st-AwaitingLayoutApproval {
+  --st: var(--st-layout);
+  --st-tint: var(--st-layout-tint);
+  --st-text: color-mix(in srgb, var(--st-layout) 70%, var(--ink));
 }
 .badges {
   display: inline-flex;
@@ -463,11 +589,11 @@ select.input {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(20, 22, 58, 0.45);
+  background: var(--ink-a45);
   display: grid;
   place-items: center;
   padding: 16px;
-  z-index: 50;
+  z-index: var(--z-modal);
   animation: fade 0.15s ease-out;
 }
 .modal__panel {
@@ -498,6 +624,14 @@ select.input {
 .modal__body {
   padding: 8px 24px 24px;
 }
+@media (max-width: 419.98px) {
+  .modal__head {
+    padding-left: 16px;
+  }
+  .modal__body {
+    padding: 8px 16px 16px;
+  }
+}
 @keyframes fade {
   from {
     opacity: 0;
@@ -511,7 +645,7 @@ select.input {
   transform: translateX(-50%);
   display: grid;
   gap: 8px;
-  z-index: 60;
+  z-index: var(--z-toast);
   width: min(420px, calc(100% - 32px));
 }
 .toast {
@@ -524,7 +658,7 @@ select.input {
   animation: toast-in 0.2s ease-out;
 }
 .toast--error {
-  background: var(--cherry);
+  background: var(--cherry-strong);
 }
 @keyframes toast-in {
   from {
@@ -552,6 +686,11 @@ select.input {
   gap: 8px;
   justify-items: start;
 }
+/* Поле файла визуально скрыто внутри label — кольцо фокуса рисуем на самой кнопке */
+.image-upload__pick:focus-within {
+  border-color: var(--cobalt);
+  box-shadow: var(--focus);
+}
 
 .avatar {
   width: 40px;
@@ -560,10 +699,6 @@ select.input {
   object-fit: cover;
   flex-shrink: 0;
 }
-.avatar--lg {
-  width: 72px;
-  height: 72px;
-}
 .avatar--empty {
   display: inline-grid;
   place-items: center;
@@ -571,9 +706,6 @@ select.input {
   color: var(--cobalt-deep);
   font-weight: 700;
   text-transform: uppercase;
-}
-.avatar--lg.avatar--empty {
-  font-size: var(--t-xl);
 }
 
 @media (max-width: 640px) {

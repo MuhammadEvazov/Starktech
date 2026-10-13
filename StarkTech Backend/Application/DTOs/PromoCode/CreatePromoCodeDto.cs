@@ -8,6 +8,8 @@ public class CreatePromoCodeDto
     public DiscountType DiscountType { get; set; }
     public decimal DiscountValue { get; set; }
     public int? MaxUsages { get; set; }
+    /// <summary>Сколько раз один клиент может применить код (null — без ограничения).</summary>
+    public int? MaxUsagesPerUser { get; set; }
     public DateTime? ValidFrom { get; set; }
     public DateTime? ValidTo { get; set; }
 }

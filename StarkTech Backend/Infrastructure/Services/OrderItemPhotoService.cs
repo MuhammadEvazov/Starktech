@@ -48,7 +48,7 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         return Result<List<GetOrderItemPhotoDto>>.Ok(photos.Select(ToDto).ToList());
     }
 
-    public async Task<Result<GetOrderItemPhotoDto>> UploadAsync(Guid orderItemId, IFormFile file, Guid? restrictToUserId)
+    public async Task<Result<GetOrderItemPhotoDto>> UploadAsync(Guid orderItemId, IFormFile file, int copies, Guid? restrictToUserId)
     {
         var orderItem = await _orderItemRepository.GetByIdAsync(orderItemId);
         if (!IsAccessible(orderItem, restrictToUserId))
@@ -60,22 +60,41 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         if (!EditableStatuses.Contains(orderItem.Order.Status))
             return Result<GetOrderItemPhotoDto>.Fail(NotEditableMessage, ErrorType.Validation);
 
+        // Копий по всем фото не больше, чем штук в позиции (удалённые не считаются)
+        var copiesError = await ValidateCopiesAsync(orderItem, copies, excludePhotoId: null);
+        if (copiesError != null)
+            return Result<GetOrderItemPhotoDto>.Fail(copiesError, ErrorType.Validation);
+
         var fileError = _fileService.ValidateImage(file);
         if (fileError != null)
             return Result<GetOrderItemPhotoDto>.Fail(fileError, ErrorType.Validation);
 
         var url = await _fileService.UploadAsync(file, PhotoFolder);
         if (string.IsNullOrWhiteSpace(url))
-            return Result<GetOrderItemPhotoDto>.Fail("File upload failed", ErrorType.Unknown);
+            return Result<GetOrderItemPhotoDto>.Fail("Не удалось сохранить файл", ErrorType.Unknown);
 
         var photo = new OrderItemPhoto
         {
             OrderItemId = orderItemId,
-            OriginalPhotoUrl = url
+            OriginalPhotoUrl = url,
+            Copies = copies
         };
 
-        await _photoRepository.AddAsync(photo);
-        await _activity.LogAsync(orderItem.OrderId, $"Клиент добавил фото к «{orderItem.ProductVariant.Product.NameRu}»", byClient: true);
+        try
+        {
+            await _photoRepository.AddAsync(photo);
+        }
+        catch (Exception ex)
+        {
+            // Запись в БД не удалась — удаляем только что сохранённый файл, чтобы не оставлять сирот
+            _logger.LogError(ex, "Failed to save photo for order item {OrderItemId}", orderItemId);
+            await _fileService.DeleteAsync(url);
+            return Result<GetOrderItemPhotoDto>.Fail("Не удалось сохранить фото", ErrorType.Unknown);
+        }
+
+        var byClient = restrictToUserId.HasValue;
+        var who = byClient ? "Клиент" : "Сотрудник";
+        await _activity.LogAsync(orderItem.OrderId, $"{who} добавил фото к «{orderItem.ProductVariant.Product.NameRu}»", byClient);
 
         _logger.LogInformation("Photo uploaded for order item {OrderItemId}", orderItemId);
 
@@ -94,12 +113,23 @@ public class OrderItemPhotoService : IOrderItemPhotoService
 
         var url = await _fileService.UploadAsync(file, PhotoFolder);
         if (string.IsNullOrWhiteSpace(url))
-            return Result<GetOrderItemPhotoDto>.Fail("File upload failed", ErrorType.Unknown);
+            return Result<GetOrderItemPhotoDto>.Fail("Не удалось сохранить файл", ErrorType.Unknown);
 
         var previousPreviewUrl = photo.EditedPreviewUrl;
 
         photo.EditedPreviewUrl = url;
-        await _photoRepository.UpdateAsync(photo);
+        try
+        {
+            await _photoRepository.UpdateAsync(photo);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save edited preview for photo {PhotoId}", photoId);
+            await _fileService.DeleteAsync(url);
+            return Result<GetOrderItemPhotoDto>.Fail("Не удалось сохранить фото", ErrorType.Unknown);
+        }
+
+        // Старое превью удаляем только после успешной записи в БД
 
         if (!string.IsNullOrWhiteSpace(previousPreviewUrl))
             await _fileService.DeleteAsync(previousPreviewUrl);
@@ -126,6 +156,51 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
     }
 
+    public async Task<Result<GetOrderItemPhotoDto>> UpdateCopiesAsync(Guid photoId, UpdateCopiesDto dto, Guid? restrictToUserId)
+    {
+        var (photo, error, errorType) = await GetEditablePhotoAsync(photoId, restrictToUserId);
+        if (photo == null)
+            return Result<GetOrderItemPhotoDto>.Fail(error!, errorType);
+
+        var orderItem = await _orderItemRepository.GetByIdAsync(photo.OrderItemId);
+        if (orderItem == null)
+            return Result<GetOrderItemPhotoDto>.Fail("Photo not found", ErrorType.NotFound);
+
+        if (photo.Copies == dto.Copies)
+            return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
+
+        // Само фото в сумму не входит — считаем остальные фото позиции плюс новое значение
+        var copiesError = await ValidateCopiesAsync(orderItem, dto.Copies, excludePhotoId: photo.Id);
+        if (copiesError != null)
+            return Result<GetOrderItemPhotoDto>.Fail(copiesError, ErrorType.Validation);
+
+        var oldCopies = photo.Copies;
+        photo.Copies = dto.Copies;
+        await _photoRepository.UpdateAsync(photo);
+
+        var byClient = restrictToUserId.HasValue;
+        var who = byClient ? "Клиент" : "Сотрудник";
+        await _activity.LogAsync(orderItem.OrderId,
+            $"{who} изменил количество стикеров с фото у «{orderItem.ProductVariant.Product.NameRu}»: {oldCopies} → {dto.Copies}",
+            byClient);
+
+        return Result<GetOrderItemPhotoDto>.Ok(ToDto(photo));
+    }
+
+    // null — копий можно столько; иначе текст ошибки. Учитываются только неудалённые фото позиции.
+    private async Task<string?> ValidateCopiesAsync(OrderItem orderItem, int copies, Guid? excludePhotoId)
+    {
+        if (copies < 1)
+            return "Количество копий должно быть не меньше 1";
+
+        var photos = await _photoRepository.GetByOrderItemIdAsync(orderItem.Id);
+        var used = photos.Where(p => p.Id != excludePhotoId).Sum(p => p.Copies);
+        if (used + copies > orderItem.Quantity)
+            return $"Копий больше, чем штук в позиции — осталось {Math.Max(0, orderItem.Quantity - used)}";
+
+        return null;
+    }
+
     public async Task<Result<bool>> DeleteAsync(Guid photoId, Guid? restrictToUserId)
     {
         var photo = await _photoRepository.GetByIdAsync(photoId);
@@ -142,6 +217,8 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         if (!EditableStatuses.Contains(orderItem!.Order.Status))
             return Result<bool>.Fail(NotEditableMessage, ErrorType.Validation);
 
+        // Мягкое удаление: файлы фото НЕ удаляем — сотрудник может восстановить фото.
+        // Файлы удаляются только при физическом удалении записи.
         photo.IsDeleted = true;
         photo.DeletedAt = DateTime.UtcNow;
         await _photoRepository.UpdateAsync(photo);
@@ -178,6 +255,7 @@ public class OrderItemPhotoService : IOrderItemPhotoService
         OriginalPhotoUrl = photo.OriginalPhotoUrl,
         EditedPreviewUrl = photo.EditedPreviewUrl,
         CropDataJson = photo.CropDataJson,
+        Copies = photo.Copies,
         IsDeleted = photo.IsDeleted,
         CreatedAt = photo.CreatedAt
     };

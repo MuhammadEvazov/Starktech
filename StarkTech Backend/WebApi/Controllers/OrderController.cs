@@ -94,11 +94,18 @@ public class OrderController : BaseController
         // customers always order for themselves, only staff may place orders for other users.
         // A website order always belongs to whoever placed it — staff included; only manual
         // (Instagram) orders created from the admin panel may target another user.
+        // Источник «вручную» (Instagram и т.п.) может указать только сотрудник с правом orders.manual-create.
+        var canCreateManual = User.Identity?.IsAuthenticated == true
+            && await HasPermissionAsync(UserPermissions.OrdersManualCreate);
+        if (!canCreateManual)
+            dto.Source = OrderSource.Website;
+
         if (User.Identity?.IsAuthenticated != true)
             dto.UserId = null;
-        else if (dto.Source == OrderSource.Website || !await HasPermissionAsync(UserPermissions.OrdersManualCreate))
+        else if (dto.Source == OrderSource.Website || !canCreateManual)
             dto.UserId = await GetCurrentProfileIdAsync();
 
+        // Процент предоплаты запоминается внутри CreateAsync.
         var result = await _orderService.CreateAsync(dto);
         return HandleResult(result);
     }

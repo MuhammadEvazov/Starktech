@@ -12,7 +12,7 @@ export function Logo() {
         <path
           d="M32 56 C10 42 4 30 8 20 C12 10 26 8 32 20 C38 8 52 10 56 20 C60 30 54 42 32 56Z"
           fill="var(--cobalt)"
-          stroke="#fff"
+          stroke="var(--paper)"
           strokeWidth="5"
           paintOrder="stroke"
         />
@@ -49,6 +49,7 @@ export default function ShopLayout({ children }) {
             <NavLink to="/catalog">Каталог</NavLink>
             <NavLink to="/prices">Цены</NavLink>
             <NavLink to="/portfolio">Наши работы</NavLink>
+            <NavLink to="/faq">Вопросы</NavLink>
             {isAdmin && <NavLink to="/admin">Админка</NavLink>}
             {isAuthenticated ? (
               <NavLink to="/account">{profile?.fullName?.split(' ')[0] || 'Кабинет'}</NavLink>
@@ -81,6 +82,8 @@ export default function ShopLayout({ children }) {
             <Link to="/catalog">Каталог</Link>
             <Link to="/prices">Цены</Link>
             <Link to="/portfolio">Наши работы</Link>
+            <Link to="/faq">Вопросы и ответы</Link>
+            <Link to="/faq#returns">Возврат и брак</Link>
             <Link to="/cart">Корзина</Link>
             <Link to="/account">Личный кабинет</Link>
           </nav>

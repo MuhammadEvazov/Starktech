@@ -43,13 +43,13 @@ function Avatar({ c, online }) {
   return (
     <span className="achat-avatar">
       {c.customerAvatarUrl ? <img src={assetUrl(c.customerAvatarUrl)} alt="" /> : <span>{letter}</span>}
-      {online && <i className="cht-dot" aria-label="в сети" />}
+      {online && <i className="cht-dot" role="img" aria-label="в сети" />}
     </span>
   );
 }
 
 export default function AdminChat() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const toast = useToast();
   const hub = useChatHub(true);
   const [params, setParams] = useSearch();
@@ -147,7 +147,12 @@ export default function AdminChat() {
         <div className="achat-side__head">
           <h1>
             Чат
-            {totalUnread > 0 && <span className="achat-count">{totalUnread}</span>}
+            {totalUnread > 0 && (
+              <span className="achat-count">
+                <span className="sr-only">непрочитанных: </span>
+                {totalUnread}
+              </span>
+            )}
           </h1>
           <span className={`achat-conn${hub.connected ? ' is-on' : ''}`}>{hub.connected ? 'online' : 'подключение…'}</span>
         </div>
@@ -159,13 +164,13 @@ export default function AdminChat() {
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Поиск переписки"
         />
-        <div className="achat-filters" role="tablist">
+        {/* Фильтр — группа кнопок-переключателей (у tablist нет панелей и навигации стрелками) */}
+        <div className="achat-filters" role="group" aria-label="Фильтр переписок">
           {FILTERS.map((f) => (
             <button
               key={f.key}
               type="button"
-              role="tab"
-              aria-selected={filter === f.key}
+              aria-pressed={filter === f.key}
               className={filter === f.key ? 'is-active' : ''}
               onClick={() => setFilter(f.key)}
             >
@@ -176,7 +181,11 @@ export default function AdminChat() {
 
         <ul className="achat-list">
           {loading && !items.length && <li className="achat-note">Загружаем…</li>}
-          {error && <li className="achat-note is-error">{error}</li>}
+          {error && (
+            <li className="achat-note is-error" role="alert">
+              {error}
+            </li>
+          )}
           {!loading && !error && !items.length && (
             <li className="achat-note">{search || filter !== 'all' ? 'Ничего не найдено' : 'Клиенты ещё не писали в чат'}</li>
           )}
@@ -196,7 +205,12 @@ export default function AdminChat() {
                   <span className="achat-item__bottom">
                     <span className="achat-item__preview">{c.lastMessagePreview}</span>
                     {c.isClosed && <span className="achat-tag">закрыт</span>}
-                    {c.unreadByStaff > 0 && <b className="achat-badge">{c.unreadByStaff}</b>}
+                    {c.unreadByStaff > 0 && (
+                      <b className="achat-badge">
+                        <span className="sr-only">непрочитанных: </span>
+                        {c.unreadByStaff}
+                      </b>
+                    )}
                   </span>
                 </span>
               </button>
@@ -212,7 +226,7 @@ export default function AdminChat() {
             conversation={selected}
             role="Staff"
             hub={hub}
-            myId={profile?.id}
+            myId={profile?.id ?? session?.userId}
             title={selected.customerName || selected.customerEmail}
             avatar={<Avatar c={selected} />}
             onlineLabel="в сети"

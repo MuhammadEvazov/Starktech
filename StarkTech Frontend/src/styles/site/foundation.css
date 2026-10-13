@@ -15,6 +15,8 @@
   --site-shadow: 0 1px 2px rgba(20, 22, 58, 0.05), 0 12px 28px -18px rgba(20, 22, 58, 0.35);
   --sticker-edge: 0 0 0 3px var(--paper), 0 0 0 4px var(--site-line), 0 8px 18px -8px rgba(20, 22, 58, 0.45);
   --site-max: 1180px;
+  /* Приглушённый текст на тёмном (--ink) фоне: подвал, тёмные плашки */
+  --ink-muted-on-dark: #c9cce6;
 }
 
 body {
@@ -56,7 +58,7 @@ body {
   align-items: baseline;
   gap: 4px;
   padding: 7px 13px 8px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   background: var(--paper);
   color: var(--ink);
   font-weight: 700;
@@ -73,20 +75,94 @@ body {
   color: var(--ink-soft);
 }
 
-/* ─── Шапка ─── */
+/* Пилюля: фильтры, переключатели, быстрые ссылки (каталог, работы, цены) */
+.site-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--site-line);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 var(--t-sm) var(--font-body);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+.site-pill:hover {
+  border-color: var(--cobalt);
+  color: var(--cobalt-deep);
+}
+.site-pill[aria-pressed='true'],
+.site-pill[aria-current='page'],
+.site-pill.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.site-pill:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+/* ─── Шапка (единственный источник стилей шапки) ─── */
 .shop-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-bar);
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: saturate(1.4) blur(10px);
   border-bottom: 1px solid var(--site-line);
 }
 .shop-header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   width: min(100% - 32px, var(--site-max));
   min-height: 64px;
 }
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-lg);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.logo__mark {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 2px 2px rgba(20, 22, 58, 0.25));
+}
+.shop-header__burger {
+  display: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid var(--site-line);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 var(--t-md) var(--font-body);
+  cursor: pointer;
+}
+.shop-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 .shop-nav a {
-  font-weight: 600;
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
   text-decoration: none;
 }
 .shop-nav a:hover {
@@ -96,29 +172,31 @@ body {
   color: var(--cobalt);
   background: var(--cobalt-tint);
 }
-.shop-nav__cart {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+/* Корзина — тёмная пилюля; селекторы сильнее «.shop-nav a…», поэтому без !important */
+.shop-nav a.shop-nav__cart {
+  margin-left: 6px;
+  border: 1.5px solid var(--ink);
   background: var(--ink);
-  color: var(--paper) !important;
+  color: var(--paper);
 }
-.shop-nav__cart:hover,
-.shop-nav__cart.is-active {
-  background: var(--cobalt) !important;
-  color: var(--paper) !important;
+.shop-nav a.shop-nav__cart:hover,
+.shop-nav a.shop-nav__cart.is-active {
+  border-color: var(--cobalt);
+  background: var(--cobalt);
+  color: var(--paper);
 }
 .cart-count {
+  display: inline-grid;
+  place-items: center;
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--lemon);
   color: var(--ink);
   font-size: var(--t-xs);
-  font-weight: 800;
-  line-height: 22px;
-  text-align: center;
+  font-weight: 700;
+  line-height: 1;
 }
 
 /* ─── Карточка товара: без рамки, фото крупно, ценник-стикер на фото ─── */
@@ -152,7 +230,7 @@ body {
   top: 12px;
   left: 12px;
   padding: 5px 11px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--lemon);
   color: var(--ink);
   font-size: var(--t-xs);
@@ -190,13 +268,83 @@ body {
   display: none; /* цена теперь на стикере */
 }
 
-/* ─── Подвал ─── */
+/* ─── Подвал (единственный источник стилей подвала) ─── */
 .shop-footer {
+  margin-top: 40px;
+  padding: 48px 0 32px;
   background: var(--ink);
-  color: #c9cce6;
+  color: var(--ink-muted-on-dark);
+}
+.shop-footer .logo {
+  color: var(--paper);
 }
 .shop-footer__row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 32px;
   width: min(100% - 32px, var(--site-max));
+}
+.shop-footer__text {
+  margin-top: 12px;
+  max-width: 44ch;
+  font-size: var(--t-sm);
+}
+.shop-footer__nav,
+.shop-footer__contacts {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.shop-footer__contacts {
+  font-style: normal;
+  font-size: var(--t-sm);
+}
+.shop-footer__nav a,
+.shop-footer__contacts a {
+  color: var(--paper);
+  text-decoration: none;
+}
+.shop-footer__nav a:hover,
+.shop-footer__contacts a:hover {
+  text-decoration: underline;
+}
+.shop-footer__copy {
+  grid-column: 1 / -1;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: var(--t-xs);
+}
+
+/* ─── Телефон: меню под шапкой ─── */
+@media (max-width: 720px) {
+  .shop-header__burger {
+    display: inline-flex;
+    align-items: center;
+  }
+  .shop-nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 16px 16px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--site-line);
+  }
+  .shop-nav.is-open {
+    display: flex;
+  }
+  .shop-nav a {
+    min-height: 44px;
+  }
+  .shop-nav a.shop-nav__cart {
+    margin-left: 0;
+  }
+  .shop-footer__row {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -204,6 +352,60 @@ body {
     transition: none;
   }
   .sticker-price {
+    transform: none;
+  }
+}
+
+/* ─── Карточка товара — белая карточка, как в остальных разделах (каталог и главная) ─── */
+.product-card {
+  gap: 0;
+  padding: 10px 10px 16px;
+  border-radius: var(--site-radius-lg);
+  background: var(--site-surface);
+  box-shadow: var(--site-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 2px 4px rgba(20, 22, 58, 0.06), 0 22px 40px -22px rgba(20, 22, 58, 0.5);
+}
+.product-card:hover .product-card__img {
+  transform: none;
+}
+.product-card__media,
+.product-card__media .product-card__img,
+.product-card__media .img-fallback {
+  border-radius: var(--radius-md);
+}
+.product-card__body {
+  gap: 3px;
+  padding: 22px 6px 0;
+}
+.product-card__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--cobalt);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  transition: gap 0.2s ease;
+}
+.product-card:hover .product-card__go {
+  gap: 10px;
+}
+.product-card:focus-visible {
+  box-shadow: var(--focus);
+}
+.product-card:focus-visible .product-card__img {
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-card,
+  .product-card__go {
+    transition: none;
+  }
+  .product-card:hover {
     transform: none;
   }
 }

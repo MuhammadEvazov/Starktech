@@ -63,7 +63,7 @@ public class ProductMediaService : IProductMediaService
 
         var url = await _fileService.UploadMediaAsync(file, MediaFolder);
         if (string.IsNullOrWhiteSpace(url))
-            return Result<ProductMediaDto>.Fail("File upload failed", ErrorType.Unknown);
+            return Result<ProductMediaDto>.Fail("Не удалось сохранить файл", ErrorType.Unknown);
 
         var media = new ProductMedia
         {
@@ -75,7 +75,18 @@ public class ProductMediaService : IProductMediaService
         };
 
         _context.Add(media);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            // Запись не удалась — удаляем только что сохранённый файл, чтобы не оставлять сирот
+            _logger.LogError(ex, "Failed to save media for product {ProductId}", productId);
+            _context.Entry(media).State = EntityState.Detached;
+            await _fileService.DeleteAsync(url);
+            return Result<ProductMediaDto>.Fail("Не удалось сохранить файл", ErrorType.Unknown);
+        }
 
         _logger.LogInformation("Media {Id} added to product {ProductId} (variant {VariantId})", media.Id, productId, variantId);
 

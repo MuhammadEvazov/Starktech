@@ -18,6 +18,12 @@ export default function ProductCard({ product, categoryName }) {
         {categoryName && <span className="product-card__cat">{categoryName}</span>}
         <span className="product-card__name">{nameOf(product)}</span>
         <span className="product-card__price">от {money(product.basePrice)}</span>
+        <span className="product-card__go" aria-hidden="true">
+          Выбрать
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </span>
       </div>
     </Link>
   );

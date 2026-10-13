@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { tokenStore } from '../api/client.js';
 import { authApi, profileApi } from '../api/endpoints.js';
 
@@ -42,33 +42,81 @@ function readSession() {
 
 const AuthCtx = createContext(null);
 
+// Как часто проверять срок действия токена и через сколько повторить неудачную загрузку профиля.
+const EXPIRY_CHECK_MS = 60 * 1000;
+const PROFILE_RETRY_MS = 15 * 1000;
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(readSession);
   const [profile, setProfile] = useState(null);
+  // Ошибка последней загрузки профиля (сеть, 5xx). Профиль при этом не сбрасываем — остаётся последний удачный.
+  const [profileError, setProfileError] = useState(null);
+  const retryTimer = useRef(null);
 
   const logout = useCallback(() => {
     tokenStore.set(null);
+    clearTimeout(retryTimer.current);
     setSession(null);
     setProfile(null);
+    setProfileError(null);
   }, []);
 
   const refreshProfile = useCallback(async () => {
+    const token = tokenStore.get();
+    if (!token) return;
+    clearTimeout(retryTimer.current);
     try {
-      setProfile(await profileApi.get());
-    } catch {
-      setProfile(null);
+      const p = await profileApi.get();
+      // Ответ мог прийти уже после выхода/смены пользователя — тогда он устарел.
+      if (tokenStore.get() !== token) return;
+      setProfile(p);
+      setProfileError(null);
+    } catch (e) {
+      if (tokenStore.get() !== token) return;
+      // 401 обрабатывает client.js (событие auth:expired → logout). Временные ошибки — повторим позже.
+      if (e?.status === 401) return;
+      setProfileError(e);
+      retryTimer.current = setTimeout(() => refreshProfile(), PROFILE_RETRY_MS);
     }
   }, []);
 
   useEffect(() => {
     if (session) refreshProfile();
+    return () => clearTimeout(retryTimer.current);
   }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Профиль другого пользователя не показываем ни мгновения: при смене userId сбрасываем его.
+  const userId = session?.userId ?? null;
+  const prevUser = useRef(userId);
+  useEffect(() => {
+    if (prevUser.current !== userId) {
+      prevUser.current = userId;
+      setProfile(null);
+      setProfileError(null);
+    }
+  }, [userId]);
 
   useEffect(() => {
     const onExpired = () => logout();
     window.addEventListener('auth:expired', onExpired);
     return () => window.removeEventListener('auth:expired', onExpired);
   }, [logout]);
+
+  // Срок действия токена: проверяем раз в минуту и при возвращении на вкладку — истёк → выходим.
+  useEffect(() => {
+    if (!session?.exp) return undefined;
+    const check = () => {
+      if (session.exp <= Date.now()) logout();
+    };
+    check();
+    const t = setInterval(check, EXPIRY_CHECK_MS);
+    const onVisible = () => document.visibilityState === 'visible' && check();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [session?.exp, logout]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const login = useCallback(async (email, password) => {
     const res = await authApi.login({ email, password });
@@ -83,6 +131,7 @@ export function AuthProvider({ children }) {
     return {
       session,
       profile,
+      profileError,
       isAuthenticated: !!session,
       roles,
       isAdmin: roles.includes('Admin') || roles.includes('SuperAdmin'),
@@ -92,7 +141,7 @@ export function AuthProvider({ children }) {
       refreshProfile,
       setProfile,
     };
-  }, [session, profile, login, logout, refreshProfile]);
+  }, [session, profile, profileError, login, logout, refreshProfile]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

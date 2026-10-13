@@ -27,12 +27,18 @@ public class OrderItemPhotoController : BaseController
     }
 
     [HttpPost("order-items/{orderItemId}/photos")]
-    public async Task<IActionResult> Upload(Guid orderItemId, IFormFile file)
+    public async Task<IActionResult> Upload(Guid orderItemId, IFormFile file, [FromForm] string? copies)
     {
         // Фото для печати присылает только сам клиент — владелец заказа. Сотрудники,
         // даже с правом orders.edit, свои фото к чужому заказу добавить не могут.
         var owner = await GetCurrentProfileIdAsync() ?? Guid.Empty;
-        var result = await _photoService.UploadAsync(orderItemId, file, owner);
+
+        // Поле copies необязательное: пусто — 1 копия; мусор (не число) — 0, отклонит валидация сервиса
+        var copiesCount = 1;
+        if (!string.IsNullOrWhiteSpace(copies))
+            copiesCount = int.TryParse(copies.Trim(), out var parsed) ? parsed : 0;
+
+        var result = await _photoService.UploadAsync(orderItemId, file, copiesCount, owner);
         return HandleResult(result);
     }
 
@@ -49,6 +55,15 @@ public class OrderItemPhotoController : BaseController
     {
         var scope = await GetOwnerScopeAsync(UserPermissions.OrdersEdit);
         var result = await _photoService.UpdateCropDataAsync(photoId, dto, scope);
+        return HandleResult(result);
+    }
+
+    // Сколько стикеров печатать с фото — доступ как у обновления кадра
+    [HttpPut("order-item-photos/{photoId}/copies")]
+    public async Task<IActionResult> UpdateCopies(Guid photoId, UpdateCopiesDto dto)
+    {
+        var scope = await GetOwnerScopeAsync(UserPermissions.OrdersEdit);
+        var result = await _photoService.UpdateCopiesAsync(photoId, dto, scope);
         return HandleResult(result);
     }
 

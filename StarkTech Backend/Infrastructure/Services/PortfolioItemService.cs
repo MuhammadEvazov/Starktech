@@ -123,7 +123,12 @@ public class PortfolioItemService : IPortfolioItemService
         if (item == null)
             return Result<bool>.Fail("Portfolio item not found", ErrorType.NotFound);
 
+        var imageUrl = item.ImageUrl;
         await _portfolioItemRepository.DeleteAsync(item);
+
+        // Физическое удаление записи — удаляем и файл изображения (после записи в БД)
+        if (!string.IsNullOrWhiteSpace(imageUrl))
+            await _fileService.DeleteAsync(imageUrl);
 
         return Result<bool>.Ok(true);
     }
@@ -151,7 +156,17 @@ public class PortfolioItemService : IPortfolioItemService
             SortOrder = dto.SortOrder
         };
 
-        await _portfolioItemRepository.AddAsync(item);
+        try
+        {
+            await _portfolioItemRepository.AddAsync(item);
+        }
+        catch (Exception ex)
+        {
+            // Запись не удалась — не оставляем файл-сироту
+            _logger.LogError(ex, "Failed to create portfolio item with image");
+            await _fileService.DeleteAsync(url);
+            return Result<CreatePortfolioItemResponseDto>.Fail("Не удалось сохранить работу", ErrorType.Unknown);
+        }
 
         _logger.LogInformation("Portfolio item created with uploaded image, ID: {Id}", item.Id);
 
@@ -180,7 +195,16 @@ public class PortfolioItemService : IPortfolioItemService
         var previousUrl = item.ImageUrl;
 
         item.ImageUrl = url;
-        await _portfolioItemRepository.UpdateAsync(item);
+        try
+        {
+            await _portfolioItemRepository.UpdateAsync(item);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save image for portfolio item {Id}", id);
+            await _fileService.DeleteAsync(url);
+            return Result<GetPortfolioItemDto>.Fail("Не удалось сохранить изображение", ErrorType.Unknown);
+        }
 
         if (!string.IsNullOrWhiteSpace(previousUrl))
             await _fileService.DeleteAsync(previousUrl);

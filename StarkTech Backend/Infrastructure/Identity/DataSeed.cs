@@ -25,6 +25,45 @@ public static class DataSeed
         await SeedDefaultSuperAdminAsync(context, userManager, configuration);
         await SeedProductCategoriesAsync(context);
         await SeedDeliveryCitiesAsync(context);
+        await SeedPaymentSettingsAsync(context);
+    }
+
+    // Настройки оплаты — одна запись с постоянным Id. Если в базе осталась старая запись
+    // со случайным Id, её значения переносятся в новую, а лишние записи удаляются.
+    private static async Task SeedPaymentSettingsAsync(AppDbContext context)
+    {
+        var all = await context.Set<PaymentSettings>().OrderBy(s => s.CreatedAt).ToListAsync();
+        if (all.Count == 1 && all[0].Id == PaymentSettings.SingletonId) return;
+
+        var current = all.FirstOrDefault(s => s.Id == PaymentSettings.SingletonId);
+        if (current == null)
+        {
+            var source = all.FirstOrDefault();
+            current = new PaymentSettings { Id = PaymentSettings.SingletonId };
+            if (source != null)
+            {
+                current.PrepaymentPercent = source.PrepaymentPercent;
+                current.PrepaymentForCash = source.PrepaymentForCash;
+                current.CashEnabled = source.CashEnabled;
+                current.KortiMilliEnabled = source.KortiMilliEnabled;
+                current.KortiMilliCard = source.KortiMilliCard;
+                current.KortiMilliHolder = source.KortiMilliHolder;
+                current.AlifPayEnabled = source.AlifPayEnabled;
+                current.AlifPayPhone = source.AlifPayPhone;
+                current.AlifPayHolder = source.AlifPayHolder;
+                current.CardTransferEnabled = source.CardTransferEnabled;
+                current.CardTransferNumber = source.CardTransferNumber;
+                current.CardTransferHolder = source.CardTransferHolder;
+                current.CardTransferBank = source.CardTransferBank;
+                current.Instructions = source.Instructions;
+                current.UpdatedAt = source.UpdatedAt;
+            }
+            current.PrepaymentPercent = Math.Clamp(current.PrepaymentPercent, 0, 100);
+            context.Add(current);
+        }
+
+        context.RemoveRange(all.Where(s => s.Id != PaymentSettings.SingletonId));
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedRolesAsync(RoleManager<IdentityRole> roleManager)

@@ -12,6 +12,9 @@ const EMOJI = ['😊', '😂', '😍', '🥰', '👍', '🙏', '❤️', '🔥',
 
 const time = (d) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
+// Плавная прокрутка — только если пользователь не просил уменьшить анимацию.
+const scrollBehavior = () => (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+
 function dayLabel(d) {
   const date = new Date(d);
   const today = new Date();
@@ -104,7 +107,7 @@ const Icon = {
 /** Галочки: одна — отправлено, две синие — прочитано. */
 function Ticks({ read }) {
   return (
-    <span className={`cht-ticks${read ? ' is-read' : ''}`} aria-label={read ? 'Прочитано' : 'Отправлено'}>
+    <span className={`cht-ticks${read ? ' is-read' : ''}`} role="img" aria-label={read ? 'Прочитано' : 'Отправлено'}>
       <svg viewBox="0 0 20 12" width="18" height="11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M1 6.5l3.5 3.5L11 2" />
         {read && <path d="M7.5 9.5L8 10l7-8" />}
@@ -154,6 +157,9 @@ export default function ChatThread({
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  // Ошибки подгрузки: догрузка после переподключения ('sync') и история ('older') — с кнопкой «Повторить».
+  const [syncError, setSyncError] = useState('');
+  const [olderError, setOlderError] = useState('');
   const [peerOnline, setPeerOnline] = useState(false);
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState('');
@@ -169,10 +175,18 @@ export default function ChatThread({
   const [newBelow, setNewBelow] = useState(0);
   const [flash, setFlash] = useState(null);
   const [dragging, setDragging] = useState(false);
+  // Текст для скрытой области role="status": только новые сообщения собеседника и «печатает…».
+  const [announce, setAnnounce] = useState('');
 
   const listRef = useRef(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
+  const emojiBtnRef = useRef(null);
+  const emojiRef = useRef(null);
+  const lightboxCloseRef = useRef(null);
+  const lightboxReturn = useRef(null);
+  const deleteCancelRef = useRef(null);
+  const menuFocus = useRef(false);
   const stickBottom = useRef(true);
   const prevHeight = useRef(null);
   const typingTimer = useRef(null);
@@ -190,7 +204,7 @@ export default function ChatThread({
   const scrollToBottom = (smooth) => {
     const el = listRef.current;
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? scrollBehavior() : 'auto' });
     stickBottom.current = true;
     setNewBelow(0);
   };
@@ -212,6 +226,8 @@ export default function ChatThread({
     setDeleting(null);
     setText('');
     setError('');
+    setSyncError('');
+    setOlderError('');
     setTyping(false);
     stickBottom.current = true;
     chatApi
@@ -228,6 +244,27 @@ export default function ChatThread({
     };
   }, [id]);
 
+  // Догрузка последних сообщений (после переподключения или по кнопке «Повторить»).
+  const catchUpId = useRef(id);
+  catchUpId.current = id;
+  const catchUp = useCallback(
+    (isActive = () => true) => {
+      const forId = id;
+      setSyncError('');
+      return chatApi
+        .messages(forId, { take: PAGE })
+        .then((list) => {
+          if (!isActive() || catchUpId.current !== forId) return;
+          setMessages((prev) => merge(prev, list));
+        })
+        .catch((e) => {
+          if (!isActive() || catchUpId.current !== forId) return;
+          setSyncError(e?.messages?.[0] || 'Не удалось обновить переписку — новые сообщения могут не отображаться.');
+        });
+    },
+    [id],
+  );
+
   // ── Вход в переписку на сервере (и повторно после переподключения) ──
   useEffect(() => {
     if (!id || !connected || !connection) return undefined;
@@ -238,10 +275,7 @@ export default function ChatThread({
         if (!active) return;
         setPeerOnline(staffSide ? !!info?.customerOnline : !!info?.staffOnline);
         // Пока не было связи, могли прийти сообщения — догружаем последние.
-        chatApi
-          .messages(id, { take: PAGE })
-          .then((list) => active && setMessages((prev) => merge(prev, list)))
-          .catch(() => {});
+        catchUp(() => active);
         markRead();
       })
       .catch((e) => active && setError(hubError(e, 'Нет доступа к переписке')));
@@ -249,7 +283,7 @@ export default function ChatThread({
       active = false;
       if (connection.state === 'Connected') connection.invoke('LeaveConversation', id).catch(() => {});
     };
-  }, [id, connected, connection, staffSide, markRead]);
+  }, [id, connected, connection, staffSide, markRead]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onVisible = () => markRead();
@@ -266,6 +300,7 @@ export default function ChatThread({
     setMessages((prev) => merge(prev, [m]));
     if (fromPeer(m)) {
       setTyping(false);
+      setAnnounce(`Новое сообщение от ${m.senderName}: ${m.text || 'фото'}`);
       markRead();
     }
   });
@@ -286,6 +321,8 @@ export default function ChatThread({
   });
   useHubEvent(connection, 'Typing', (t) => {
     if (t.conversationId !== id || t.fromStaff === staffSide) return;
+    // Объявляем только начало набора, а не каждый сигнал раз в 2,5 с.
+    if (!typing) setAnnounce(`${title} печатает…`);
     setTyping(true);
     clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => setTyping(false), 3500);
@@ -311,14 +348,18 @@ export default function ChatThread({
 
   const loadOlder = async () => {
     if (!messages.length) return;
+    const forId = id;
     setLoadingOlder(true);
+    setOlderError('');
     try {
-      const list = await chatApi.messages(id, { take: PAGE, before: messages[0].createdAt });
+      const list = await chatApi.messages(forId, { take: PAGE, before: messages[0].createdAt });
+      if (catchUpId.current !== forId) return;
       prevHeight.current = listRef.current?.scrollHeight ?? null;
       setMessages((prev) => merge(list, prev));
       setHasMore(list.length === PAGE);
-    } catch {
-      /* попробуем при следующей прокрутке */
+    } catch (e) {
+      // Показываем ошибку с кнопкой «Повторить»; автоматически при прокрутке не повторяем, чтобы не спамить запросами.
+      if (catchUpId.current === forId) setOlderError(e?.messages?.[0] || 'Не удалось загрузить историю.');
     } finally {
       setLoadingOlder(false);
     }
@@ -329,13 +370,13 @@ export default function ChatThread({
     stickBottom.current = bottom;
     setAtBottom(bottom);
     if (bottom) setNewBelow(0);
-    if (listRef.current.scrollTop < 60 && hasMore && !loadingOlder) loadOlder();
+    if (listRef.current.scrollTop < 60 && hasMore && !loadingOlder && !olderError) loadOlder();
   };
 
   const jumpTo = (messageId) => {
     const el = document.getElementById(`cht-m-${messageId}`);
     if (!el) return;
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.scrollIntoView({ block: 'center', behavior: scrollBehavior() });
     setFlash(messageId);
     setTimeout(() => setFlash(null), 1400);
   };
@@ -412,6 +453,7 @@ export default function ChatThread({
   const confirmDelete = async () => {
     const m = deleting;
     setDeleting(null);
+    inputRef.current?.focus();
     try {
       const updated = await connection.invoke('DeleteMessage', id, m.id);
       setMessages((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
@@ -455,17 +497,86 @@ export default function ChatThread({
     setMenuFor(null);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
+  // Кнопка «⋯» сообщения — сюда возвращаем фокус при закрытии меню.
+  const moreBtn = (messageId) => document.getElementById(`cht-more-${messageId}`);
+  const closeMenu = (restoreFocus) => {
+    const messageId = menuFor;
+    setMenuFor(null);
+    if (restoreFocus && messageId) moreBtn(messageId)?.focus();
+  };
+  const toggleMenu = (messageId, fromKeyboardOrButton) => {
+    menuFocus.current = !!fromKeyboardOrButton;
+    setMenuFor((cur) => (cur === messageId ? null : messageId));
+  };
   const copy = (m) => {
     navigator.clipboard?.writeText(m.text || '').catch(() => {});
+    closeMenu(true);
+  };
+  const askDelete = (m) => {
+    setReplyTo(null);
+    setEditing(null);
+    setDeleting(m);
     setMenuFor(null);
+    // Фокус на «Отмена» в полосе подтверждения — безопасный вариант по умолчанию.
+    requestAnimationFrame(() => deleteCancelRef.current?.focus());
+  };
+  const cancelDelete = () => {
+    setDeleting(null);
+    inputRef.current?.focus();
+  };
+
+  // Открыли меню кнопкой — фокус на первый пункт.
+  useEffect(() => {
+    if (!menuFor || !menuFocus.current) return;
+    menuFocus.current = false;
+    document.getElementById(`cht-menu-${menuFor}`)?.querySelector('button')?.focus();
+  }, [menuFor]);
+
+  const closeEmoji = (restoreFocus) => {
+    setShowEmoji(false);
+    if (restoreFocus) emojiBtnRef.current?.focus();
+  };
+
+  // Смайлики: фокус на первый при открытии; клик снаружи закрывает.
+  useEffect(() => {
+    if (!showEmoji) return undefined;
+    emojiRef.current?.querySelector('button')?.focus();
+    const onDown = (e) => {
+      if (emojiRef.current?.contains(e.target) || emojiBtnRef.current?.contains(e.target)) return;
+      setShowEmoji(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [showEmoji]);
+
+  // Фокус ушёл из панели смайликов (не в поле ввода и не на кнопку) — закрываем.
+  const onEmojiBlur = (e) => {
+    const to = e.relatedTarget;
+    if (!to || emojiRef.current?.contains(to) || to === emojiBtnRef.current || to === inputRef.current) return;
+    setShowEmoji(false);
+  };
+
+  /**
+   * Escape внутри переписки: закрывает самое «верхнее» — меню, смайлики, полосу ответа/правки/удаления.
+   * Если что-то закрыли — preventDefault + stopPropagation, чтобы виджет не закрыл весь чат вместе с черновиком.
+   */
+  const onSectionKeyDown = (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || lightbox) return;
+    if (menuFor) closeMenu(true);
+    else if (showEmoji) closeEmoji(true);
+    else if (deleting) cancelDelete();
+    else if (editing || replyTo) {
+      cancelMode();
+      inputRef.current?.focus();
+    } else return;
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const onKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       send(text);
-    } else if (e.key === 'Escape') {
-      cancelMode();
     } else if (e.key === 'ArrowUp' && !text) {
       // Как в мессенджерах: ↑ в пустом поле — изменить последнее своё сообщение.
       const last = [...messages].reverse().find((m) => isOwn(m) && !m.isDeleted && m.text);
@@ -484,11 +595,31 @@ export default function ChatThread({
     }
   };
 
+  // Просмотр фото: фокус на «Закрыть», Escape закрывает, фокус возвращается на миниатюру.
+  const openLightbox = (url) => {
+    lightboxReturn.current = document.activeElement;
+    setLightbox(url);
+  };
   useEffect(() => {
     if (!lightbox) return undefined;
-    const onKey = (e) => e.key === 'Escape' && setLightbox(null);
+    lightboxCloseRef.current?.focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setLightbox(null);
+      } else if (e.key === 'Tab') {
+        // В окне одна кнопка — фокус не выпускаем.
+        e.preventDefault();
+        lightboxCloseRef.current?.focus();
+      }
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      const back = lightboxReturn.current;
+      lightboxReturn.current = null;
+      if (back?.isConnected) back.focus({ preventScroll: true });
+    };
   }, [lightbox]);
 
   const status = typing
@@ -531,23 +662,26 @@ export default function ChatThread({
         id={`cht-m-${m.id}`}
         className={`cht-msg${right ? ' is-right' : ''}${groupStart ? ' is-start' : ''}${flash === m.id ? ' is-flash' : ''}`}
       >
+        {/* Имя видно глазами; скринридер получает его из скрытого префикса в пузыре */}
         {showName && (
-          <span className="cht-msg__name">
+          <span className="cht-msg__name" aria-hidden="true">
             {m.senderName}
             {m.isFromStaff && !staffSide && <em> · StarkTech</em>}
           </span>
         )}
         <div className="cht-msg__row">
+          {/* Клик по пузырю — быстрый путь мышью/пальцем; с клавиатуры то же меню открывает кнопка «⋯» */}
           <div
             className={`cht-bubble${m.isDeleted ? ' is-deleted' : ''}${m.attachmentUrl && !m.text ? ' is-photo' : ''}`}
             onClick={(e) => {
               if (m.isDeleted || e.target.closest('a, button')) return;
-              setMenuFor(open ? null : m.id);
+              toggleMenu(m.id, false);
             }}
           >
+            <span className="sr-only">{own ? 'Вы' : m.senderName}: </span>
             {m.replyTo && !m.isDeleted && <Quote reply={m.replyTo} onClick={() => jumpTo(m.replyTo.id)} />}
             {m.attachmentUrl && !m.isDeleted && (
-              <button type="button" className="cht-photo" onClick={() => setLightbox(assetUrl(m.attachmentUrl))} aria-label="Открыть фото">
+              <button type="button" className="cht-photo" onClick={() => openLightbox(assetUrl(m.attachmentUrl))} aria-label="Открыть фото">
                 <img
                   src={assetUrl(m.attachmentUrl)}
                   alt=""
@@ -574,40 +708,35 @@ export default function ChatThread({
           {!m.isDeleted && (
             <button
               type="button"
+              id={`cht-more-${m.id}`}
               className={`cht-more${open ? ' is-open' : ''}`}
               aria-label="Действия с сообщением"
               aria-expanded={open}
-              onClick={() => setMenuFor(open ? null : m.id)}
+              aria-controls={open ? `cht-menu-${m.id}` : undefined}
+              onClick={() => toggleMenu(m.id, true)}
             >
               {Icon.more}
             </button>
           )}
         </div>
+        {/* Раскрывающийся блок (disclosure), а не role="menu": обычные кнопки, Tab по ним, Escape закрывает */}
         {open && (
-          <div className="cht-menu" role="menu">
-            <button type="button" role="menuitem" onClick={() => startReply(m)}>
+          <div className="cht-menu" id={`cht-menu-${m.id}`} role="group" aria-label="Действия с сообщением">
+            <button type="button" onClick={() => startReply(m)}>
               Ответить
             </button>
             {m.text && (
-              <button type="button" role="menuitem" onClick={() => copy(m)}>
+              <button type="button" onClick={() => copy(m)}>
                 Копировать
               </button>
             )}
             {own && m.text && (
-              <button type="button" role="menuitem" onClick={() => startEdit(m)}>
+              <button type="button" onClick={() => startEdit(m)}>
                 Изменить
               </button>
             )}
             {own && (
-              <button
-                type="button"
-                role="menuitem"
-                className="is-danger"
-                onClick={() => {
-                  setDeleting(m);
-                  setMenuFor(null);
-                }}
-              >
+              <button type="button" className="is-danger" onClick={() => askDelete(m)}>
                 Удалить
               </button>
             )}
@@ -623,6 +752,7 @@ export default function ChatThread({
     <section
       className={`cht${dragging ? ' is-dragging' : ''}`}
       aria-label={title}
+      onKeyDown={onSectionKeyDown}
       onDragOver={(e) => {
         if ([...(e.dataTransfer?.types || [])].includes('Files')) {
           e.preventDefault();
@@ -659,9 +789,22 @@ export default function ChatThread({
       </header>
       {banner}
 
+      {/* Объявления для скринридера: лента сама не «живая» — иначе зачитывалась бы подгруженная история и свои сообщения */}
+      <p className="sr-only" role="status">
+        {announce}
+      </p>
+
       <div className="cht-body">
-        <ul className="cht-list" ref={listRef} onScroll={onScroll} role="log" aria-live="polite" aria-busy={loading}>
+        <ul className="cht-list" ref={listRef} onScroll={onScroll} aria-label="Сообщения" aria-busy={loading}>
           {loadingOlder && <li className="cht-loading">Загружаем историю…</li>}
+          {olderError && !loadingOlder && (
+            <li className="cht-notice" role="alert">
+              <span>{olderError}</span>
+              <button type="button" className="cht-notice__retry" onClick={loadOlder}>
+                Повторить
+              </button>
+            </li>
+          )}
           {loading && !messages.length ? (
             <li className="cht-loading">Загружаем переписку…</li>
           ) : !messages.length ? (
@@ -681,7 +824,7 @@ export default function ChatThread({
             rows
           )}
           {typing && (
-            <li className="cht-msg cht-typing" aria-label="Собеседник печатает">
+            <li className="cht-msg cht-typing" aria-hidden="true">
               <div className="cht-bubble">
                 <i />
                 <i />
@@ -693,7 +836,12 @@ export default function ChatThread({
         {!atBottom && messages.length > 0 && (
           <button type="button" className="cht-down" onClick={() => scrollToBottom(true)} aria-label="К последним сообщениям">
             {Icon.down}
-            {newBelow > 0 && <b>{newBelow}</b>}
+            {newBelow > 0 && (
+              <>
+                <b aria-hidden="true">{newBelow}</b>
+                <span className="sr-only">, новых: {newBelow}</span>
+              </>
+            )}
           </button>
         )}
         {dragging && <div className="cht-drop">Отпустите, чтобы отправить фото</div>}
@@ -714,16 +862,33 @@ export default function ChatThread({
               <button type="button" className="cht-chip is-danger" onClick={confirmDelete}>
                 Удалить
               </button>
-              <button type="button" className="cht-chip" onClick={() => setDeleting(null)}>
+              <button type="button" className="cht-chip" onClick={cancelDelete} ref={deleteCancelRef}>
                 Отмена
               </button>
             </div>
           ) : (
-            <button type="button" className="cht-iconbtn" onClick={cancelMode} aria-label="Отменить">
+            <button
+              type="button"
+              className="cht-iconbtn"
+              onClick={() => {
+                cancelMode();
+                inputRef.current?.focus();
+              }}
+              aria-label="Отменить"
+            >
               {Icon.close}
             </button>
           )}
         </div>
+      )}
+
+      {syncError && (
+        <p className="cht-error cht-error--sync" role="alert">
+          <span>{syncError}</span>
+          <button type="button" className="cht-notice__retry" onClick={() => catchUp()}>
+            Повторить
+          </button>
+        </p>
       )}
 
       {error && (
@@ -765,11 +930,20 @@ export default function ChatThread({
             placeholder={connected ? 'Сообщение…' : 'Подключаемся…'}
             aria-label="Сообщение"
           />
-          <button type="button" className="cht-iconbtn cht-input__emoji" onClick={() => setShowEmoji((s) => !s)} aria-label="Смайлики" aria-expanded={showEmoji}>
+          <button
+            ref={emojiBtnRef}
+            type="button"
+            className="cht-iconbtn cht-input__emoji"
+            onClick={() => (showEmoji ? closeEmoji(false) : setShowEmoji(true))}
+            aria-label="Смайлики"
+            aria-haspopup="dialog"
+            aria-expanded={showEmoji}
+            aria-controls={showEmoji ? `cht-emoji-${id}` : undefined}
+          >
             {Icon.smile}
           </button>
           {showEmoji && (
-            <div className="cht-emoji" role="dialog" aria-label="Смайлики">
+            <div className="cht-emoji" id={`cht-emoji-${id}`} role="dialog" aria-label="Смайлики" ref={emojiRef} onBlur={onEmojiBlur}>
               {EMOJI.map((e) => (
                 <button key={e} type="button" onClick={() => insertEmoji(e)}>
                   {e}
@@ -784,9 +958,9 @@ export default function ChatThread({
       </form>
 
       {lightbox && (
-        <div className="cht-lightbox" role="dialog" aria-label="Фото" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="" />
-          <button type="button" className="cht-iconbtn" aria-label="Закрыть">
+        <div className="cht-lightbox" role="dialog" aria-modal="true" aria-label="Просмотр фото" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Фото из переписки" />
+          <button type="button" className="cht-iconbtn" aria-label="Закрыть" ref={lightboxCloseRef}>
             {Icon.close}
           </button>
         </div>

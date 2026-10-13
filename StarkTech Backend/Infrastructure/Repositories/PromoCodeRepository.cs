@@ -64,10 +64,31 @@ public class PromoCodeRepository(AppDbContext context) : IPromoCodeRepository
         return true;
     }
 
-    public async Task<bool> ExistsByCodeAsync(string code)
+    public async Task<PromoCode?> GetByCodeAsync(string code)
     {
+        var normalized = (code ?? string.Empty).Trim().ToUpper();
+        if (normalized.Length == 0)
+            return null;
+
+        return await context.PromoCodes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Code.ToUpper() == normalized);
+    }
+
+    public async Task<bool> ExistsByCodeAsync(string code, Guid? excludeId = null)
+    {
+        var normalized = (code ?? string.Empty).Trim().ToUpper();
+
         return await context.PromoCodes.AnyAsync(p =>
-            p.Code.ToLower() == code.ToLower().Trim());
+            p.Code.ToUpper() == normalized && (excludeId == null || p.Id != excludeId));
+    }
+
+    public async Task<int> CountUserUsagesAsync(Guid promoCodeId, Guid userProfileId)
+    {
+        return await context.Orders.CountAsync(o =>
+            o.PromoCodeId == promoCodeId &&
+            o.UserId == userProfileId &&
+            o.Status != Domain.Enums.OrderStatus.Cancelled);
     }
 
     // Single conditional UPDATE, so concurrent orders cannot exceed MaxUsages.

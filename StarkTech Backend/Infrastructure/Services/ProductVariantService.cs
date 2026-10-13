@@ -200,12 +200,22 @@ public class ProductVariantService : IProductVariantService
 
         var url = await _fileService.UploadAsync(file, VariantImageFolder);
         if (string.IsNullOrWhiteSpace(url))
-            return Result<GetProductVariantDto>.Fail("File upload failed", ErrorType.Unknown);
+            return Result<GetProductVariantDto>.Fail("Не удалось сохранить файл", ErrorType.Unknown);
 
         var previousUrl = variant.ImageUrl;
 
         variant.ImageUrl = url;
-        await _variantRepository.UpdateAsync(variant);
+        try
+        {
+            await _variantRepository.UpdateAsync(variant);
+        }
+        catch (Exception ex)
+        {
+            // Запись не удалась — удаляем новый файл, старый остаётся на месте
+            _logger.LogError(ex, "Failed to save image for product variant {Id}", id);
+            await _fileService.DeleteAsync(url);
+            return Result<GetProductVariantDto>.Fail("Не удалось сохранить изображение", ErrorType.Unknown);
+        }
 
         if (!string.IsNullOrWhiteSpace(previousUrl))
             await _fileService.DeleteAsync(previousUrl);

@@ -5,6 +5,8 @@ using Application.Result;
 using Application.Results;
 using Domain.Entities;
 using Domain.Enums;
+using Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services;
@@ -14,12 +16,15 @@ public class NotificationService : INotificationService
     private readonly INotificationRepository _notificationRepository;
     private readonly IEmailService _emailService;
     private readonly ILogger<NotificationService> _logger;
+    private readonly AppDbContext _context;
 
     public NotificationService(
         INotificationRepository notificationRepository,
         IEmailService emailService,
-        ILogger<NotificationService> logger)
+        ILogger<NotificationService> logger,
+        AppDbContext context)
     {
+        _context = context;
         _notificationRepository = notificationRepository;
         _emailService = emailService;
         _logger = logger;
@@ -67,7 +72,10 @@ public class NotificationService : INotificationService
     public async Task NotifyOrderStatusChangeAsync(Guid orderId, string orderNumber, OrderStatus status, string? contactEmail)
     {
         if (string.IsNullOrWhiteSpace(contactEmail))
+        {
+            _logger.LogInformation("Order {OrderId} status notification skipped: no contact email", orderId);
             return;
+        }
 
         var message = $"Order {orderNumber} status changed to {status}";
         var sent = false;
@@ -89,7 +97,19 @@ public class NotificationService : INotificationService
             Payload = message
         };
 
-        await _notificationRepository.AddAsync(notification);
+        // Уведомление — побочное действие: сбой записи журнала не должен ломать смену статуса заказа
+        try
+        {
+            await _notificationRepository.AddAsync(notification);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save notification record for order {OrderId}", orderId);
+            // Не оставляем несохранённую запись в общем контексте — иначе она сломает следующий SaveChanges вызывающего кода
+            var entry = _context.ChangeTracker.Entries<Notification>().FirstOrDefault(e => ReferenceEquals(e.Entity, notification));
+            if (entry != null)
+                entry.State = EntityState.Detached;
+        }
     }
 
     private static GetNotificationDto ToDto(Notification notification) => new()

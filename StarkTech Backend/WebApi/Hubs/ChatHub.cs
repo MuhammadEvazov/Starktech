@@ -3,7 +3,9 @@ using System.Security.Claims;
 using Application.DTOs.Chat;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
+using Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using StarkTech.Domain.Constants;
 using WebApi.Authorization;
@@ -29,13 +31,16 @@ public class ChatHub : Hub
     private readonly IUserRepository _users;
     private readonly IAuthorizationService _authorization;
     private readonly ChatNotifier _notifier;
+    private readonly UserManager<AppUser> _userManager;
 
-    public ChatHub(IChatService chat, IUserRepository users, IAuthorizationService authorization, ChatNotifier notifier)
+    public ChatHub(IChatService chat, IUserRepository users, IAuthorizationService authorization, ChatNotifier notifier,
+        UserManager<AppUser> userManager)
     {
         _chat = chat;
         _users = users;
         _authorization = authorization;
         _notifier = notifier;
+        _userManager = userManager;
     }
 
     private Guid ProfileId => Context.Items.TryGetValue("pid", out var v) && v is Guid g ? g : Guid.Empty;
@@ -58,7 +63,9 @@ public class ChatHub : Hub
         {
             // Как в BaseController: учётной записи без профиля создаём профиль сразу.
             var email = Context.User?.FindFirst(ClaimTypes.Email)?.Value;
-            if (string.IsNullOrWhiteSpace(email))
+            // Профиль создаём только для существующей учётной записи Identity:
+            // токен удалённого пользователя ещё может быть действителен.
+            if (string.IsNullOrWhiteSpace(email) || await _userManager.FindByIdAsync(appUserId) == null)
             {
                 Context.Abort();
                 return;

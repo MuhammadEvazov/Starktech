@@ -6,6 +6,7 @@ public class GetReviewDto
     public Guid? UserId { get; set; }
     public string? UserFullName { get; set; }
     public Guid? ProductId { get; set; }
+    public string? ProductNameRu { get; set; }
     public string? ProductNameEn { get; set; }
     public Guid? OrderId { get; set; }
     public int Rating { get; set; }

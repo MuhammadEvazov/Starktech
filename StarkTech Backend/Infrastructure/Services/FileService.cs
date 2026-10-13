@@ -28,6 +28,7 @@ public class FileService : IFileService
     private readonly ILogger<FileService> _logger;
     private readonly long _maxFileSizeBytes;
     private readonly long _maxVideoSizeBytes;
+    private readonly S3Storage? _s3;
 
     public FileService(IWebHostEnvironment env, IConfiguration configuration, ILogger<FileService> logger)
     {
@@ -35,6 +36,10 @@ public class FileService : IFileService
         _logger = logger;
         _maxFileSizeBytes = configuration.GetValue<long?>("FileStorage:MaxFileSizeBytes") ?? DefaultMaxFileSizeBytes;
         _maxVideoSizeBytes = configuration.GetValue<long?>("FileStorage:MaxVideoSizeBytes") ?? DefaultMaxVideoSizeBytes;
+        // Storage:Provider = s3 — файлы в S3-совместимом хранилище (Supabase Storage, Cloudflare R2, Backblaze B2, MinIO):
+        // нужно там, где у сервера нет постоянного диска (бесплатный Render). По умолчанию — локальная папка wwwroot/uploads.
+        if (string.Equals(configuration["Storage:Provider"], "s3", StringComparison.OrdinalIgnoreCase))
+            _s3 = S3Storage.Get(configuration.GetSection("Storage:S3"));
     }
 
     public string? ValidateImage(IFormFile? file)
@@ -116,6 +121,21 @@ public class FileService : IFileService
 
     private async Task<string?> SaveAsync(IFormFile file, string folderName)
     {
+        if (_s3 != null)
+        {
+            try
+            {
+                var key = $"{folderName}/{Guid.NewGuid()}{Path.GetExtension(file.FileName).ToLowerInvariant()}";
+                await using var stream = file.OpenReadStream();
+                return await _s3.PutAsync(key, stream, file.ContentType);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "File upload to storage {Folder} failed", folderName);
+                return null;
+            }
+        }
+
         try
         {
             var uploadsFolder = Path.Combine(_env.WebRootPath, UploadsRoot, folderName);
@@ -138,11 +158,31 @@ public class FileService : IFileService
         }
     }
 
-    public Task<bool> DeleteAsync(string? filePath)
+    public async Task<bool> DeleteAsync(string? filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
-            return Task.FromResult(false);
+            return false;
 
+        // Файл в хранилище (полный URL бакета) — удаляем там; старые локальные /uploads/… — с диска.
+        if (_s3 != null && _s3.TryGetKey(filePath, out var key))
+        {
+            try
+            {
+                await _s3.DeleteAsync(key);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not delete stored file {Path}", filePath);
+                return false;
+            }
+        }
+
+        return DeleteLocal(filePath);
+    }
+
+    private bool DeleteLocal(string filePath)
+    {
         try
         {
             var uploadsRoot = Path.GetFullPath(Path.Combine(_env.WebRootPath, UploadsRoot)) + Path.DirectorySeparatorChar;
@@ -151,19 +191,19 @@ public class FileService : IFileService
             if (!fullPath.StartsWith(uploadsRoot, StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogWarning("Refused to delete a file outside the uploads folder: {Path}", filePath);
-                return Task.FromResult(false);
+                return false;
             }
 
             if (!File.Exists(fullPath))
-                return Task.FromResult(false);
+                return false;
 
             File.Delete(fullPath);
-            return Task.FromResult(true);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not delete file {Path}", filePath);
-            return Task.FromResult(false);
+            return false;
         }
     }
 

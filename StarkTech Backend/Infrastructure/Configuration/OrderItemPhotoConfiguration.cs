@@ -11,5 +11,8 @@ public class OrderItemPhotoConfiguration : IEntityTypeConfiguration<OrderItemPho
         builder.Property(x => x.OriginalPhotoUrl).HasMaxLength(1000).IsRequired();
         builder.Property(x => x.EditedPreviewUrl).HasMaxLength(1000);
         builder.Property(x => x.CropDataJson).HasColumnType("jsonb");
+        // Значение по умолчанию в БД — существующие фото станут «1 копия»
+        builder.Property(x => x.Copies).HasDefaultValue(1);
+        builder.ToTable(t => t.HasCheckConstraint("CK_OrderItemPhotos_Copies_Positive", "\"Copies\" >= 1"));
     }
 }

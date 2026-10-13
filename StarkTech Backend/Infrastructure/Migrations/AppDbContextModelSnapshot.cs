@@ -274,7 +274,10 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ComboOffers");
+                    b.ToTable("ComboOffers", t =>
+                        {
+                            t.HasCheckConstraint("CK_ComboOffers_DiscountValue_NonNegative", "\"DiscountValue\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.DeliveryCity", b =>
@@ -388,15 +391,24 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("HasClientChanges")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("HasPendingPaymentProof")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("OrderNumber")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<decimal>("PaidAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("PaymentMethod")
                         .HasColumnType("integer");
 
                     b.Property<int>("PaymentStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PrepaymentPercent")
                         .HasColumnType("integer");
 
                     b.Property<Guid?>("PromoCodeId")
@@ -426,9 +438,13 @@ namespace Infrastructure.Migrations
                     b.HasIndex("OrderNumber")
                         .IsUnique();
 
+                    b.HasIndex("PaymentStatus");
+
                     b.HasIndex("PromoCodeId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("Status", "CreatedAt");
+
+                    b.HasIndex("UserId", "CreatedAt");
 
                     b.ToTable("Orders");
                 });
@@ -502,6 +518,11 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Copies")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -530,7 +551,175 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("OrderItemId");
 
-                    b.ToTable("OrderItemPhotos");
+                    b.ToTable("OrderItemPhotos", t =>
+                        {
+                            t.HasCheckConstraint("CK_OrderItemPhotos_Copies_Positive", "\"Copies\" >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("Domain.Entities.OrderLayout", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomerComment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UploadedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId", "CreatedAt");
+
+                    b.ToTable("OrderLayout");
+                });
+
+            modelBuilder.Entity("Domain.Entities.OrderPaymentProof", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("ApprovedAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_OrderPaymentProof_Pending")
+                        .HasFilter("\"Status\" = 0");
+
+                    b.HasIndex("OrderId", "CreatedAt");
+
+                    b.ToTable("OrderPaymentProof");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PaymentSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AlifPayEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("AlifPayHolder")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("AlifPayPhone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("CardTransferBank")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<bool>("CardTransferEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("CardTransferHolder")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("CardTransferNumber")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<bool>("CashEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Instructions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("KortiMilliCard")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<bool>("KortiMilliEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("KortiMilliHolder")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<bool>("PrepaymentForCash")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PrepaymentPercent")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PaymentSettings", t =>
+                        {
+                            t.HasCheckConstraint("CK_PaymentSettings_PrepaymentPercent", "\"PrepaymentPercent\" BETWEEN 0 AND 100");
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.PortfolioItem", b =>
@@ -625,6 +814,9 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("QuantityTiersJson")
+                        .HasColumnType("text");
 
                     b.Property<bool>("RequiresPhotoUpload")
                         .HasColumnType("boolean");
@@ -742,6 +934,9 @@ namespace Infrastructure.Migrations
                     b.Property<int?>("MaxUsages")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("MaxUsagesPerUser")
+                        .HasColumnType("integer");
+
                     b.Property<int>("UsedCount")
                         .HasColumnType("integer");
 
@@ -756,7 +951,14 @@ namespace Infrastructure.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("PromoCodes");
+                    b.ToTable("PromoCodes", t =>
+                        {
+                            t.HasCheckConstraint("CK_PromoCodes_DiscountValue_NonNegative", "\"DiscountValue\" >= 0");
+
+                            t.HasCheckConstraint("CK_PromoCodes_MaxUsagesPerUser_Positive", "\"MaxUsagesPerUser\" IS NULL OR \"MaxUsagesPerUser\" >= 1");
+
+                            t.HasCheckConstraint("CK_PromoCodes_MaxUsages_Positive", "\"MaxUsages\" IS NULL OR \"MaxUsages\" >= 1");
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.Review", b =>
@@ -793,7 +995,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "ProductId")
+                        .IsUnique();
 
                     b.ToTable("Reviews", t =>
                         {
@@ -893,6 +1096,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AppUserId")
                         .IsUnique();
+
+                    b.HasIndex("DefaultDeliveryCityId");
 
                     b.HasIndex("Email")
                         .IsUnique();
@@ -1272,6 +1477,28 @@ namespace Infrastructure.Migrations
                     b.Navigation("OrderItem");
                 });
 
+            modelBuilder.Entity("Domain.Entities.OrderLayout", b =>
+                {
+                    b.HasOne("Domain.Entities.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Domain.Entities.OrderPaymentProof", b =>
+                {
+                    b.HasOne("Domain.Entities.Order", "Order")
+                        .WithMany("PaymentProofs")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("Domain.Entities.PortfolioItem", b =>
                 {
                     b.HasOne("Domain.Entities.Category", "Category")
@@ -1344,6 +1571,14 @@ namespace Infrastructure.Migrations
                     b.Navigation("Product");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Domain.Entities.User", b =>
+                {
+                    b.HasOne("Domain.Entities.DeliveryCity", null)
+                        .WithMany()
+                        .HasForeignKey("DefaultDeliveryCityId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Domain.Entities.VariantAttributeOption", b =>
@@ -1441,6 +1676,8 @@ namespace Infrastructure.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("Notifications");
+
+                    b.Navigation("PaymentProofs");
 
                     b.Navigation("Reviews");
                 });

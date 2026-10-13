@@ -12,4 +12,7 @@ public class CreateProductDto
     public decimal BasePrice { get; set; }
     public string? MainImageUrl { get; set; }
     public bool RequiresPhotoUpload { get; set; } = true;
+
+    /// <summary>Скидки за количество (пусто/null — без скидок).</summary>
+    public List<QuantityTierDto>? QuantityTiers { get; set; }
 }

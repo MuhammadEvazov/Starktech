@@ -20,7 +20,13 @@ export const ORDER_STATUS = {
   ReadyForDelivery: 'Готов к доставке',
   Delivered: 'Доставлен',
   Cancelled: 'Отменён',
+  AwaitingLayoutApproval: 'Согласование макета',
 };
+
+/** Порядок этапов заказа (отменённый — без шкалы); согласование макета — необязательный шаг. */
+export const ORDER_FLOW = ['New', 'Confirmed', 'AwaitingLayoutApproval', 'InProduction', 'ReadyForDelivery', 'Delivered'];
+
+export const LAYOUT_STATUS = { Pending: 'Ждёт вашего ответа', Approved: 'Одобрен', ChangesRequested: 'Нужны правки' };
 
 export const PAYMENT_METHOD = {
   Cash: 'Наличными при получении',
@@ -34,11 +40,14 @@ export const PAYMENT_STATUS = {
   Paid: 'Оплачен',
   Failed: 'Ошибка оплаты',
   Refunded: 'Возврат',
+  PartiallyPaid: 'Частично оплачен',
 };
+
+export const PAYMENT_PROOF_STATUS = { Pending: 'На проверке', Approved: 'Принят', Rejected: 'Отклонён' };
 
 export const ORDER_SOURCE = { Website: 'Сайт', InstagramManual: 'Instagram, вручную' };
 export const DISCOUNT_TYPE = { Percent: 'Процент', FixedAmount: 'Сумма' };
-export const COIN_TYPE = { Earned: 'Начислено', Redeemed: 'Списано', ManualAdjustment: 'Корректировка' };
+export const COIN_TYPE = { Earned: 'Начислено', Redeemed: 'Списано', ManualAdjustment: 'Корректировка', Refunded: 'Возврат монет' };
 export const NOTIFICATION_CHANNEL = { Telegram: 'Telegram', Email: 'Email', SMS: 'SMS' };
 export const NOTIFICATION_STATUS = { Sent: 'Отправлено', Failed: 'Ошибка' };
 export const ROLES = { Client: 'Клиент', Admin: 'Администратор', SuperAdmin: 'Суперадмин' };

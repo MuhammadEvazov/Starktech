@@ -13,14 +13,17 @@ public class ProfileService : IProfileService
     private readonly IUserRepository _userRepository;
     private readonly IIdentityService _identityService;
     private readonly IFileService _fileService;
+    private readonly IDeliveryCityRepository _deliveryCityRepository;
     private readonly ILogger<ProfileService> _logger;
 
     public ProfileService(
         IIdentityService identityService,
         IFileService fileService,
         ILogger<ProfileService> logger,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IDeliveryCityRepository deliveryCityRepository)
     {
+        _deliveryCityRepository = deliveryCityRepository;
         _identityService = identityService;
         _fileService = fileService;
         _logger = logger;
@@ -101,6 +104,15 @@ public class ProfileService : IProfileService
             );
         }
 
+        // Город доставки по умолчанию — внешний ключ на DeliveryCity: несуществующий id даст 400, а не 500
+        if (dto.DeliveryCityId.HasValue && await _deliveryCityRepository.GetByIdAsync(dto.DeliveryCityId.Value) == null)
+        {
+            return Result<ProfileDto>.Fail(
+                "Город доставки не найден",
+                ErrorType.Validation
+            );
+        }
+
         user.UpdateProfile(dto.FullName, dto.Bio);
         user.UpdateDeliveryDefaults(dto.PhoneNumber, dto.DeliveryCityId, dto.DeliveryAddress);
 
@@ -152,10 +164,23 @@ public class ProfileService : IProfileService
 
         user.UpdateAvatar(avatarUrl);
 
-        var success = await _userRepository.UpdateAsync(user);
+        // Сначала БД, потом удаление старого файла; при сбое записи удаляем новый файл, чтобы не было сирот
+        bool success;
+        try
+        {
+            success = await _userRepository.UpdateAsync(user);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save avatar for user {UserId}", userId);
+            success = false;
+        }
 
         if (!success)
+        {
+            await _fileService.DeleteAsync(avatarUrl);
             return false;
+        }
 
         if (!string.IsNullOrWhiteSpace(previousAvatarUrl))
             await _fileService.DeleteAsync(previousAvatarUrl);

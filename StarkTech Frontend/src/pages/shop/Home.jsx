@@ -110,16 +110,27 @@ export default function Home() {
             </li>
             <li>
               <strong>Добавьте фото</strong>
-              <span>Прикрепите снимки в корзине. Заказываете без аккаунта — менеджер попросит фото после звонка.</span>
+              <span>Войдите в аккаунт и загрузите снимки прямо на странице товара — там же подгоните их под форму.</span>
+            </li>
+            <li>
+              <strong>Одобрите макет</strong>
+              <span>Если менеджер пришлёт макет, он появится в личном кабинете. Без вашего «да» ничего не печатаем.</span>
             </li>
             <li>
               <strong>Получите заказ</strong>
               <span>Привезём за {CONTACTS.leadTime}. Оплата наличными, Alif Pay, Корти Миллӣ или переводом.</span>
             </li>
           </ol>
-          <Link to="/catalog" className="btn btn--primary btn--large home-steps__cta">
-            Начать заказ
-          </Link>
+          <div className="home-steps__foot">
+            <Link to="/catalog" className="btn btn--primary btn--large">
+              Начать заказ
+            </Link>
+            <p className="home-faq">
+              Остались вопросы? <Link to="/faq#photos">Какие фото подходят</Link>,{' '}
+              <Link to="/faq#payment">оплата</Link>, <Link to="/faq#returns">возврат и брак</Link> — в разделе{' '}
+              <Link to="/faq">«Вопросы и ответы»</Link>.
+            </p>
+          </div>
         </div>
       </section>
 

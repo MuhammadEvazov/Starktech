@@ -4,7 +4,10 @@ using Application.Interfaces.Services;
 using Application.Result;
 using Application.Results;
 using Domain.Entities;
+using Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace Infrastructure.Services;
 
@@ -69,7 +72,20 @@ public class ReviewService : IReviewService
         if (await _reviewRepository.ExistsByUserAndProductAsync(dto.UserId, dto.ProductId))
             return Result<CreateReviewResponseDto>.Fail("You have already reviewed this product", ErrorType.Conflict);
 
-        if (!await _orderRepository.HasDeliveredOrderForProductAsync(dto.UserId, dto.ProductId))
+        if (dto.OrderId.HasValue)
+        {
+            // Указанный заказ должен быть заказом автора, доставлен и содержать этот товар
+            var order = await _orderRepository.GetByIdAsync(dto.OrderId.Value);
+            if (order == null || order.UserId != dto.UserId)
+                return Result<CreateReviewResponseDto>.Fail("Заказ не найден", ErrorType.NotFound);
+
+            if (order.Status != OrderStatus.Delivered)
+                return Result<CreateReviewResponseDto>.Fail("Отзыв можно оставить только по доставленному заказу", ErrorType.Validation);
+
+            if (!order.Items.Any(i => i.ProductVariant?.ProductId == dto.ProductId))
+                return Result<CreateReviewResponseDto>.Fail("Этого товара нет в указанном заказе", ErrorType.Validation);
+        }
+        else if (!await _orderRepository.HasDeliveredOrderForProductAsync(dto.UserId, dto.ProductId))
             return Result<CreateReviewResponseDto>.Fail("You can only review products from a delivered order", ErrorType.Validation);
 
         var review = new Review
@@ -82,7 +98,15 @@ public class ReviewService : IReviewService
             IsApproved = false
         };
 
-        await _reviewRepository.AddAsync(review);
+        try
+        {
+            await _reviewRepository.AddAsync(review);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Два одновременных запроса: уникальный индекс (UserId, ProductId) не пустил второй отзыв
+            return Result<CreateReviewResponseDto>.Fail("You have already reviewed this product", ErrorType.Conflict);
+        }
 
         _logger.LogInformation("Review created with ID: {Id} for product {ProductId}", review.Id, review.ProductId);
 
@@ -143,6 +167,7 @@ public class ReviewService : IReviewService
         UserId = review.UserId,
         UserFullName = review.User?.FullName,
         ProductId = review.ProductId,
+        ProductNameRu = review.Product?.NameRu,
         ProductNameEn = review.Product?.NameEn,
         OrderId = review.OrderId,
         Rating = review.Rating,

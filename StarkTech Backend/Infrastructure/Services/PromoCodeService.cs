@@ -6,7 +6,9 @@ using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
 using Application.Result;
 using Application.Results;
+using Domain.Common;
 using Domain.Entities;
+using Domain.Enums;
 using Infrastructure.Extensions;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
@@ -73,7 +75,7 @@ public class PromoCodeService : IPromoCodeService
 
         var promoCode = await _promoCodeRepository.GetByIdAsync(id);
         if (promoCode == null)
-            return Result<GetPromoCodeDto>.Fail("Promo code not found", ErrorType.NotFound);
+            return Result<GetPromoCodeDto>.Fail("Промокод не найден.", ErrorType.NotFound);
 
         var dto = ToDto(promoCode);
 
@@ -84,21 +86,26 @@ public class PromoCodeService : IPromoCodeService
 
     public async Task<Result<CreatePromoCodeResponseDto>> CreateAsync(CreatePromoCodeDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Code))
-            return Result<CreatePromoCodeResponseDto>.Fail("Code is required", ErrorType.Validation);
+        var code = NormalizeCode(dto.Code);
+        var validationError = ValidatePromo(code, dto.DiscountType, dto.DiscountValue,
+            dto.MaxUsages, dto.MaxUsagesPerUser, dto.ValidFrom, dto.ValidTo);
+        if (validationError != null)
+            return Result<CreatePromoCodeResponseDto>.Fail(validationError, ErrorType.Validation);
 
-        var exists = await _promoCodeRepository.ExistsByCodeAsync(dto.Code);
+        var exists = await _promoCodeRepository.ExistsByCodeAsync(code);
         if (exists)
-            return Result<CreatePromoCodeResponseDto>.Fail("Promo code with the same code already exists", ErrorType.Conflict);
+            return Result<CreatePromoCodeResponseDto>.Fail("Промокод с таким кодом уже есть.", ErrorType.Conflict);
 
         var promoCode = new PromoCode
         {
-            Code = dto.Code,
+            Code = code,
             DiscountType = dto.DiscountType,
             DiscountValue = dto.DiscountValue,
             MaxUsages = dto.MaxUsages,
-            ValidFrom = dto.ValidFrom,
-            ValidTo = dto.ValidTo
+            MaxUsagesPerUser = dto.MaxUsagesPerUser,
+            // Из формы админки приходит местное время Душанбе — в базе храним UTC.
+            ValidFrom = ToUtc(dto.ValidFrom),
+            ValidTo = ToUtc(dto.ValidTo)
         };
 
         await _promoCodeRepository.AddAsync(promoCode);
@@ -120,26 +127,29 @@ public class PromoCodeService : IPromoCodeService
     {
         var promoCode = await _promoCodeRepository.GetByIdAsync(id);
         if (promoCode == null)
-            return Result<UpdatePromoCodeResponseDto>.Fail("Promo code not found", ErrorType.NotFound);
+            return Result<UpdatePromoCodeResponseDto>.Fail("Промокод не найден.", ErrorType.NotFound);
 
-        if (!string.Equals(promoCode.Code, dto.Code, StringComparison.OrdinalIgnoreCase))
-        {
-            var codeTaken = await _promoCodeRepository.ExistsByCodeAsync(dto.Code);
-            if (codeTaken)
-                return Result<UpdatePromoCodeResponseDto>.Fail("Promo code with the same code already exists", ErrorType.Conflict);
-        }
+        var code = NormalizeCode(dto.Code);
+        var validationError = ValidatePromo(code, dto.DiscountType, dto.DiscountValue,
+            dto.MaxUsages, dto.MaxUsagesPerUser, dto.ValidFrom, dto.ValidTo);
+        if (validationError != null)
+            return Result<UpdatePromoCodeResponseDto>.Fail(validationError, ErrorType.Validation);
 
-        promoCode.Code = dto.Code;
+        if (await _promoCodeRepository.ExistsByCodeAsync(code, excludeId: id))
+            return Result<UpdatePromoCodeResponseDto>.Fail("Промокод с таким кодом уже есть.", ErrorType.Conflict);
+
+        promoCode.Code = code;
         promoCode.DiscountType = dto.DiscountType;
         promoCode.DiscountValue = dto.DiscountValue;
         promoCode.MaxUsages = dto.MaxUsages;
-        promoCode.ValidFrom = dto.ValidFrom;
-        promoCode.ValidTo = dto.ValidTo;
+        promoCode.MaxUsagesPerUser = dto.MaxUsagesPerUser;
+        promoCode.ValidFrom = ToUtc(dto.ValidFrom);
+        promoCode.ValidTo = ToUtc(dto.ValidTo);
         promoCode.IsActive = dto.IsActive;
 
         var success = await _promoCodeRepository.UpdateAsync(promoCode);
         if (!success)
-            return Result<UpdatePromoCodeResponseDto>.Fail("Update failed due to server error", ErrorType.Unknown);
+            return Result<UpdatePromoCodeResponseDto>.Fail("Не удалось сохранить промокод.", ErrorType.Unknown);
 
         await _cache.RemoveAsync($"PromoCode:{id}");
         await ClearPromoCodesCacheAsync();
@@ -154,11 +164,83 @@ public class PromoCodeService : IPromoCodeService
         });
     }
 
+    public async Task<Result<PromoCodeValidationDto>> ValidateAsync(string code, Guid? userProfileId)
+    {
+        static Result<PromoCodeValidationDto> Fail(string message)
+            => Result<PromoCodeValidationDto>.Fail(message, ErrorType.Validation);
+
+        if (string.IsNullOrWhiteSpace(code))
+            return Fail("Введите промокод.");
+
+        // Без кэша: лимиты и счётчик использований должны быть актуальными.
+        var promo = await _promoCodeRepository.GetByCodeAsync(code);
+
+        if (promo == null || !promo.IsActive)
+            return Fail("Такого промокода нет или он больше не действует.");
+
+        var now = DateTime.UtcNow;
+
+        if (promo.ValidFrom.HasValue && promo.ValidFrom.Value > now)
+            return Fail($"Промокод начнёт действовать {ShopClock.ToLocal(promo.ValidFrom.Value):dd.MM.yyyy HH:mm}.");
+
+        if (promo.ValidTo.HasValue && promo.ValidTo.Value < now)
+            return Fail("Срок действия промокода истёк.");
+
+        if (promo.MaxUsages.HasValue && promo.UsedCount >= promo.MaxUsages.Value)
+            return Fail("Промокод уже использован максимальное число раз.");
+
+        if (promo.MaxUsagesPerUser.HasValue && userProfileId.HasValue)
+        {
+            var used = await _promoCodeRepository.CountUserUsagesAsync(promo.Id, userProfileId.Value);
+            if (used >= promo.MaxUsagesPerUser.Value)
+                return Fail(promo.MaxUsagesPerUser.Value == 1
+                    ? "Вы уже использовали этот промокод."
+                    : $"Вы уже использовали этот промокод {used} раз — это максимум для одного клиента.");
+        }
+
+        return Result<PromoCodeValidationDto>.Ok(new PromoCodeValidationDto
+        {
+            Id = promo.Id,
+            Code = promo.Code,
+            DiscountType = promo.DiscountType,
+            DiscountValue = promo.DiscountValue
+        });
+    }
+
+    // Код храним в верхнем регистре без пробелов по краям: «summer10» и «SUMMER10 » — один промокод.
+    private static string NormalizeCode(string? code) => (code ?? string.Empty).Trim().ToUpperInvariant();
+
+    private static DateTime? ToUtc(DateTime? value) => value.HasValue ? ShopClock.FromLocal(value.Value) : null;
+
+    private static string? ValidatePromo(string code, DiscountType type, decimal value,
+        int? maxUsages, int? maxUsagesPerUser, DateTime? validFrom, DateTime? validTo)
+    {
+        if (code.Length == 0)
+            return "Укажите код промокода.";
+        if (code.Length > 50)
+            return "Код промокода — не длиннее 50 символов.";
+        if (code.Any(char.IsWhiteSpace))
+            return "Код промокода не должен содержать пробелов.";
+        if (!Enum.IsDefined(type))
+            return "Неизвестный тип скидки.";
+        if (type == DiscountType.Percent && (value <= 0 || value > 100))
+            return "Скидка в процентах должна быть больше 0 и не больше 100.";
+        if (type == DiscountType.FixedAmount && value <= 0)
+            return "Сумма скидки должна быть больше 0.";
+        if (maxUsages.HasValue && maxUsages.Value < 1)
+            return "Лимит использований — целое число от 1 или пусто.";
+        if (maxUsagesPerUser.HasValue && maxUsagesPerUser.Value < 1)
+            return "Лимит на одного клиента — целое число от 1 или пусто.";
+        if (validFrom.HasValue && validTo.HasValue && ToUtc(validTo) < ToUtc(validFrom))
+            return "Дата окончания не может быть раньше даты начала.";
+        return null;
+    }
+
     public async Task<Result<bool>> DeleteAsync(Guid id)
     {
         var promoCode = await _promoCodeRepository.GetByIdAsync(id);
         if (promoCode == null)
-            return Result<bool>.Fail("Promo code not found", ErrorType.NotFound);
+            return Result<bool>.Fail("Промокод не найден.", ErrorType.NotFound);
 
         await _promoCodeRepository.DeleteAsync(promoCode);
 
@@ -175,6 +257,7 @@ public class PromoCodeService : IPromoCodeService
         DiscountType = promoCode.DiscountType,
         DiscountValue = promoCode.DiscountValue,
         MaxUsages = promoCode.MaxUsages,
+        MaxUsagesPerUser = promoCode.MaxUsagesPerUser,
         UsedCount = promoCode.UsedCount,
         ValidFrom = promoCode.ValidFrom,
         ValidTo = promoCode.ValidTo,

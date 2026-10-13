@@ -6,7 +6,9 @@ using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
 using Application.Result;
 using Application.Results;
+using Domain.Common;
 using Domain.Entities;
+using Domain.Enums;
 using Infrastructure.Extensions;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
@@ -73,7 +75,7 @@ public class ComboOfferService : IComboOfferService
 
         var comboOffer = await _comboOfferRepository.GetByIdAsync(id);
         if (comboOffer == null)
-            return Result<GetComboOfferDto>.Fail("Combo offer not found", ErrorType.NotFound);
+            return Result<GetComboOfferDto>.Fail("Комбо-предложение не найдено.", ErrorType.NotFound);
 
         var dto = ToDto(comboOffer);
 
@@ -84,6 +86,11 @@ public class ComboOfferService : IComboOfferService
 
     public async Task<Result<CreateComboOfferResponseDto>> CreateAsync(CreateComboOfferDto dto)
     {
+        var validationError = ValidateCombo(dto.NameRu, dto.DiscountType, dto.DiscountValue,
+            dto.ProductIdsJson, dto.ValidFrom, dto.ValidTo);
+        if (validationError != null)
+            return Result<CreateComboOfferResponseDto>.Fail(validationError, ErrorType.Validation);
+
         var comboOffer = new ComboOffer
         {
             NameRu = dto.NameRu,
@@ -92,8 +99,9 @@ public class ComboOfferService : IComboOfferService
             DiscountType = dto.DiscountType,
             DiscountValue = dto.DiscountValue,
             ProductIdsJson = dto.ProductIdsJson,
-            ValidFrom = dto.ValidFrom,
-            ValidTo = dto.ValidTo
+            // Из формы админки приходит местное время Душанбе — в базе храним UTC.
+            ValidFrom = ToUtc(dto.ValidFrom),
+            ValidTo = ToUtc(dto.ValidTo)
         };
 
         await _comboOfferRepository.AddAsync(comboOffer);
@@ -117,7 +125,12 @@ public class ComboOfferService : IComboOfferService
     {
         var comboOffer = await _comboOfferRepository.GetByIdAsync(id);
         if (comboOffer == null)
-            return Result<UpdateComboOfferResponseDto>.Fail("Combo offer not found", ErrorType.NotFound);
+            return Result<UpdateComboOfferResponseDto>.Fail("Комбо-предложение не найдено.", ErrorType.NotFound);
+
+        var validationError = ValidateCombo(dto.NameRu, dto.DiscountType, dto.DiscountValue,
+            dto.ProductIdsJson, dto.ValidFrom, dto.ValidTo);
+        if (validationError != null)
+            return Result<UpdateComboOfferResponseDto>.Fail(validationError, ErrorType.Validation);
 
         comboOffer.NameRu = dto.NameRu;
         comboOffer.NameTj = dto.NameTj;
@@ -126,8 +139,8 @@ public class ComboOfferService : IComboOfferService
         comboOffer.DiscountValue = dto.DiscountValue;
         comboOffer.ProductIdsJson = dto.ProductIdsJson;
         comboOffer.IsActive = dto.IsActive;
-        comboOffer.ValidFrom = dto.ValidFrom;
-        comboOffer.ValidTo = dto.ValidTo;
+        comboOffer.ValidFrom = ToUtc(dto.ValidFrom);
+        comboOffer.ValidTo = ToUtc(dto.ValidTo);
 
         var success = await _comboOfferRepository.UpdateAsync(comboOffer);
         if (!success)
@@ -152,7 +165,7 @@ public class ComboOfferService : IComboOfferService
     {
         var comboOffer = await _comboOfferRepository.GetByIdAsync(id);
         if (comboOffer == null)
-            return Result<bool>.Fail("Combo offer not found", ErrorType.NotFound);
+            return Result<bool>.Fail("Комбо-предложение не найдено.", ErrorType.NotFound);
 
         await _comboOfferRepository.DeleteAsync(comboOffer);
 
@@ -160,6 +173,37 @@ public class ComboOfferService : IComboOfferService
         await ClearComboOffersCacheAsync();
 
         return Result<bool>.Ok(true);
+    }
+
+    private static DateTime? ToUtc(DateTime? value) => value.HasValue ? ShopClock.FromLocal(value.Value) : null;
+
+    private static string? ValidateCombo(string? nameRu, DiscountType type, decimal value,
+        string? productIdsJson, DateTime? validFrom, DateTime? validTo)
+    {
+        if (string.IsNullOrWhiteSpace(nameRu))
+            return "Укажите название комбо.";
+        if (!Enum.IsDefined(type))
+            return "Неизвестный тип скидки.";
+        if (type == DiscountType.Percent && (value <= 0 || value > 100))
+            return "Скидка в процентах должна быть больше 0 и не больше 100.";
+        if (type == DiscountType.FixedAmount && value <= 0)
+            return "Сумма скидки должна быть больше 0.";
+        if (validFrom.HasValue && validTo.HasValue && ToUtc(validTo) < ToUtc(validFrom))
+            return "Дата окончания не может быть раньше даты начала.";
+
+        // Колонка jsonb: битый JSON уронил бы сохранение с 500.
+        try
+        {
+            var ids = JsonSerializer.Deserialize<List<Guid>>(string.IsNullOrWhiteSpace(productIdsJson) ? "[]" : productIdsJson);
+            if (ids == null || ids.Count == 0)
+                return "Выберите хотя бы один товар для комбо.";
+        }
+        catch (JsonException)
+        {
+            return "Некорректный список товаров комбо.";
+        }
+
+        return null;
     }
 
     private static GetComboOfferDto ToDto(ComboOffer comboOffer) => new()

@@ -1,16 +1,19 @@
 import '../../styles/site/catalog.css';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from '../../lib/router.jsx';
 import { useAsync } from '../../lib/hooks.js';
-import { categoriesApi, mediaApi, productsApi, reviewsApi, variantsApi } from '../../api/endpoints.js';
+import { categoriesApi, citiesApi, mediaApi, productsApi, reviewsApi, variantsApi } from '../../api/endpoints.js';
 import { attrLabel, attrValue, date, descOf, money, nameOf, parseJson } from '../../lib/format.js';
 import { useCart } from '../../context/CartContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { Async, ErrorBox, Spinner, Stars } from '../../components/ui.jsx';
 import PhotoPicker from '../../components/PhotoPicker.jsx';
-import PhotoEditor from '../../components/PhotoEditor.jsx';
-import { shapeKind } from '../../lib/shapes.js';
+import PhotoEditor, { printSizeCm } from '../../components/PhotoEditor.jsx';
+import { SHAPE_LABEL, shapeKind } from '../../lib/shapes.js';
+import { fileId, sumCopies } from '../../lib/cartPhotoStore.js';
+import { lineTotal, nextTier, normalizeTiers, percentLabel, tierPercent, unitPrice } from '../../lib/pricing.js';
+import { CONTACTS } from '../../lib/contacts.js';
 import Gallery from '../../components/Gallery.jsx';
 
 const num = (v) => Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 2 });
@@ -20,12 +23,40 @@ export default function Product() {
   const product = useAsync(() => productsApi.get(id), [id]);
   return (
     <div className="site-container pdp-page">
-      <Async state={product}>{(p) => <ProductView key={p.id} product={p} />}</Async>
+      {product.loading && !product.data ? (
+        <ProductSkeleton />
+      ) : (
+        <Async state={product}>{(p) => <ProductView key={p.id} product={p} />}</Async>
+      )}
+    </div>
+  );
+}
+
+// Пока товар грузится — силуэт страницы (квадрат фото и строки заголовка), а не голый спиннер.
+function ProductSkeleton() {
+  return (
+    <div className="pdp pdp-skel" role="status" aria-label="Загружаем товар">
+      <span className="cat-skel__img" aria-hidden="true" />
+      <div className="pdp-skel__body" aria-hidden="true">
+        <span className="cat-skel__line pdp-skel__title" />
+        <span className="cat-skel__line cat-skel__line--short" />
+        <span className="cat-skel__line pdp-skel__price" />
+      </div>
     </div>
   );
 }
 
 function ProductView({ product }) {
+  // Название товара — во вкладке браузера; при уходе со страницы возвращаем прежний заголовок.
+  const productName = nameOf(product);
+  useEffect(() => {
+    const prev = document.title;
+    document.title = `${productName} — StarkTech`;
+    return () => {
+      document.title = prev;
+    };
+  }, [productName]);
+
   const cart = useCart();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -77,32 +108,132 @@ function ProductView({ product }) {
     if (best) setSelection(best.attrs);
   };
 
-  // «Купить сейчас»: тот же товар с фото кладём в корзину и сразу ведём к оформлению.
-  const buyNow = () => {
-    if (!variant) return;
-    addToCart({ silent: true });
-    navigate('/checkout');
+  // Товар печатается с фото клиента, а фото ещё нет — покупать пока нечего.
+  const needsPhoto = Boolean(product.requiresPhotoUpload) && photos.length === 0;
+  const photosRef = useRef(null);
+  const goToPhotos = () => {
+    const el = photosRef.current;
+    if (!el) return;
+    const smooth = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'center' });
+    el.focus({ preventScroll: true });
   };
 
-  const addToCart = ({ silent = false } = {}) => {
-    if (!variant) return;
-    cart.add({
-      productId: product.id,
-      variantId: variant.id,
-      name: nameOf(product),
-      image: variant?.imageUrl || product.mainImageUrl,
-      attrs: variant.attrs,
-      price: Number(variant.price),
-      quantity,
-      requiresPhoto: product.requiresPhotoUpload,
-      photos,
+  // Формы, доступные при остальных выбранных параметрах (размер и т. п.): форма → свой вариант.
+  // Форму выбирают прямо в окне подгонки — у каждого фото своя, выходить и менять вариант не нужно;
+  // в корзину фото разной формы попадают отдельными позициями (каждая своим вариантом).
+  const shapeVariants = {};
+  if (variantShape) {
+    variants.forEach((v) => {
+      const kind = v.attrs?.shape ? shapeKind(v.attrs.shape) : null;
+      if (!kind || shapeVariants[kind]) return;
+      if (keys.every((k) => k === 'shape' || String(v.attrs[k] ?? '') === String(sel[k] ?? ''))) shapeVariants[kind] = v;
     });
+  }
+  const shapeKinds = Object.keys(shapeVariants);
+  const editorShapes = shapeKinds.map((kind) => ({ kind, label: SHAPE_LABEL[kind] }));
+
+  // Фото без кадра (или с формой, которой у товара нет) — сначала подогнать.
+  const misfit = variantShape ? photos.filter((f) => !shapeVariants[f.stCrop?.shape]) : [];
+  const fitPhotos = () => setEditQueue(misfit);
+
+  const tiers = useMemo(() => normalizeTiers(product.quantityTiers), [product.quantityTiers]);
+  // С фото количество задаётся у каждого фото (stCopies): итог = сумма копий; без фото — степпер.
+  const photoTotal = sumCopies(photos);
+  const qty = photos.length ? photoTotal : quantity;
+  const printCm = printSizeCm(variant?.attrs);
+
+  // Позиции для корзины: фото, сгруппированные по форме (у каждой формы свой вариант и цена); без форм — одна.
+  const groups =
+    variantShape && photos.length
+      ? shapeKinds
+          .map((kind) => ({ kind, variant: shapeVariants[kind], photos: photos.filter((f) => f.stCrop?.shape === kind) }))
+          .filter((g) => g.photos.length)
+          .map((g) => ({ ...g, quantity: sumCopies(g.photos) }))
+      : variant
+        ? [{ kind: variantShape, variant, photos, quantity: qty }]
+        : [];
+
+  const cartItem = (g) => ({
+    productId: product.id,
+    variantId: g.variant.id,
+    name: nameOf(product),
+    image: g.variant?.imageUrl || product.mainImageUrl,
+    attrs: g.variant.attrs,
+    price: Number(g.variant.price),
+    tiers,
+    quantity: g.quantity,
+    requiresPhoto: product.requiresPhotoUpload,
+    photos: g.photos,
+  });
+
+  // «Купить сейчас»: заказываем только этот товар — корзину не трогаем, позиции передаём оформлению напрямую.
+  const doBuyNow = () => {
+    const list = groups.map(cartItem);
+    cart.setBuyNow(list.length === 1 ? list[0] : list);
+    navigate('/checkout', { state: { buyNow: true, productId: product.id } });
+  };
+
+  const doAddToCart = () => {
+    groups.forEach((g) => cart.add(cartItem(g)));
     setPhotos([]);
     setQuantity(1);
-    if (!silent) toast('Добавлено в корзину');
+    toast(groups.length > 1 ? `Добавлено в корзину: ${groups.length} позиции — по формам` : 'Добавлено в корзину');
   };
 
-  const total = (variant?.price ?? 0) * quantity;
+  // Кнопки работают всегда: если какое-то фото не подогнано под форму, сначала открываем подгонку,
+  // а когда все фото подогнаны — сами завершаем действие, по которому нажали (без второго клика).
+  const [pendingAction, setPendingAction] = useState(null);
+  const run = (action) => {
+    if (!variant) return;
+    if (needsPhoto) return goToPhotos();
+    if (misfit.length) {
+      setPendingAction(action);
+      fitPhotos();
+      return;
+    }
+    if (action === 'buy') doBuyNow();
+    else doAddToCart();
+  };
+  const buyNow = () => run('buy');
+  const addToCart = () => run('cart');
+
+  useEffect(() => {
+    if (!pendingAction || editQueue.length > 0) return;
+    const action = pendingAction;
+    setPendingAction(null);
+    if (misfit.length) {
+      // Окно закрыли, не применив кадр — подсказываем, что осталось.
+      toast(`Подгоните под форму ещё ${misfit.length} фото — тогда товар добавится`);
+      return;
+    }
+    if (action === 'buy') doBuyNow();
+    else doAddToCart();
+  }, [pendingAction, editQueue.length, misfit.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Цена с учётом скидки за количество (та же формула, что на сервере).
+  const basePrice = Number(variant?.price ?? 0);
+  const pieceTiered = unitPrice(basePrice, tiers, qty);
+  // Итог — сумма по позициям (у разных форм может быть разная цена; скидка за количество — по каждой позиции).
+  const groupTotals = groups.map((g) => ({ ...g, total: lineTotal(Number(g.variant?.price ?? 0), tiers, g.quantity) }));
+  const total = groupTotals.length ? groupTotals.reduce((s, g) => s + g.total, 0) : lineTotal(basePrice, tiers, qty);
+  const split = groupTotals.length > 1;
+  const currentPercent = tierPercent(tiers, qty);
+  const upcoming = nextTier(tiers, qty);
+
+  // Доставка: диапазон цен по активным городам (ошибку загрузки не показываем — это справка).
+  const cities = useAsync(() => citiesApi.list({ isActive: true, pageSize: 100 }), []);
+  const costs = (cities.data?.items ?? []).map((c) => Number(c.deliveryCost) || 0);
+  const minCost = costs.length ? Math.min(...costs) : null;
+  const maxCost = costs.length ? Math.max(...costs) : null;
+  const deliveryText =
+    minCost === null
+      ? null
+      : maxCost === 0
+        ? 'Доставка и самовывоз бесплатно'
+        : minCost === 0
+          ? `Доставка бесплатно или до ${money(maxCost)}, самовывоз бесплатно`
+          : `Доставка от ${money(minCost)}, самовывоз бесплатно`;
   // Липкая панель покупки (и отступ под неё) — только у вошедшего покупателя.
   const canBuy = isAuthenticated && !variantsState.loading && !variantsState.error && variants.length > 0;
 
@@ -135,6 +266,19 @@ function ProductView({ product }) {
               </span>
               {product.requiresPhotoUpload && <span className="pdp-badge">С вашим фото</span>}
             </p>
+            <ul className="pdp-ship" aria-label="Сроки и доставка">
+              <li>Готово за {CONTACTS.leadTime}</li>
+              {deliveryText && <li>{deliveryText}</li>}
+            </ul>
+            {tiers.length > 0 && (
+              <ul className="pdp-tiers" aria-label="Скидки за количество">
+                {tiers.map((t) => (
+                  <li key={t.minQuantity} className={currentPercent === t.discountPercent ? 'is-on' : undefined}>
+                    от {t.minQuantity} шт. −{percentLabel(t.discountPercent)}%
+                  </li>
+                ))}
+              </ul>
+            )}
             {descOf(product) && <p className="pdp-desc">{descOf(product)}</p>}
           </div>
 
@@ -175,14 +319,49 @@ function ProductView({ product }) {
               })}
 
               <div className="pdp-group pdp-qty">
-                <span className="pdp-group__label" id="pdp-qty-label">
+                <span className="pdp-group__label" aria-hidden="true">
                   Количество
                 </span>
-                <div role="group" aria-labelledby="pdp-qty-label">
-                  <Stepper value={quantity} onChange={(q) => setQuantity(Math.max(1, q, photos.length))} />
+                <div>
+                  {photos.length > 0 ? (
+                    <p className="pdp-qty-total" role="status">
+                      Итого {photoTotal} {stickerWord(photoTotal)}
+                    </p>
+                  ) : (
+                    <Stepper value={quantity} onChange={(q) => setQuantity(Math.max(1, q))} />
+                  )}
+                  {variant &&
+                    (split ? (
+                      // Фото разной формы — отдельные позиции со своей ценой
+                      <ul className="pdp-shape-split">
+                        {groupTotals.map((g) => (
+                          <li key={g.variant.id}>
+                            <span>
+                              {SHAPE_LABEL[g.kind]} ×{g.quantity}
+                            </span>
+                            <span>{money(g.total)}</span>
+                          </li>
+                        ))}
+                        <li className="is-total">
+                          <span>Всего</span>
+                          <span>{money(total)}</span>
+                        </li>
+                      </ul>
+                    ) : (
+                      <p className="pdp-tiers__sum">
+                        {money(pieceTiered)} за штуку
+                        {currentPercent > 0 && ` (−${percentLabel(currentPercent)}%)`} · всего {money(total)}
+                      </p>
+                    ))}
+                  {upcoming && !split && (
+                    <p className="pdp-tiers__next">
+                      {photos.length ? 'Добавьте ещё' : 'Возьмите ещё'} {upcoming.need}{' '}
+                      {photos.length ? stickerWord(upcoming.need) : 'шт.'} — скидка {percentLabel(upcoming.discountPercent)}%
+                    </p>
+                  )}
                   {photos.length > 0 && (
                     <p className="pdp-qty-hint">
-                      1 фото = 1 стикер. Можно заказать больше — лишние стикеры напечатаем копиями.
+                      Количество задаётся у каждого фото: сколько стикеров напечатать с этого снимка.
                     </p>
                   )}
                 </div>
@@ -209,7 +388,12 @@ function ProductView({ product }) {
                   </div>
                 </section>
               ) : product.requiresPhotoUpload && (
-                <section className="pdp-photos" aria-labelledby="pdp-photos-title">
+                <section
+                  className="pdp-photos"
+                  aria-labelledby="pdp-photos-title"
+                  ref={photosRef}
+                  tabIndex={-1}
+                >
                   <div className="pdp-photos__head">
                     <h2 className="pdp-photos__title" id="pdp-photos-title">
                       Ваши фото
@@ -226,13 +410,27 @@ function ProductView({ product }) {
                   <p className="pdp-photos__text">
                     Добавьте снимки, которые напечатаем на товаре. Можно несколько, если хотите разные варианты.
                   </p>
+                  {misfit.length > 0 && (
+                    <p className="pdp-photos__need" id="pdp-photo-misfit">
+                      Подгоните фото под форму ({misfit.length} шт.) — форму можно выбрать прямо в окне подгонки.{' '}
+                      <button type="button" className="text-link pdp-shape-fix" onClick={fitPhotos}>
+                        Подогнать
+                      </button>
+                    </p>
+                  )}
+                  {needsPhoto && (
+                    <p className="pdp-photos__need" id="pdp-photo-required">
+                      Добавьте хотя бы одно фото — без него заказать этот товар нельзя.
+                    </p>
+                  )}
                   <PhotoPicker
                     files={photos}
-                    onChange={(list) => {
-                      setPhotos(list);
-                      setQuantity((q) => Math.max(q, list.length)); // каждое фото — отдельный стикер
-                    }}
+                    onChange={setPhotos}
+                    // копии меняются прямо на File (stCopies) — новый массив, чтобы пересчитать итог и цену
+                    onCopiesChange={() => setPhotos((list) => [...list])}
                     expectedShape={variantShape}
+                    allowedShapes={variantShape ? shapeKinds : undefined}
+                    printCm={printCm}
                     // форма у варианта есть — сразу подгоняем новые фото под неё, по очереди
                     onAdd={variantShape ? (added) => setEditQueue((q) => [...q, ...added]) : undefined}
                     onEdit={variantShape ? (i) => setEditQueue([photos[i]]) : undefined}
@@ -242,10 +440,34 @@ function ProductView({ product }) {
 
               {isAuthenticated && (
                 <div className="pdp-cta">
-                  <button type="button" className="pdp-cta__btn" onClick={() => addToCart()}>
-                    В корзину за {money(total)}
-                  </button>
-                  <button type="button" className="pdp-cta__buy" onClick={buyNow}>
+                  {needsPhoto ? (
+                    // Без фото печатать нечего: главная кнопка ведёт к блоку «Ваши фото»
+                    <button
+                      type="button"
+                      className="pdp-cta__btn"
+                      aria-describedby="pdp-photo-required"
+                      onClick={goToPhotos}
+                    >
+                      Сначала добавьте фото
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="pdp-cta__btn"
+                      aria-describedby={misfit.length > 0 ? 'pdp-photo-misfit' : undefined}
+                      onClick={addToCart}
+                    >
+                      <span className="pdp-cta__long">В корзину за {money(total)}</span>
+                      {/* на узком телефоне — короткая подпись, чтобы влезла в одну строку */}
+                      <span className="pdp-cta__short">В корзину · {num(total)} смн</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="pdp-cta__buy"
+                    onClick={buyNow}
+                    aria-describedby={needsPhoto ? 'pdp-photo-required' : misfit.length > 0 ? 'pdp-photo-misfit' : undefined}
+                  >
                     Купить сейчас
                   </button>
                 </div>
@@ -260,14 +482,18 @@ function ProductView({ product }) {
 
       {editQueue[0] && variantShape && (
         <PhotoEditor
-          key={editQueue[0].name + editQueue[0].lastModified}
+          key={fileId(editQueue[0])}
           file={editQueue[0]}
-          fixedShape={variantShape}
-          onApply={(cropData, previewFile) => {
-            // Кадр и макет едут вместе с файлом; на оформлении заказа их загрузят после самого фото.
+          // Форму выбирают прямо здесь: круг / сердце / квадрат — из тех, что есть у товара
+          shapes={editorShapes}
+          initialShape={variantShape}
+          printCm={printCm}
+          onApply={(cropData, previewFile, copies) => {
+            // Кадр, макет и число копий едут вместе с файлом; на оформлении заказа их загрузят после самого фото.
             const f = editQueue[0];
             f.stCrop = cropData;
             f.stPreview = previewFile;
+            f.stCopies = copies;
             setPhotos((list) => [...list]);
           }}
           onClose={() => setEditQueue((q) => q.slice(1))}
@@ -277,14 +503,23 @@ function ProductView({ product }) {
   );
 }
 
-export function Stepper({ value, onChange, min = 1 }) {
+/** «стикер / стикера / стикеров» по числу. */
+export function stickerWord(n) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'стикер';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'стикера';
+  return 'стикеров';
+}
+
+export function Stepper({ value, onChange, min = 1, max = Infinity, label = 'Количество' }) {
   return (
-    <div className="stepper">
+    <div className="stepper" role="group" aria-label={label}>
       <button type="button" aria-label="Меньше" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>
         −
       </button>
-      <span aria-live="polite">{value}</span>
-      <button type="button" aria-label="Больше" onClick={() => onChange(value + 1)}>
+      <span role="status">{value}</span>
+      <button type="button" aria-label="Больше" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>
         +
       </button>
     </div>

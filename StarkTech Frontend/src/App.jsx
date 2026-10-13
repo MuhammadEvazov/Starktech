@@ -11,9 +11,21 @@ import Checkout from './pages/shop/Checkout.jsx';
 import OrderPlaced from './pages/shop/OrderPlaced.jsx';
 import Portfolio from './pages/shop/Portfolio.jsx';
 import Prices from './pages/shop/Prices.jsx';
+import Faq from './pages/shop/Faq.jsx';
 import { Login, Register, ForgotPassword } from './pages/auth/Auth.jsx';
 import Account from './pages/account/Account.jsx';
-import AdminLayout from './pages/admin/AdminLayout.jsx';
+import { lazy, Suspense } from 'react';
+
+// Админка (и её стили) — отдельный чанк: покупателям она не нужна.
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout.jsx'));
+
+function AdminApp() {
+  return (
+    <Suspense fallback={<p className="muted" style={{ padding: 24 }}>Загружаем админку…</p>}>
+      <AdminLayout />
+    </Suspense>
+  );
+}
 
 function RequireAuth({ children, admin }) {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -44,6 +56,7 @@ function NotFound() {
 }
 
 const shop = (el) => <ShopLayout>{el}</ShopLayout>;
+const t = (page) => `${page} — StarkTech`;
 
 export default function App() {
   return (
@@ -52,26 +65,29 @@ export default function App() {
         <AuthProvider>
           <CartProvider>
             <Routes
+              // title — заголовок вкладки; страница товара после загрузки ставит своё название сама.
               routes={[
-                { path: '/', element: shop(<Home />) },
-                { path: '/catalog', element: shop(<Catalog />) },
-                { path: '/product/:id', element: shop(<Product />) },
-                { path: '/portfolio', element: shop(<Portfolio />) },
-                { path: '/prices', element: shop(<Prices />) },
+                { path: '/', title: 'StarkTech — 3D-стикеры, брелки и чехлы с вашими фото', element: shop(<Home />) },
+                { path: '/catalog', title: t('Каталог'), element: shop(<Catalog />) },
+                { path: '/product/:id', title: t('Товар'), element: shop(<Product />) },
+                { path: '/portfolio', title: t('Наши работы'), element: shop(<Portfolio />) },
+                { path: '/prices', title: t('Цены'), element: shop(<Prices />) },
+                { path: '/faq', title: t('Вопросы и ответы'), element: shop(<Faq />) },
                 // Корзина и фото — только после входа; гость может смотреть каталог.
-                { path: '/cart', element: <RequireAuth>{shop(<Cart />)}</RequireAuth> },
+                { path: '/cart', title: t('Корзина'), element: <RequireAuth>{shop(<Cart />)}</RequireAuth> },
                 // Заказ оформляет только вошедший покупатель: у заказа есть владелец, фото загружаются сами.
-                { path: '/checkout', element: <RequireAuth>{shop(<Checkout />)}</RequireAuth> },
-                { path: '/order/:number', element: shop(<OrderPlaced />) },
-                { path: '/login', element: shop(<Login />) },
-                { path: '/register', element: shop(<Register />) },
-                { path: '/forgot-password', element: shop(<ForgotPassword />) },
-                { path: '/account/*', element: <RequireAuth>{shop(<Account />)}</RequireAuth> },
-                { path: '/account', element: <RequireAuth>{shop(<Account />)}</RequireAuth> },
-                { path: '/admin/*', element: <RequireAuth admin><AdminLayout /></RequireAuth> },
-                { path: '/admin', element: <RequireAuth admin><AdminLayout /></RequireAuth> },
+                { path: '/checkout', title: t('Оформление заказа'), element: <RequireAuth>{shop(<Checkout />)}</RequireAuth> },
+                { path: '/order/:number', title: t('Заказ оформлен'), element: shop(<OrderPlaced />) },
+                { path: '/login', title: t('Вход'), element: shop(<Login />) },
+                { path: '/register', title: t('Регистрация'), element: shop(<Register />) },
+                { path: '/forgot-password', title: t('Восстановление пароля'), element: shop(<ForgotPassword />) },
+                { path: '/account/*', title: t('Личный кабинет'), element: <RequireAuth>{shop(<Account />)}</RequireAuth> },
+                { path: '/account', title: t('Личный кабинет'), element: <RequireAuth>{shop(<Account />)}</RequireAuth> },
+                { path: '/admin/*', title: t('Админка'), element: <RequireAuth admin><AdminApp /></RequireAuth> },
+                { path: '/admin', title: t('Админка'), element: <RequireAuth admin><AdminApp /></RequireAuth> },
               ]}
               fallback={shop(<NotFound />)}
+              fallbackTitle={t('Страница не найдена')}
             />
           </CartProvider>
         </AuthProvider>

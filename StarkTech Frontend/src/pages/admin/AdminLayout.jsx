@@ -10,8 +10,10 @@ import { Cities, PromoCodes, ComboOffers, PortfolioAdmin } from './Simple.jsx';
 import Reviews from './Reviews.jsx';
 import { Users, Coins, Permissions, Notifications, Telegram } from './People.jsx';
 import AdminChat from './Chat.jsx';
+import PaymentSettings from './PaymentSettings.jsx';
 import { chatApi } from '../../api/endpoints.js';
 import { useChatHub, useHubEvent } from '../../lib/chatHub.js';
+import '../../styles/admin.css';
 import '../../styles/chat.css';
 
 const NAV = [
@@ -21,6 +23,7 @@ const NAV = [
       { to: '/admin', label: 'Обзор', end: true },
       { to: '/admin/orders', label: 'Заказы' },
       { to: '/admin/chat', label: 'Чат', badge: 'chat' },
+      { to: '/admin/payment', label: 'Оплата', superOnly: true },
       { to: '/admin/notifications', label: 'Уведомления' },
     ],
   },
@@ -112,6 +115,17 @@ export default function AdminLayout() {
 
   return (
     <div className="admin">
+      {/* Фокус переводим сами: смена хеша дёрнула бы popstate у роутера */}
+      <a
+        href="#admin-main"
+        className="adm-skip"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById('admin-main')?.focus();
+        }}
+      >
+        Перейти к содержимому
+      </a>
       <aside className={`admin-side ${open ? 'is-open' : ''}`}>
         <div className="admin-side__top">
           <Link to="/" className="admin-brand">
@@ -130,7 +144,12 @@ export default function AdminLayout() {
                 .map((l) => (
                   <NavLink key={l.to} to={l.to} end={l.end}>
                     {l.label}
-                    {l.badge === 'chat' && chatUnread > 0 && <span className="admin-nav__badge">{chatUnread > 99 ? '99+' : chatUnread}</span>}
+                    {l.badge === 'chat' && chatUnread > 0 && (
+                      <span className="admin-nav__badge">
+                        <span aria-hidden="true">{chatUnread > 99 ? '99+' : chatUnread}</span>
+                        <span className="sr-only">, непрочитанных: {chatUnread}</span>
+                      </span>
+                    )}
                   </NavLink>
                 ))}
             </div>
@@ -148,13 +167,14 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <main className="admin-main" key={pathname.split('/')[2] || 'home'}>
+      <main id="admin-main" tabIndex={-1} className="admin-main" key={pathname.split('/')[2] || 'home'}>
         <Routes
           routes={[
             { path: '/admin', element: <Dashboard /> },
             { path: '/admin/orders', element: <Orders /> },
             { path: '/admin/orders/:id', element: <OrderDetail /> },
             { path: '/admin/chat', element: <AdminChat /> },
+            { path: '/admin/payment', element: <PaymentSettings /> },
             { path: '/admin/products', element: <Products /> },
             { path: '/admin/products/:id', element: <ProductDetail /> },
             { path: '/admin/categories', element: <Categories /> },

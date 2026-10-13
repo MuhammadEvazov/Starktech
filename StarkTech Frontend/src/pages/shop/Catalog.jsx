@@ -51,12 +51,27 @@ export default function Catalog() {
 
   return (
     <div className="site-container cat-page">
-      <header className="cat-head">
-        <h1 className="site-title">{active ? nameOf(active) : 'Каталог'}</h1>
-        <p className="site-lead">
-          {(active && descOf(active)) ||
-            'Стикеры, брелки и чехлы с вашими фото. Выберите товар, а фото загрузите на его странице.'}
-        </p>
+      {/* Цветной баннер на всю ширину — как шапки разделов личного кабинета */}
+      <header className="cat-hero">
+        <div className="cat-hero__text">
+          <h1 className="cat-hero__title">{active ? nameOf(active) : 'Каталог'}</h1>
+          <p className="cat-hero__lead">
+            {(active && descOf(active)) ||
+              'Стикеры, брелки и чехлы с вашими фото. Выберите товар, а фото загрузите на его странице.'}
+          </p>
+        </div>
+        <div className="cat-hero__stats">
+          <span className="cat-hero__stat">
+            <b>{total ?? '…'}</b>
+            <small>{total == null ? 'товаров' : plural(total, 'товар', 'товара', 'товаров')}</small>
+          </span>
+          {cats.length > 0 && (
+            <span className="cat-hero__stat">
+              <b>{cats.length}</b>
+              <small>{plural(cats.length, 'категория', 'категории', 'категорий')}</small>
+            </span>
+          )}
+        </div>
       </header>
 
       <div className="cat-bar">
@@ -85,19 +100,19 @@ export default function Catalog() {
         <nav className="cat-chips" aria-label="Категории">
           <button
             type="button"
-            className="cat-chip"
+            className="site-pill"
             aria-pressed={!categoryId}
             onClick={() => setParams({ q: params.q })}
           >
             Все товары
           </button>
           {categories.loading && !categories.data
-            ? [1, 2, 3].map((n) => <span key={n} className="cat-chip cat-chip--ghost" aria-hidden="true" />)
+            ? [1, 2, 3].map((n) => <span key={n} className="cat-chips__ghost" aria-hidden="true" />)
             : cats.map((c) => (
                 <button
                   key={c.id}
                   type="button"
-                  className="cat-chip"
+                  className="site-pill"
                   aria-pressed={categoryId === c.id}
                   onClick={() => setParams({ q: params.q, category: c.id })}
                 >

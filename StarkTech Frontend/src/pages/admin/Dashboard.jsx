@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from '../../lib/router.jsx';
+import { Link } from '../../lib/router.jsx';
 import { useAsync } from '../../lib/hooks.js';
 import { dashboardApi, ordersApi } from '../../api/endpoints.js';
-import { dateTime, money, ORDER_SOURCE, PAYMENT_METHOD } from '../../lib/format.js';
-import { Async, ErrorBox, OrderStatusBadge, PaymentStatusBadge, Spinner } from '../../components/ui.jsx';
+import { money, ORDER_SOURCE, PAYMENT_METHOD } from '../../lib/format.js';
+import { Async, ErrorBox, Spinner } from '../../components/ui.jsx';
+import { OrderRow } from './Orders.jsx';
 
 const PERIODS = [
   { days: 7, label: '7 дней' },
@@ -42,7 +43,6 @@ function delta(current, previous) {
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const [days, setDays] = useState(readPeriod);
   const dash = useAsync(() => dashboardApi.get(days), [days]);
   const recent = useAsync(() => ordersApi.list({ pageSize: 8 }), []);
@@ -60,13 +60,12 @@ export default function Dashboard() {
     <div className="dash">
       <header className="admin-head">
         <h1 className="admin-title">Обзор</h1>
-        <div className="segmented" role="radiogroup" aria-label="Период">
+        <div className="segmented" role="group" aria-label="Период">
           {PERIODS.map((p) => (
             <button
               key={p.days}
               type="button"
-              role="radio"
-              aria-checked={days === p.days}
+              aria-pressed={days === p.days}
               className={days === p.days ? 'is-active' : ''}
               onClick={() => choose(p.days)}
             >
@@ -135,37 +134,13 @@ export default function Dashboard() {
           }
         >
           {(data) => (
-            <div className="table-wrap">
-              <table className="table table--click">
-                <thead>
-                  <tr>
-                    <th>Номер</th>
-                    <th>Клиент</th>
-                    <th>Статус</th>
-                    <th>Оплата</th>
-                    <th className="num">Сумма</th>
-                    <th>Создан</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.items.map((o) => (
-                    <tr key={o.id} onClick={() => navigate(`/admin/orders/${o.id}`)}>
-                      <td>
-                        <Link to={`/admin/orders/${o.id}`}>{o.orderNumber}</Link>
-                      </td>
-                      <td>
-                        {o.contactName}
-                        <span className="muted small block">{o.contactPhone}</span>
-                      </td>
-                      <td><OrderStatusBadge status={o.status} /></td>
-                      <td><PaymentStatusBadge status={o.paymentStatus} /></td>
-                      <td className="num">{money(o.payableAmount)}</td>
-                      <td>{dateTime(o.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ul className="orders-list">
+              {data.items.map((o) => (
+                <li key={o.id}>
+                  <OrderRow order={o} />
+                </li>
+              ))}
+            </ul>
           )}
         </Async>
       </section>
@@ -177,6 +152,7 @@ export default function Dashboard() {
 const STATIONS = [
   { status: 'New', label: 'Ждут звонка' },
   { status: 'Confirmed', label: 'Подтверждены' },
+  { status: 'AwaitingLayoutApproval', label: 'Согласуют макет' },
   { status: 'InProduction', label: 'В производстве' },
   { status: 'ReadyForDelivery', label: 'Готовы к доставке' },
 ];
@@ -196,7 +172,7 @@ function ProductionLine({ pipeline }) {
           const hot = st.status === 'New' && v > 0;
           return (
             <li key={st.status} className="line__station">
-              <Link to={`/admin/orders?status=${st.status}`} className={`station ${hot ? 'station--hot' : ''} ${v === 0 ? 'station--idle' : ''}`}>
+              <Link to={`/admin/orders?status=${st.status}`} className={`station st-${st.status} ${hot ? 'station--hot' : ''} ${v === 0 ? 'station--idle' : ''}`}>
                 <span className="station__value">{num(v)}</span>
                 <span className="station__label">{st.label}</span>
               </Link>
@@ -318,11 +294,11 @@ function DailyChart({ daily, hasFinance, days }) {
           <p className="dash-chart__total">{isEmpty ? `За ${days} дней пусто` : `Всего ${fmt(total)}`}</p>
         </div>
         {hasFinance && (
-          <div className="segmented segmented--small" role="radiogroup" aria-label="Показатель">
-            <button type="button" role="radio" aria-checked={!useRevenue} className={!useRevenue ? 'is-active' : ''} onClick={() => setMetric('orders')}>
+          <div className="segmented segmented--small" role="group" aria-label="Показатель">
+            <button type="button" aria-pressed={!useRevenue} className={!useRevenue ? 'is-active' : ''} onClick={() => setMetric('orders')}>
               Заказы
             </button>
-            <button type="button" role="radio" aria-checked={useRevenue} className={useRevenue ? 'is-active' : ''} onClick={() => setMetric('revenue')}>
+            <button type="button" aria-pressed={useRevenue} className={useRevenue ? 'is-active' : ''} onClick={() => setMetric('revenue')}>
               Выручка
             </button>
           </div>

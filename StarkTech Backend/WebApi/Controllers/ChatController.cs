@@ -103,9 +103,25 @@ public class ChatController : BaseController
         if (url == null)
             return StatusCode(500, new[] { "Не удалось сохранить фото" });
 
-        var result = await _chat.SendAsync(id, profileId, role == ChatRole.Staff, text, url, replyToId);
-        if (result.IsSuccess && result.Data != null)
-            await _notifier.MessageCreatedAsync(result.Data);
+        Result<ChatMessageDto> result;
+        try
+        {
+            result = await _chat.SendAsync(id, profileId, role == ChatRole.Staff, text, url, replyToId);
+        }
+        catch
+        {
+            // Сообщение не сохранилось — не оставляем файл-сироту
+            await _files.DeleteAsync(url);
+            throw;
+        }
+
+        if (!result.IsSuccess || result.Data == null)
+        {
+            await _files.DeleteAsync(url);
+            return HandleResult(result);
+        }
+
+        await _notifier.MessageCreatedAsync(result.Data);
         return HandleResult(result);
     }
 

@@ -2,12 +2,15 @@ using Application.DTOs.AdminTelegramBinding;
 using Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StarkTech.Domain.Constants;
+using WebApi.Authorization;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/telegram-bindings")]
-[Authorize(Roles = "Admin,SuperAdmin")]
+// Привязка Telegram для уведомлений сотрудников — управление пользователями.
+[Authorize(Policy = PermissionPolicy.Prefix + UserPermissions.UsersManage)]
 public class AdminTelegramBindingController : BaseController
 {
     private readonly IAdminTelegramBindingService _bindingService;
@@ -41,7 +44,7 @@ public class AdminTelegramBindingController : BaseController
     [HttpPost("link/confirm")]
     public async Task<IActionResult> ConfirmLink(ConfirmLinkDto dto)
     {
-        var result = await _bindingService.ConfirmLinkAsync(dto);
+        var result = await _bindingService.ConfirmLinkAsync(dto, GetCurrentUserId());
         return HandleResult(result);
     }
 

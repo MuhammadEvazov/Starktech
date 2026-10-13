@@ -1,0 +1,90 @@
+/* Фото крупно поверх страницы или окна (components/PhotoZoom.jsx): макет, исходное фото, чек оплаты */
+.photo-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-lightbox);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 11, 30, 0.75);
+  animation: fade 0.15s ease-out;
+}
+.photo-zoom__panel {
+  display: grid;
+  gap: 12px;
+  width: min(760px, 100%);
+  padding: 14px 14px 16px;
+  border-radius: 18px;
+  background: var(--paper);
+  box-shadow: 0 30px 60px -20px rgba(10, 11, 30, 0.6);
+}
+.photo-zoom__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 6px;
+}
+.photo-zoom__bar strong {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--t-md);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.photo-zoom__btn {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font: 600 var(--t-sm) var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+}
+.photo-zoom__btn:hover {
+  border-color: var(--cobalt);
+  color: var(--cobalt-deep);
+}
+.photo-zoom__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.photo-zoom__close {
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+/* «шахматка» показывает прозрачный фон вокруг формы; размер картинки ограничен экраном */
+.photo-zoom__stage {
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: repeating-conic-gradient(var(--line-soft) 0% 25%, var(--paper) 0% 50%) 0 0 / 20px 20px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.photo-zoom__stage img {
+  display: block;
+  max-width: 100%;
+  max-height: min(70vh, 640px);
+  object-fit: contain;
+}
+@media (max-width: 479.98px) {
+  .photo-zoom {
+    padding: 8px;
+  }
+  .photo-zoom__stage img {
+    max-height: 64vh;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-zoom {
+    animation: none;
+  }
+}

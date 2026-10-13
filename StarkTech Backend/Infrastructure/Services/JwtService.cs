@@ -16,7 +16,7 @@ public class JwtService : IJwtService
         _configuration = configuration;
     }
 
-    public (string Token, DateTime Expiration) GenerateToken(string userId, string email, List<string> roles)
+    public (string Token, DateTime Expiration) GenerateToken(string userId, string email, List<string> roles, string? securityStamp = null)
     {
         var keyString = _configuration["JWT:Key"]
            ?? throw new InvalidOperationException("JWT:Key is missing in configuration.");
@@ -31,6 +31,11 @@ public class JwtService : IJwtService
 
         if (!string.IsNullOrEmpty(email))
             claims.Add(new Claim(ClaimTypes.Email, email));
+
+        // Штамп безопасности сверяется при каждой проверке токена (Program.cs, OnTokenValidated):
+        // смена пароля или роли меняет штамп, и старые токены перестают работать.
+        if (!string.IsNullOrEmpty(securityStamp))
+            claims.Add(new Claim(IJwtService.SecurityStampClaim, securityStamp));
 
         foreach (var role in roles)
             claims.Add(new Claim(ClaimTypes.Role, role));

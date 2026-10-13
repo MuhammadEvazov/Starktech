@@ -59,7 +59,14 @@ export default function Gallery({ items, alt = '' }) {
                   preload="metadata"
                 />
               ) : (
-                <Img src={m.url} alt={i === 0 ? alt : ''} className="gallery__img" />
+                <Img
+                  src={m.url}
+                  alt={i === 0 ? alt : ''}
+                  className="gallery__img"
+                  // Первый слайд — главное фото страницы: грузим сразу и с высоким приоритетом.
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={i === 0 ? 'high' : undefined}
+                />
               )}
             </div>
           ))}

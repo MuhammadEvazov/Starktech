@@ -10,10 +10,13 @@ services:
     environment:
       POSTGRES_DB: starktech
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "654321"
+      # Пароль берётся из переменной окружения / файла .env рядом с compose (POSTGRES_PASSWORD=...).
+      # Значение по умолчанию — только для локальной разработки; на сервере обязательно задайте свой.
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-654321}"
     ports:
       # 2004 belongs to the local Windows PostgreSQL service, 5433 to amarcrm-postgres
-      - "5434:5432"
+      # Только localhost: база не должна быть доступна из сети.
+      - "127.0.0.1:5434:5432"
     volumes:
       - starktech_pg17data:/var/lib/postgresql/data
     healthcheck:
@@ -27,7 +30,9 @@ services:
     container_name: starktech-redis
     restart: unless-stopped
     ports:
-      - "6380:6379"
+      # Redis без пароля (requirepass не задан) — поэтому порт открыт только на localhost.
+      # Если Redis понадобится снаружи — сначала включите requirepass и пароль в строке подключения.
+      - "127.0.0.1:6380:6379"
     volumes:
       - starktech_redisdata:/data
     healthcheck:

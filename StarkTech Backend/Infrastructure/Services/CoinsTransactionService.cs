@@ -68,6 +68,14 @@ public class CoinsTransactionService : ICoinsTransactionService
         return ChangeBalanceAsync(userId, -amount, CoinTransactionType.Redeemed, orderId, description, "Insufficient coins balance");
     }
 
+    public Task<Result<GetCoinsTransactionDto>> RefundAsync(Guid userId, int amount, Guid? orderId, string? description)
+    {
+        if (amount <= 0)
+            return Task.FromResult(Result<GetCoinsTransactionDto>.Fail("Amount must be greater than zero", ErrorType.Validation));
+
+        return ChangeBalanceAsync(userId, amount, CoinTransactionType.Refunded, orderId, description, "Insufficient coins balance");
+    }
+
     public Task<Result<GetCoinsTransactionDto>> ManualAdjustmentAsync(ManualAdjustCoinsDto dto)
     {
         if (dto.Amount == 0)

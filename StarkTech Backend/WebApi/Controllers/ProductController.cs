@@ -23,9 +23,16 @@ public class ProductController : BaseController
     {
         // Публичный каталог никогда не отдаёт удалённые товары, что бы ни пришло в запросе.
         filter.Deleted = false;
+        // Скрытые (IsActive = false) товары видят только сотрудники с доступом к товарам;
+        // покупателю — только активные, даже если он не передал isActive или передал false.
+        if (!await CanSeeHiddenProductsAsync())
+            filter.IsActive = true;
         var result = await _productService.GetAllAsync(filter);
         return HandleResult(result);
     }
+
+    private async Task<bool> CanSeeHiddenProductsAsync()
+        => await HasPermissionAsync(UserPermissions.ProductsView) || await HasPermissionAsync(UserPermissions.ProductsEdit);
 
     // GET /api/products/deleted — корзина удалённых товаров
     [HttpGet("deleted")]
@@ -49,6 +56,8 @@ public class ProductController : BaseController
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _productService.GetByIdAsync(id);
+        if (result.IsSuccess && result.Data is { IsActive: false } && !await CanSeeHiddenProductsAsync())
+            return NotFound(new[] { "Product not found" });
         return HandleResult(result);
     }
 

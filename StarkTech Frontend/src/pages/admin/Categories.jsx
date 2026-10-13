@@ -220,11 +220,11 @@ export function CategoryDetail() {
 
           <CategoryHero category={c} productCount={products.data?.totalCount} onChange={category.setData} />
 
-          <section className="panel section">
-            <header className="section__head">
+          <section className="panel adm-section">
+            <header className="adm-section__head">
               <div>
-                <h2 className="section__title">Шаблон вариантов</h2>
-                <p className="section__lead">
+                <h2 className="adm-section__title">Шаблон вариантов</h2>
+                <p className="adm-section__lead">
                   Общие формы, размеры и цвета для всех товаров этой категории. Покупатель шаблон не видит — он нужен,
                   чтобы не создавать одинаковые варианты у каждого товара вручную. Если у товаров разные варианты,
                   шаблон можно не заполнять.

@@ -122,6 +122,13 @@
   font-weight: 600;
   fill: var(--ink-soft);
 }
+/* Шрифт подписей — в единицах viewBox (440): на телефоне картинка сжимается
+   и 15px превращались в ~10px. Под узкий экран подписи крупнее. */
+@media (max-width: 640px) {
+  .home-art__label {
+    font-size: 21px;
+  }
+}
 .home-art__arrow {
   fill: none;
   stroke: var(--ink-soft);
@@ -221,9 +228,9 @@
   fill: var(--paper);
 }
 .home-cat--t0 .home-cat__media { background: var(--cobalt-tint); }
-.home-cat--t1 .home-cat__media { background: #fff3c4; }
-.home-cat--t2 .home-cat__media { background: #ffe0e8; }
-.home-cat--t3 .home-cat__media { background: #ebe9ff; }
+.home-cat--t1 .home-cat__media { background: var(--lemon-tint); }
+.home-cat--t2 .home-cat__media { background: var(--cherry-tint); }
+.home-cat--t3 .home-cat__media { background: var(--lilac-tint); }
 .home-cat--t4 .home-cat__media { background: var(--sheet); }
 .home-cat--t0 .home-cat__fill { fill: var(--cobalt); }
 .home-cat--t1 .home-cat__fill { fill: var(--lemon); }
@@ -315,10 +322,36 @@
 .home-steps__cta {
   margin-top: 28px;
 }
-@media (min-width: 860px) {
+.home-steps__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 24px;
+  margin-top: 28px;
+}
+/* Ссылка-тизер на «Вопросы и ответы» */
+.home-faq {
+  flex: 1 1 280px;
+  margin: 0;
+  max-width: 60ch;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  line-height: 1.5;
+}
+.home-faq a {
+  color: var(--cobalt);
+  font-weight: 600;
+}
+@media (min-width: 640px) {
   .home-steps__list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 32px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px;
+  }
+}
+@media (min-width: 1040px) {
+  .home-steps__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 28px;
   }
 }
 
@@ -525,26 +558,10 @@
 .pf-filter::-webkit-scrollbar {
   display: none;
 }
-.pf-filter__btn {
+/* Сами кнопки — общий .site-pill (foundation.css); здесь только раскладка ленты */
+.pf-filter > .site-pill {
   flex: none;
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 999px;
-  border: 1.5px solid var(--site-line);
-  background: var(--site-surface);
-  color: var(--ink);
-  font-weight: 600;
-  font-size: var(--t-sm);
-  cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s;
-}
-.pf-filter__btn:hover {
-  border-color: var(--ink);
-}
-.pf-filter__btn[aria-pressed='true'] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  white-space: nowrap;
 }
 @media (min-width: 720px) {
   .pf-filter {
@@ -572,15 +589,19 @@
   border-radius: var(--site-radius);
   overflow: hidden;
 }
+/* Размеров фото API не отдаёт, поэтому задаём постоянную пропорцию —
+   сетка не «прыгает», пока картинки догружаются. */
 .pf-item img {
   width: 100%;
   height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
   display: block;
   background: var(--sheet);
 }
 .pf-item .img-fallback {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 5;
   background: var(--sheet);
 }
 .pf-item figcaption {
@@ -637,21 +658,7 @@
   padding: 0;
   list-style: none;
 }
-.pr-jump a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: var(--site-surface);
-  border: 1.5px solid var(--site-line);
-  font-weight: 600;
-  font-size: var(--t-sm);
-  text-decoration: none;
-}
-.pr-jump a:hover {
-  border-color: var(--ink);
-}
+/* Ссылки-якоря — общий .site-pill (foundation.css) */
 
 .pr-group {
   margin-top: 32px;
@@ -718,7 +725,7 @@
   margin-top: 32px;
   padding: clamp(20px, 4vw, 32px);
   border-radius: var(--site-radius-lg);
-  background: #fff6d1;
+  background: var(--lemon-tint);
   border: 1px solid #f1e3a1;
 }
 .pr-combos > p {
@@ -754,7 +761,7 @@
 .pr-combo__badge {
   flex: none;
   font-size: var(--t-md);
-  color: var(--cherry);
+  color: var(--cherry-strong);
   transform: rotate(4deg);
 }
 .pr-combo__items {
@@ -768,9 +775,9 @@
 .pr-combo__items a {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: 999px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
   background: var(--sheet);
   font-size: var(--t-sm);
   font-weight: 500;
@@ -825,11 +832,23 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-cat,
-  .pf-filter__btn {
+  .home-cat {
     transition: none;
   }
   .pr-combo__badge {
     transform: none;
   }
+}
+
+/* Ссылка на «Вопросы и ответы» под вводным текстом прайса */
+.pr-note {
+  margin: 10px 0 0;
+  max-width: 60ch;
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+  line-height: 1.5;
+}
+.pr-note a {
+  color: var(--cobalt);
+  font-weight: 600;
 }

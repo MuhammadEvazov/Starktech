@@ -4,7 +4,7 @@ import { useAsync } from '../../lib/hooks.js';
 import { attributeOptionsApi, mediaApi, productsApi, variantsApi } from '../../api/endpoints.js';
 import { attrLabel, attrValue, dateTime, money, nameOf, parseJson } from '../../lib/format.js';
 import { useToast } from '../../context/ToastContext.jsx';
-import { Async, Badge, Checkbox, ErrorBox, Img, ImageUpload, Input, Modal, Pagination } from '../../components/ui.jsx';
+import { Async, Badge, Checkbox, Empty, ErrorBox, Img, ImageUpload, Input, Modal, Pagination } from '../../components/ui.jsx';
 import CrudPage, { ConfirmDelete } from './CrudPage.jsx';
 import { CameraIcon, EditIcon, EyeIcon, EyeOffIcon, GalleryIcon, LayersIcon, TrashIcon } from './icons.jsx';
 import MediaManager from './MediaManager.jsx';
@@ -19,6 +19,113 @@ const withRuCopies = (f) => ({
   descriptionTj: f.descriptionRu,
   descriptionEn: f.descriptionRu,
 });
+
+// ─── Скидки за количество (Product.quantityTiers) ────────────────────────────
+// Ступень: от minQuantity штук одной позиции — минус discountPercent %. Правила те же,
+// что у Domain.Common.QuantityTiers: от 2 шт., процент больше 0 и меньше 100, не больше 6 ступеней.
+const MAX_TIERS = 6;
+
+const tierRows = (form, item) =>
+  Array.isArray(form.quantityTiers)
+    ? form.quantityTiers
+    : (item?.quantityTiers ?? []).map((t) => ({ minQuantity: String(t.minQuantity), discountPercent: String(t.discountPercent) }));
+
+const toNum = (v) => Number(String(v ?? '').replace(',', '.').trim());
+
+/** Ошибки ступеней (пустой массив — всё верно). */
+export function tierErrors(rows) {
+  const errors = [];
+  if (rows.length > MAX_TIERS) errors.push(`Скидок за количество — не больше ${MAX_TIERS}.`);
+  const seen = new Set();
+  rows.forEach((r, i) => {
+    const n = i + 1;
+    const q = toNum(r.minQuantity);
+    const pct = toNum(r.discountPercent);
+    if (!Number.isInteger(q) || q < 2) errors.push(`Строка ${n}: количество — целое число от 2.`);
+    else if (seen.has(q)) errors.push(`Строка ${n}: ступень «от ${q} шт.» уже есть.`);
+    else seen.add(q);
+    if (!(pct > 0 && pct < 100)) errors.push(`Строка ${n}: скидка — больше 0 и меньше 100 %.`);
+  });
+  return errors;
+}
+
+const cleanTiers = (rows) =>
+  rows
+    .map((r) => ({ minQuantity: toNum(r.minQuantity), discountPercent: toNum(r.discountPercent) }))
+    .sort((a, b) => a.minQuantity - b.minQuantity);
+
+function QuantityTiersEditor({ rows, onChange }) {
+  const update = (i, key, v) => onChange(rows.map((r, j) => (j === i ? { ...r, [key]: v } : r)));
+  const errors = tierErrors(rows);
+  const valid = cleanTiers(rows).filter((t) => Number.isInteger(t.minQuantity) && t.minQuantity >= 2 && t.discountPercent > 0 && t.discountPercent < 100);
+  return (
+    <fieldset className="qtiers">
+      <legend className="field__label">Скидки за количество</legend>
+      <p className="muted small">Цена за штуку снижается, когда в позиции заказа столько штук или больше. Срабатывает самая большая подходящая скидка.</p>
+      {rows.length > 0 && (
+        <ul className="qtiers__list">
+          {rows.map((r, i) => (
+            <li key={i} className="qtiers__row">
+              <label className="qtiers__cell">
+                <span>от</span>
+                <input
+                  className="input qtiers__input"
+                  type="number"
+                  min={2}
+                  step={1}
+                  inputMode="numeric"
+                  aria-label={`Ступень ${i + 1}: от скольких штук`}
+                  value={r.minQuantity}
+                  onChange={(e) => update(i, 'minQuantity', e.target.value)}
+                />
+                <span>шт.</span>
+              </label>
+              <label className="qtiers__cell">
+                <span>−</span>
+                <input
+                  className="input qtiers__input"
+                  type="number"
+                  min={0.01}
+                  max={99.99}
+                  step="any"
+                  inputMode="decimal"
+                  aria-label={`Ступень ${i + 1}: скидка в процентах`}
+                  value={r.discountPercent}
+                  onChange={(e) => update(i, 'discountPercent', e.target.value)}
+                />
+                <span>%</span>
+              </label>
+              <button type="button" className="btn btn--quiet btn--small" onClick={() => onChange(rows.filter((_, j) => j !== i))}>
+                Убрать
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        type="button"
+        className="btn btn--ghost btn--small"
+        disabled={rows.length >= MAX_TIERS}
+        title={rows.length >= MAX_TIERS ? `Не больше ${MAX_TIERS} ступеней` : undefined}
+        onClick={() => onChange([...rows, { minQuantity: '', discountPercent: '' }])}
+      >
+        Добавить скидку
+      </button>
+      {valid.length > 0 && (
+        <p className="qtiers__preview" aria-live="polite">
+          Покупатель увидит: {valid.map((t) => `от ${t.minQuantity} шт. −${t.discountPercent}%`).join(', ')}
+        </p>
+      )}
+      {errors.length > 0 && (
+        <ul className="qtiers__errors" role="alert">
+          {errors.map((e) => (
+            <li key={e}>{e}</li>
+          ))}
+        </ul>
+      )}
+    </fieldset>
+  );
+}
 
 export function ProductImageField({ file, current, onChange, label = 'Фото товара' }) {
   const [preview, setPreview] = useState(null);
@@ -226,11 +333,19 @@ export function Products() {
         { name: 'descriptionRu', label: 'Описание', type: 'textarea' },
         { name: 'requiresPhotoUpload', label: 'Клиент загружает своё фото', type: 'checkbox', default: true },
         { name: 'isActive', label: 'Показывать на сайте', type: 'checkbox', create: false },
+        // Ступени скидки редактируются отдельным блоком ниже (extraForm)
+        { name: 'quantityTiers', type: 'hidden', create: false, edit: false },
       ]}
       extraForm={(form, set, mode, item) => (
-        <ProductImageField file={form.imageFile ?? null} current={item?.mainImageUrl} onChange={(f) => set('imageFile', f)} />
+        <div className="stack">
+          <ProductImageField file={form.imageFile ?? null} current={item?.mainImageUrl} onChange={(f) => set('imageFile', f)} />
+          <QuantityTiersEditor rows={tierRows(form, item)} onChange={(rows) => set('quantityTiers', rows)} />
+        </div>
       )}
-      toPayload={(f, mode, item) => withRuCopies({ ...f, mainImageUrl: item?.mainImageUrl ?? null })}
+      validate={(f, mode, item) => tierErrors(tierRows(f, item))}
+      toPayload={(f, mode, item) =>
+        withRuCopies({ ...f, mainImageUrl: item?.mainImageUrl ?? null, quantityTiers: cleanTiers(tierRows(f, item)) })
+      }
       rowActions={(p) => (
         <Link to={`/admin/products/${p.id}`} className="icon-action icon-action--variants" aria-label="Варианты" title="Варианты">
           <LayersIcon />
@@ -319,6 +434,14 @@ function ProductHero({ product: p, categoryName, galleryCount, onChange }) {
             <dt>В галерее</dt>
             <dd>{galleryCount}</dd>
           </div>
+          <div>
+            <dt>Скидки за количество</dt>
+            <dd>
+              {p.quantityTiers?.length
+                ? p.quantityTiers.map((t) => `от ${t.minQuantity} шт. −${t.discountPercent}%`).join(', ')
+                : 'Нет'}
+            </dd>
+          </div>
         </dl>
         <div className="product-hero__actions">
           <a href={`/product/${p.id}`} className="btn btn--ghost" target="_blank" rel="noreferrer">
@@ -381,14 +504,14 @@ export function ProductDetail() {
             onChange={product.setData}
           />
 
-          <section className="panel section">
-            <header className="section__head">
+          <section className="panel adm-section">
+            <header className="adm-section__head">
               <div>
-                <h2 className="section__title">
+                <h2 className="adm-section__title">
                   Галерея товара
-                  <span className="section__count">{allMedia.filter((m) => !m.productVariantId).length}</span>
+                  <span className="adm-section__count">{allMedia.filter((m) => !m.productVariantId).length}</span>
                 </h2>
-                <p className="section__lead">Покупатель листает эти фото и видео после главного изображения.</p>
+                <p className="adm-section__lead">Покупатель листает эти фото и видео после главного изображения.</p>
               </div>
             </header>
             <MediaManager
@@ -538,16 +661,16 @@ function Variants({ product, media = [], onMediaChange }) {
   };
 
   return (
-    <section className="section">
-      <header className="section__head">
+    <section className="adm-section">
+      <header className="adm-section__head">
         <div>
-          <h2 className="section__title">
+          <h2 className="adm-section__title">
             Варианты
-            <span className="section__count">{variants.length}</span>
+            <span className="adm-section__count">{variants.length}</span>
           </h2>
-          <p className="section__lead">Покупатель выбирает вариант на странице товара. Без вариантов товар нельзя заказать.</p>
+          <p className="adm-section__lead">Покупатель выбирает вариант на странице товара. Без вариантов товар нельзя заказать.</p>
         </div>
-        <div className="section__actions">
+        <div className="adm-section__actions">
           <button type="button" className="btn btn--ghost" onClick={() => setTrashOpen(true)}>
             <TrashIcon />
             Удалённые варианты
@@ -566,10 +689,7 @@ function Variants({ product, media = [], onMediaChange }) {
       <Async state={list}>
         {() =>
           !variants.length ? (
-            <div className="section-empty">
-              <p className="section-empty__title">Вариантов пока нет</p>
-              <p>Создайте хотя бы один вариант с ценой — без него товар нельзя положить в корзину. Если у товара нет отличий (формы, размера), хватит одного варианта без атрибутов.</p>
-            </div>
+            <Empty title="Вариантов пока нет">Создайте хотя бы один вариант с ценой — без него товар нельзя положить в корзину. Если у товара нет отличий (формы, размера), хватит одного варианта без атрибутов.</Empty>
           ) : (
             <ul className="crud-cards">
               {variants.map((v) => {

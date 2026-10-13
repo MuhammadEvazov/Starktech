@@ -1,25 +1,54 @@
 import '../../styles/site/checkout.css';
 import { useEffect, useRef, useState } from 'react';
-import { Link, Navigate, useNavigate } from '../../lib/router.jsx';
+import { Link, Navigate, useLocation, useNavigate } from '../../lib/router.jsx';
 import { useAsync } from '../../lib/hooks.js';
-import { citiesApi, comboOffersApi, orderPhotosApi, ordersApi, profileApi, promoCodesApi } from '../../api/endpoints.js';
+import { citiesApi, comboOffersApi, ordersApi, paymentsApi, profileApi, promoCheckApi } from '../../api/endpoints.js';
 import { money, nameOf, PAYMENT_METHOD } from '../../lib/format.js';
-import { bestCombo, discountFor, discountLabel } from '../../lib/combo.js';
-import { useCart } from '../../context/CartContext.jsx';
+import { bestCombo, comboDiscount, discountFor, discountLabel } from '../../lib/combo.js';
+import { percentLabel, round2, tierPercent } from '../../lib/pricing.js';
+import { itemTotal, uploadCartPhoto, useCart, useCartCheck } from '../../context/CartContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ErrorBox, Input, Select, Textarea } from '../../components/ui.jsx';
+import { CartCheckNotice, misfitPhotos } from './Cart.jsx';
 
 // Короткие пояснения под способами оплаты.
 const PAYMENT_HINT = {
   Cash: 'Курьеру или при самовывозе',
+  KortiMilli: 'Реквизиты и загрузка чека — сразу после оформления',
+  AlifPay: 'Реквизиты и загрузка чека — сразу после оформления',
+  CardTransfer: 'Реквизиты и загрузка чека — сразу после оформления',
 };
+
+/** Способ включён в настройках магазина (админка → «Оплата») и у него заполнены реквизиты. */
+const methodEnabled = (s, m) =>
+  m === 'Cash'
+    ? s.cashEnabled
+    : m === 'KortiMilli'
+      ? s.kortiMilliEnabled && !!s.kortiMilliCard
+      : m === 'AlifPay'
+        ? s.alifPayEnabled && !!s.alifPayPhone
+        : m === 'CardTransfer'
+          ? s.cardTransferEnabled && !!s.cardTransferNumber
+          : true;
+
+/** Что пошло не так после создания заказа — сохраняем, чтобы страница заказа показала это и после перезагрузки. */
+export const orderIssuesKey = (number) => `st_order_issues:${number}`;
 
 export default function Checkout() {
   const cart = useCart();
-  const { isAuthenticated, profile, session, refreshProfile } = useAuth();
+  const { state: navState } = useLocation();
+  // «Купить сейчас»: одна позиция мимо корзины. После перезагрузки вкладки её уже нет — вернём на товар.
+  const buyNowRequested = !!navState?.buyNow;
+  const buyNowItem = buyNowRequested ? cart.buyNow : null;
+  // «Купить сейчас» передаёт одну позицию или несколько (фото разной формы — разные варианты)
+  const items = buyNowItem ? [].concat(buyNowItem) : cart.items;
+
+  const { profile, session, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const check = useCartCheck(!buyNowRequested);
   const cities = useAsync(() => citiesApi.list({ isActive: true, pageSize: 100 }), []);
   const combos = useAsync(() => comboOffersApi.list({ isActive: true, pageSize: 100 }), []);
+  const paySettings = useAsync(() => paymentsApi.settings(), []);
 
   const [form, setForm] = useState({
     contactName: '',
@@ -32,9 +61,11 @@ export default function Checkout() {
   const [promoInput, setPromoInput] = useState('');
   const [promo, setPromo] = useState(null);
   const [promoError, setPromoError] = useState('');
+  const [promoBusy, setPromoBusy] = useState(false);
   const [coinsInput, setCoinsInput] = useState('');
   const [error, setError] = useState(null);
   const [stage, setStage] = useState('');
+  const submitting = useRef(false);
 
   useEffect(() => {
     if (profile || session) {
@@ -46,28 +77,50 @@ export default function Checkout() {
     }
   }, [profile, session]);
 
-  // Телефон, город и адрес из профиля подставляем один раз, когда загружены и профиль, и города
-  // (город из профиля берём, только если он ещё есть среди активных).
-  const deliveryFilled = useRef(false);
+  // Телефон и адрес из профиля подставляем сразу, как пришёл профиль (города для этого не нужны).
+  const contactsFilled = useRef(false);
   useEffect(() => {
-    if (deliveryFilled.current || !profile || !cities.data) return;
-    deliveryFilled.current = true;
-    const cityOk = cities.data.items?.some((c) => c.id === profile.deliveryCityId);
+    if (contactsFilled.current || !profile) return;
+    contactsFilled.current = true;
     setForm((f) => ({
       ...f,
       contactPhone: f.contactPhone || profile.phoneNumber || '',
-      deliveryCityId: f.deliveryCityId || (cityOk ? profile.deliveryCityId : ''),
       deliveryAddress: f.deliveryAddress || profile.deliveryAddress || '',
     }));
+  }, [profile]);
+
+  // Город из профиля — когда загружены и профиль, и города (только если он ещё среди активных).
+  const cityFilled = useRef(false);
+  useEffect(() => {
+    if (cityFilled.current || !profile || !cities.data) return;
+    cityFilled.current = true;
+    const cityOk = cities.data.items?.some((c) => c.id === profile.deliveryCityId);
+    if (cityOk) setForm((f) => ({ ...f, deliveryCityId: f.deliveryCityId || profile.deliveryCityId }));
   }, [profile, cities.data]);
 
+  // Способ получения: доставка или самовывоз. Если активных городов нет — доступен только самовывоз.
+  // Города не загрузились — в режиме доставки показываем ошибку с повтором; самовывоз работает.
+  const [mode, setMode] = useState('delivery');
+  const noCities = !!cities.data && !cities.data.items?.length;
+  const pickup = noCities || mode === 'pickup';
+
   // «Запомнить для следующих заказов» — предлагаем, только если данные отличаются от профиля.
+  // При самовывозе город и адрес профиля не трогаем — сравниваем и сохраняем только телефон.
   const [remember, setRemember] = useState(true);
   const differsFromProfile =
     !!profile &&
     (form.contactPhone.trim() !== (profile.phoneNumber || '') ||
-      (form.deliveryCityId || null) !== (profile.deliveryCityId || null) ||
-      form.deliveryAddress.trim() !== (profile.deliveryAddress || ''));
+      (!pickup &&
+        ((form.deliveryCityId || null) !== (profile.deliveryCityId || null) ||
+          form.deliveryAddress.trim() !== (profile.deliveryAddress || ''))));
+
+  // Способ оплаты выключен в настройках магазина — выбираем первый доступный.
+  useEffect(() => {
+    const s = paySettings.data;
+    if (!s || methodEnabled(s, form.paymentMethod)) return;
+    const first = Object.keys(PAYMENT_METHOD).find((m) => methodEnabled(s, m));
+    if (first) setForm((f) => ({ ...f, paymentMethod: first }));
+  }, [paySettings.data, form.paymentMethod]);
 
   // Ошибку сервера показываем рядом с кнопкой — на телефоне прокручиваем к ней.
   const errorRef = useRef(null);
@@ -77,94 +130,131 @@ export default function Checkout() {
     errorRef.current?.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
   }, [error]);
 
-  if (!cart.items.length && !stage) return <Navigate to="/cart" />;
+  if (buyNowRequested && !buyNowItem && !stage) {
+    return <Navigate to={navState?.productId ? `/product/${navState.productId}` : '/cart'} />;
+  }
+  if (!items.length && !stage && !check.checking) return <Navigate to="/cart" />;
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const city = cities.data?.items?.find((c) => c.id === form.deliveryCityId);
+  const city = pickup ? null : cities.data?.items?.find((c) => c.id === form.deliveryCityId);
   const delivery = city ? Number(city.deliveryCost) : 0;
-  // Скидки считаются так же, как в OrderService: промокод + комбо от суммы товаров, не больше самой суммы.
-  const promoDiscount = promo ? discountFor(promo.discountType, promo.discountValue, cart.subtotal) : 0;
-  const combo = bestCombo(combos.data?.items, cart.items, cart.subtotal);
-  const comboDiscount = combo ? discountFor(combo.discountType, combo.discountValue, cart.subtotal) : 0;
-  const discount = Math.min(cart.subtotal, promoDiscount + comboDiscount);
+
+  // Суммы как в OrderService: цены со скидкой за количество; промокод и комбо НЕ суммируются —
+  // применяется более выгодная скидка (процент комбо — только от товаров комбо).
+  const lines = items.map((i) => ({ productId: i.productId, total: itemTotal(i) }));
+  const subtotal = round2(lines.reduce((s, l) => s + l.total, 0));
+  const promoDiscount = promo ? discountFor(promo.discountType, promo.discountValue, subtotal) : 0;
+  const combo = bestCombo(combos.data?.items, lines);
+  const comboValue = comboDiscount(combo, lines);
+  const usePromo = !!promo && promoDiscount >= comboValue;
+  const useCombo = !!combo && !usePromo && comboValue > 0;
+  const discount = Math.min(subtotal, usePromo ? promoDiscount : useCombo ? comboValue : 0);
+  const bothApply = !!promo && !!combo && comboValue > 0;
 
   // 1 монета = 1 сомони; списать можно не больше остатка после скидок.
-  const coinsBalance = isAuthenticated ? profile?.coinsBalance ?? 0 : 0;
-  const maxCoins = Math.max(0, Math.min(coinsBalance, Math.floor(cart.subtotal - discount)));
+  const coinsBalance = profile?.coinsBalance ?? 0;
+  const maxCoins = Math.max(0, Math.min(coinsBalance, Math.floor(subtotal - discount)));
   const coinsUsed = Math.min(maxCoins, Math.max(0, Math.floor(Number(coinsInput) || 0)));
+  // Ввели больше, чем можно списать, — предупреждаем; при уходе из поля подставляем максимум.
+  const coinsOver = Number(coinsInput) > maxCoins;
 
-  const total = Math.max(0, cart.subtotal - discount - coinsUsed) + delivery;
+  const total = round2(Math.max(0, subtotal - discount - coinsUsed) + delivery);
+  const nothingToPay = total <= 0;
 
-  // Промокод ищется через публичный GET /api/promo-codes?code=...
+  // Предоплата по правилам магазина: переводом сразу после оформления (наличными — только если так настроено).
+  const paySet = paySettings.data;
+  const prepayPct =
+    paySet && !nothingToPay && !(form.paymentMethod === 'Cash' && !paySet.prepaymentForCash) ? paySet.prepaymentPercent : 0;
+  const prepay = prepayPct > 0 ? Math.min(total, Math.ceil((total * prepayPct) / 100)) : 0;
+  const payMethods = Object.entries(PAYMENT_METHOD).filter(([value]) => !paySet || methodEnabled(paySet, value));
+
+  // Оформить нельзя, пока фото не подогнаны под форму или ещё читаются из браузера.
+  const misfit = items.some((i) => misfitPhotos(i).length);
+  const photosLoading = !buyNowItem && cart.photosState === 'loading';
+
+  // Промокод проверяет сервер: срок, лимиты (в т.ч. на одного клиента) — с понятным текстом ошибки.
   const applyPromo = async () => {
     setPromoError('');
     const code = promoInput.trim();
-    if (!code) return;
+    if (!code || promoBusy) return;
+    setPromoBusy(true);
     try {
-      const res = await promoCodesApi.list({ code, isActive: true, pageSize: 10 });
-      const found = res.items.find((p) => p.code.toLowerCase() === code.toLowerCase());
-      const now = Date.now();
-      if (!found) return setPromoError('Такого промокода нет или он выключен.');
-      if (found.validFrom && new Date(found.validFrom) > now) return setPromoError('Промокод ещё не начал действовать.');
-      if (found.validTo && new Date(found.validTo) < now) return setPromoError('Срок действия промокода истёк.');
-      if (found.maxUsages && found.usedCount >= found.maxUsages) return setPromoError('Промокод уже использован максимальное число раз.');
-      setPromo(found);
+      setPromo(await promoCheckApi.validate(code));
     } catch (e) {
       setPromoError(e.messages?.[0] || 'Не удалось проверить промокод.');
+    } finally {
+      setPromoBusy(false);
     }
   };
 
   const submit = async (e) => {
     e.preventDefault();
+    if (submitting.current || misfit || photosLoading || !items.length) return; // защита от двойного нажатия
+    submitting.current = true;
     setError(null);
     setStage('order');
+    const ordered = items;
     try {
       const created = await ordersApi.create({
         contactName: form.contactName.trim(),
         contactPhone: form.contactPhone.trim(),
         contactEmail: form.contactEmail.trim() || null,
-        deliveryCityId: form.deliveryCityId || null,
-        deliveryAddress: form.deliveryAddress.trim() || null,
+        // Самовывоз — без города и адреса (deliveryCityId: null)
+        deliveryCityId: pickup ? null : form.deliveryCityId || null,
+        deliveryAddress: pickup ? null : form.deliveryAddress.trim() || null,
         paymentMethod: form.paymentMethod,
         source: 'Website',
-        promoCodeId: promo?.id ?? null,
-        comboOfferId: combo?.id ?? null,
+        promoCodeId: usePromo ? promo.id : null,
+        comboOfferId: useCombo ? combo.id : null,
         coinsUsed,
-        items: cart.items.map((i) => ({ productVariantId: i.variantId, quantity: i.quantity })),
+        items: ordered.map((i) => ({ productVariantId: i.variantId, quantity: i.quantity })),
       });
 
-      // Фото загружаются только для авторизованных — эндпоинт требует токен.
-      let photoFailures = 0;
-      const withPhotos = cart.items.filter((i) => i.photos.length);
-      if (isAuthenticated && withPhotos.length) {
+      // Фото: загружаем по одному. Неудачные не теряем — они остаются в корзине («не догрузились»)
+      // с кадрами, их можно отправить ещё раз; удачные из браузера убираем.
+      const issues = { orderId: created.id, uploadFailed: 0, cropFailed: 0, skipped: 0, rememberFailed: false };
+      const pendingEntries = [];
+      const withPhotos = ordered.filter((i) => i.photos.length);
+      if (withPhotos.length) {
         setStage('photos');
+        let order = null;
         try {
-          const order = await ordersApi.mineGet(created.id);
-          for (const item of withPhotos) {
-            const orderItem = order.items.find((oi) => oi.productVariantId === item.variantId);
-            if (!orderItem) continue;
+          order = await ordersApi.mineGet(created.id);
+        } catch {
+          /* позиции заказа не узнали — фото отправим повторно из корзины */
+        }
+        for (const item of withPhotos) {
+          const orderItem = order?.items?.find((oi) => oi.productVariantId === item.variantId);
+          const left = [];
+          if (!orderItem) {
+            issues.skipped += item.photos.length;
+            left.push(...item.photos);
+          } else {
             for (const file of item.photos) {
-              try {
-                const uploaded = await orderPhotosApi.upload(orderItem.id, file);
-                // Фото подогнали под форму ещё на странице товара — отправляем кадр и макет.
-                if (file.stCrop && file.stPreview && uploaded?.id) {
-                  await orderPhotosApi.updateCrop(uploaded.id, JSON.stringify(file.stCrop));
-                  await orderPhotosApi.uploadPreview(uploaded.id, file.stPreview);
-                }
-              } catch {
-                photoFailures++;
-              }
+              // eslint-disable-next-line no-await-in-loop
+              const r = await uploadCartPhoto(orderItem.id, file);
+              if (r === 'fail') issues.uploadFailed++;
+              if (r === 'crop') issues.cropFailed++;
+              if (r !== 'ok') left.push(file);
             }
           }
-        } catch {
-          photoFailures = withPhotos.reduce((s, i) => s + i.photos.length, 0);
+          if (left.length) {
+            pendingEntries.push({
+              key: `${created.id}:${item.variantId}`,
+              orderId: created.id,
+              orderNumber: created.orderNumber,
+              orderItemId: orderItem?.id ?? null,
+              variantId: item.variantId,
+              productId: item.productId,
+              name: item.name,
+              image: item.image,
+              photos: left,
+            });
+          }
         }
       }
 
-      // Без входа фото загрузить нельзя (эндпоинт требует токен) — сообщаем об этом на странице заказа.
-      const guestPhotos = isAuthenticated ? 0 : withPhotos.reduce((s, i) => s + i.photos.length, 0);
-
-      // Сохраняем контакты в профиль — в следующий раз подставятся сами. Ошибка здесь заказ не ломает.
+      // Сохраняем контакты в профиль — в следующий раз подставятся сами. Ошибка здесь заказ не ломает, но о ней говорим.
       if (remember && differsFromProfile) {
         try {
           await profileApi.update({
@@ -172,32 +262,55 @@ export default function Checkout() {
             bio: profile.bio ?? null,
             avatarUrl: profile.avatarUrl ?? null,
             phoneNumber: form.contactPhone.trim() || null,
-            deliveryCityId: form.deliveryCityId || null,
-            deliveryAddress: form.deliveryAddress.trim() || null,
+            deliveryCityId: pickup ? profile.deliveryCityId ?? null : form.deliveryCityId || null,
+            deliveryAddress: pickup ? profile.deliveryAddress ?? null : form.deliveryAddress.trim() || null,
           });
-        } catch { /* не критично */ }
+        } catch {
+          issues.rememberFailed = true;
+        }
       }
 
       if (coinsUsed > 0 || (remember && differsFromProfile)) refreshProfile();
-      cart.clear();
-      navigate(`/order/${created.orderNumber}`, { replace: true, state: { order: created, photoFailures, guestPhotos } });
+      cart.addPending(pendingEntries);
+      if (buyNowItem) cart.setBuyNow(null);
+      else cart.removeMany(ordered.map((i) => i.variantId));
+
+      const hasIssues = issues.uploadFailed + issues.cropFailed + issues.skipped > 0 || issues.rememberFailed;
+      if (hasIssues) {
+        try {
+          localStorage.setItem(orderIssuesKey(created.orderNumber), JSON.stringify(issues));
+        } catch { /* ignore */ }
+      }
+      navigate(`/order/${created.orderNumber}`, { replace: true, state: { order: created, issues } });
     } catch (err) {
       setError(err);
       setStage('');
+      submitting.current = false;
     }
   };
 
   const busyLabel = stage === 'photos' ? 'Загружаем фото…' : stage === 'order' ? 'Оформляем…' : null;
+  const submitDisabled = !!busyLabel || misfit || photosLoading;
 
   return (
     <div className="site-container chk-page">
       <header className="chk-head">
-        <Link to="/cart" className="chk-back">
-          Назад в корзину
+        <Link to={buyNowItem && navState?.productId ? `/product/${navState.productId}` : '/cart'} className="chk-back">
+          {buyNowItem ? 'Назад к товару' : 'Назад в корзину'}
         </Link>
         <h1 className="site-title">Оформление заказа</h1>
-        <p className="site-lead">Три коротких шага. После заказа менеджер позвонит и подтвердит детали.</p>
+        <p className="site-lead">
+          {buyNowItem
+            ? 'Покупка в один клик: оформляем только этот товар, корзина остаётся как была.'
+            : 'Три коротких шага. После заказа менеджер позвонит и подтвердит детали.'}
+        </p>
       </header>
+
+      {!buyNowRequested && (
+        <div className="chk-checks">
+          <CartCheckNotice check={check} />
+        </div>
+      )}
 
       <form className="chk-layout" onSubmit={submit}>
         <div className="chk-main">
@@ -229,21 +342,6 @@ export default function Checkout() {
                 className="chk-wide"
               />
             </div>
-            {!isAuthenticated && (
-              <p className="chk-login">
-                Есть аккаунт?{' '}
-                <Link to="/login" state={{ from: '/checkout' }} className="text-link">
-                  Войдите
-                </Link>
-                , чтобы видеть заказ в кабинете и загрузить фото.
-              </p>
-            )}
-            {!isAuthenticated && cart.items.some((i) => i.photos.length) && (
-              <p className="done-note" role="status">
-                Без входа фото не загрузятся вместе с заказом. После оформления отправьте их нам в WhatsApp с номером
-                заказа — или войдите, и они прикрепятся сами.
-              </p>
-            )}
           </section>
 
           <section className="site-surface chk-section" aria-labelledby="chk-delivery">
@@ -251,32 +349,64 @@ export default function Checkout() {
               <span className="chk-step" aria-hidden="true">2</span>
               <h2 id="chk-delivery">Доставка</h2>
             </div>
-            <div className="chk-fields">
-              <Select
-                label="Город"
-                placeholder="Самовывоз"
-                hint={cities.loading && !cities.data ? 'Загружаем города…' : undefined}
-                value={form.deliveryCityId}
-                onChange={set('deliveryCityId')}
-                options={(cities.data?.items ?? []).map((c) => ({
-                  value: c.id,
-                  label: `${nameOf(c)}, ${Number(c.deliveryCost) === 0 ? 'бесплатно' : money(c.deliveryCost)}`,
-                }))}
-              />
-              <Textarea
-                label="Адрес"
-                placeholder="Улица, дом, квартира"
-                hint={city ? undefined : 'Для самовывоза можно не заполнять'}
-                value={form.deliveryAddress}
-                onChange={set('deliveryAddress')}
-                autoComplete="street-address"
-              />
+            <div className="chk-pay" role="radiogroup" aria-label="Способ получения">
+              {[
+                ['delivery', 'Доставка', noCities ? 'Сейчас недоступна' : 'Курьер привезёт по адресу'],
+                ['pickup', 'Самовывоз', 'Бесплатно, адрес подскажет менеджер'],
+              ].map(([value, label, desc]) => {
+                const active = (pickup ? 'pickup' : 'delivery') === value;
+                const disabled = value === 'delivery' && noCities;
+                return (
+                  <label key={value} className={`chk-pay__option${active ? ' is-active' : ''}${disabled ? ' is-disabled' : ''}`}>
+                    <input
+                      type="radio"
+                      name="delivery-mode"
+                      value={value}
+                      checked={active}
+                      disabled={disabled}
+                      onChange={() => setMode(value)}
+                    />
+                    <span className="chk-pay__dot" aria-hidden="true" />
+                    <span className="chk-pay__title">{label}</span>
+                    <span className="chk-pay__desc">{desc}</span>
+                  </label>
+                );
+              })}
             </div>
+            {!pickup && cities.error && (
+              <div className="chk-fields">
+                <ErrorBox error={cities.error} onRetry={cities.reload} />
+                <p className="chk-fine">Не удалось загрузить города доставки. Повторите или выберите самовывоз.</p>
+              </div>
+            )}
+            {!pickup && !cities.error && (
+              <div className="chk-fields">
+                <Select
+                  label="Город"
+                  required
+                  placeholder={cities.loading && !cities.data ? 'Загружаем города…' : 'Выберите город'}
+                  value={form.deliveryCityId}
+                  onChange={set('deliveryCityId')}
+                  options={(cities.data?.items ?? []).map((c) => ({
+                    value: c.id,
+                    label: `${nameOf(c)}, ${Number(c.deliveryCost) === 0 ? 'бесплатно' : money(c.deliveryCost)}`,
+                  }))}
+                />
+                <Textarea
+                  label="Адрес"
+                  required
+                  placeholder="Улица, дом, квартира"
+                  value={form.deliveryAddress}
+                  onChange={set('deliveryAddress')}
+                  autoComplete="street-address"
+                />
+              </div>
+            )}
             {differsFromProfile && (
               <label className="chk-remember">
                 <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
                 <span>
-                  Запомнить телефон и адрес для следующих заказов
+                  {pickup ? 'Запомнить телефон для следующих заказов' : 'Запомнить телефон и адрес для следующих заказов'}
                   <small>Сохранятся в профиле — их можно изменить в личном кабинете</small>
                 </span>
               </label>
@@ -288,40 +418,48 @@ export default function Checkout() {
               <span className="chk-step" aria-hidden="true">3</span>
               <h2 id="chk-payment">Оплата</h2>
             </div>
-            <div className="chk-pay" role="radiogroup" aria-labelledby="chk-payment">
-              {Object.entries(PAYMENT_METHOD).map(([value, label]) => (
-                <label key={value} className={`chk-pay__option ${form.paymentMethod === value ? 'is-active' : ''}`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value={value}
-                    checked={form.paymentMethod === value}
-                    onChange={set('paymentMethod')}
-                  />
-                  <span className="chk-pay__dot" aria-hidden="true" />
-                  <span className="chk-pay__title">{label}</span>
-                  <span className="chk-pay__desc">{PAYMENT_HINT[value] ?? 'Как оплатить, подскажет менеджер'}</span>
-                </label>
-              ))}
-            </div>
+            {nothingToPay ? (
+              <p className="chk-note chk-note--ok">Скидки и монеты покрывают весь заказ — оплачивать ничего не нужно.</p>
+            ) : (
+              <div className="chk-pay" role="radiogroup" aria-labelledby="chk-payment">
+                {payMethods.map(([value, label]) => (
+                  <label key={value} className={`chk-pay__option ${form.paymentMethod === value ? 'is-active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={value}
+                      checked={form.paymentMethod === value}
+                      onChange={set('paymentMethod')}
+                    />
+                    <span className="chk-pay__dot" aria-hidden="true" />
+                    <span className="chk-pay__title">{label}</span>
+                    <span className="chk-pay__desc">{PAYMENT_HINT[value] ?? 'Как оплатить, подскажет менеджер'}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </section>
         </div>
 
         <aside className="site-surface chk-summary" aria-labelledby="chk-summary-title">
           <h2 id="chk-summary-title">Ваш заказ</h2>
           <ul className="chk-items">
-            {cart.items.map((i) => (
-              <li key={i.variantId}>
-                <span className="chk-items__name">
-                  <span>{i.name}</span>
-                  <span className="chk-items__qty">
-                    {i.quantity} шт.
-                    {i.photos.length > 0 && <span className="chk-items__photos"> · фото: {i.photos.length}</span>}
+            {items.map((i) => {
+              const pct = tierPercent(i.tiers, i.quantity);
+              return (
+                <li key={i.variantId}>
+                  <span className="chk-items__name">
+                    <span>{i.name}</span>
+                    <span className="chk-items__qty">
+                      {i.quantity} шт.
+                      {pct > 0 && ` · −${percentLabel(pct)}% за количество`}
+                      {i.photos.length > 0 && <span className="chk-items__photos"> · фото: {i.photos.length}</span>}
+                    </span>
                   </span>
-                </span>
-                <span className="chk-money">{money(i.price * i.quantity)}</span>
-              </li>
-            ))}
+                  <span className="chk-money">{money(itemTotal(i))}</span>
+                </li>
+              );
+            })}
           </ul>
 
           <div className="chk-extra">
@@ -352,8 +490,8 @@ export default function Checkout() {
                     Убрать
                   </button>
                 ) : (
-                  <button type="button" className="btn btn--ghost" onClick={applyPromo}>
-                    Применить
+                  <button type="button" className="btn btn--ghost" onClick={applyPromo} disabled={promoBusy}>
+                    {promoBusy ? 'Проверяем…' : 'Применить'}
                   </button>
                 )}
               </div>
@@ -362,7 +500,7 @@ export default function Checkout() {
                   {promoError}
                 </p>
               )}
-              {promo && <p className="chk-applied">Промокод {promo.code} применён</p>}
+              {promo && <p className="chk-applied">Промокод {promo.code} принят</p>}
             </div>
 
             {coinsBalance > 0 && (
@@ -381,18 +519,24 @@ export default function Checkout() {
                     step={1}
                     placeholder="0"
                     aria-describedby="coins-hint"
+                    aria-invalid={coinsOver || undefined}
                     value={coinsInput}
                     onChange={(e) => setCoinsInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') e.preventDefault(); // случайный Enter не оформляет заказ
-                  }}
+                    onBlur={() => {
+                      if (coinsInput !== '') setCoinsInput(coinsUsed ? String(coinsUsed) : '');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.preventDefault(); // случайный Enter не оформляет заказ
+                    }}
                   />
                   <button type="button" className="btn btn--ghost" onClick={() => setCoinsInput(String(maxCoins))} disabled={!maxCoins}>
                     Все {maxCoins}
                   </button>
                 </div>
-                <p className="field__hint" id="coins-hint">
-                  1 монета = 1 сомони.
+                <p className={`field__hint${coinsOver ? ' chk-hint--warn' : ''}`} id="coins-hint" aria-live="polite">
+                  {coinsOver
+                    ? `Можно списать максимум ${maxCoins} — спишем ${maxCoins}.`
+                    : `1 монета = 1 сомони, максимум ${maxCoins}.`}
                 </p>
               </div>
             )}
@@ -401,19 +545,27 @@ export default function Checkout() {
           <div className="chk-rows">
             <div className="chk-row">
               <span>Товары</span>
-              <span className="chk-money">{money(cart.subtotal)}</span>
+              <span className="chk-money">{money(subtotal)}</span>
             </div>
-            {promo && (
+            {usePromo && promoDiscount > 0 && (
               <div className="chk-row chk-row--discount">
                 <span>Скидка {promo.code}</span>
-                <span className="chk-money">−{money(promoDiscount)}</span>
+                <span className="chk-money">−{money(discount)}</span>
               </div>
             )}
-            {combo && (
+            {useCombo && (
               <div className="chk-row chk-row--discount">
-                <span>Комбо «{nameOf(combo)}» {discountLabel(combo)}</span>
-                <span className="chk-money">−{money(comboDiscount)}</span>
+                <span>
+                  Комбо «{nameOf(combo)}» {discountLabel(combo)}
+                </span>
+                <span className="chk-money">−{money(discount)}</span>
               </div>
+            )}
+            {bothApply && (
+              <p className="chk-fine chk-discount-note">
+                Промокод и комбо не суммируются — применена более выгодная скидка
+                {usePromo ? ` (промокод ${promo.code})` : ` (комбо «${nameOf(combo)}»)`}.
+              </p>
             )}
             {coinsUsed > 0 && (
               <div className="chk-row chk-row--discount">
@@ -423,21 +575,58 @@ export default function Checkout() {
             )}
             <div className="chk-row">
               <span>Доставка</span>
-              <span className="chk-money">{city ? (delivery === 0 ? 'бесплатно' : money(delivery)) : 'самовывоз'}</span>
+              <span className="chk-money">
+                {pickup ? 'самовывоз' : city ? (delivery === 0 ? 'бесплатно' : money(delivery)) : 'выберите город'}
+              </span>
             </div>
             <div className="chk-row chk-row--total">
               <span>Итого</span>
               <span className="chk-total chk-money">{money(total)}</span>
             </div>
           </div>
-          <p className="chk-fine">Окончательную сумму рассчитает сервер при создании заказа.</p>
+          {prepay > 0 && (
+            <div className="chk-row chk-row--prepay">
+              <span>{prepayPct === 100 ? 'Оплата сразу после оформления' : `Предоплата ${prepayPct}% после оформления`}</span>
+              <span className="chk-money">{money(prepay)}</span>
+            </div>
+          )}
+          <p className="chk-fine">
+            {nothingToPay
+              ? 'К оплате 0 смн — менеджер позвонит, чтобы подтвердить заказ.'
+              : prepay > 0
+                ? prepayPct === 100
+                  ? 'После оформления покажем реквизиты — переведите сумму и загрузите чек.'
+                  : `После оформления покажем реквизиты: переведите предоплату и загрузите чек. Остаток ${money(total - prepay)} — до получения заказа.`
+                : 'Итоговую сумму подтвердит менеджер, когда позвонит уточнить заказ.'}
+          </p>
+
+          {misfit && (
+            <p className="chk-note chk-note--warn" role="alert">
+              Некоторые фото не подогнаны под форму стикера.{' '}
+              <Link to={buyNowItem && navState?.productId ? `/product/${navState.productId}` : '/cart'} className="text-link">
+                Подогнать
+              </Link>
+            </p>
+          )}
+          {photosLoading && <p className="chk-note">Загружаем сохранённые фото…</p>}
+          {!buyNowItem && cart.photosState === 'failed' && (
+            <p className="chk-note chk-note--warn" role="alert">
+              Не удалось прочитать сохранённые фото из браузера — без них они не прикрепятся к заказу. Обновите страницу
+              или добавьте фото в корзине заново.
+            </p>
+          )}
 
           <div ref={errorRef}>
             <ErrorBox error={error} />
           </div>
-          <button className="btn btn--primary btn--large btn--block chk-go" disabled={!!busyLabel}>
+          <button className="btn btn--primary btn--large btn--block chk-go" disabled={submitDisabled}>
             {busyLabel || 'Подтвердить заказ'}
           </button>
+          <p className="chk-fine chk-faq">
+            <Link to="/faq" className="text-link">
+              Условия возврата и FAQ
+            </Link>
+          </p>
         </aside>
 
         <div className="chk-bar">
@@ -445,7 +634,7 @@ export default function Checkout() {
             <span className="chk-bar__label">Итого</span>
             <span className="chk-bar__value chk-money">{money(total)}</span>
           </div>
-          <button className="btn btn--primary btn--large" disabled={!!busyLabel}>
+          <button className="btn btn--primary btn--large" disabled={submitDisabled}>
             {busyLabel || 'Подтвердить заказ'}
           </button>
         </div>

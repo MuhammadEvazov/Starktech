@@ -8,6 +8,9 @@ public class ComboOfferConfiguration : IEntityTypeConfiguration<ComboOffer>
 {
     public void Configure(EntityTypeBuilder<ComboOffer> builder)
     {
+        builder.ToTable(t =>
+            t.HasCheckConstraint("CK_ComboOffers_DiscountValue_NonNegative", "\"DiscountValue\" >= 0"));
+
         builder.Property(x => x.DiscountValue).HasColumnType("decimal(18,2)");
         builder.Property(x => x.ProductIdsJson).HasColumnType("jsonb");
 

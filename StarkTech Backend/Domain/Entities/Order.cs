@@ -42,10 +42,17 @@ public class Order : BaseEntity
     // Клиент что-то изменил (фото, кадр), а сотрудник ещё не отметил это просмотренным.
     public bool HasClientChanges { get; set; } = false;
 
+    // Оплата переводом: процент предоплаты (запоминается при оформлении), сколько уже принято
+    // по чекам и есть ли чек, который ждёт проверки.
+    public int PrepaymentPercent { get; set; }
+    public decimal PaidAmount { get; set; }
+    public bool HasPendingPaymentProof { get; set; }
+
     // Navigation
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
     public ICollection<CoinsTransaction> CoinsTransactions { get; set; } = new List<CoinsTransaction>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     public ICollection<OrderActivity> Activities { get; set; } = new List<OrderActivity>();
+    public ICollection<OrderPaymentProof> PaymentProofs { get; set; } = new List<OrderPaymentProof>();
 }

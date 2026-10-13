@@ -8,4 +8,5 @@ public class CreateProductResponseDto
     public string NameTj { get; set; } = default!;
     public string NameEn { get; set; } = default!;
     public decimal BasePrice { get; set; }
+    public List<QuantityTierDto> QuantityTiers { get; set; } = new();
 }

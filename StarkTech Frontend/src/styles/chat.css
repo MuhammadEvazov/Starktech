@@ -122,7 +122,7 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
 }
 .cht-chip.is-danger {
-  background: var(--cherry);
+  background: var(--cherry-strong);
   color: #fff;
 }
 
@@ -298,7 +298,7 @@
   gap: 4px;
   margin-top: 2px;
   font-size: 0.7rem;
-  opacity: 0.65;
+  opacity: 0.85; /* мелкий текст на кобальте — при .65 контраст ниже 4.5:1 */
   white-space: nowrap;
 }
 .cht-bubble.is-photo .cht-meta {
@@ -358,7 +358,7 @@
 }
 .cht-quote span {
   font-size: var(--t-xs);
-  opacity: 0.8;
+  opacity: 0.92;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -376,17 +376,18 @@
   background: rgba(255, 255, 255, 0.85);
   color: var(--ink-soft);
   cursor: pointer;
-  opacity: 0;
   transition: opacity 0.15s;
 }
-.cht-msg__row:hover .cht-more,
-.cht-more:focus-visible,
-.cht-more.is-open {
-  opacity: 1;
-}
-@media (hover: none) {
+/* На сенсорных экранах кнопка видна всегда; с мышью — при наведении или фокусе внутри сообщения.
+   Скрываем только прозрачностью: кнопка остаётся в порядке Tab и доступна скринридеру. */
+@media (hover: hover) and (pointer: fine) {
   .cht-more {
-    display: none;
+    opacity: 0;
+  }
+  .cht-msg__row:hover .cht-more,
+  .cht-msg:focus-within .cht-more,
+  .cht-more.is-open {
+    opacity: 1;
   }
 }
 .cht-menu {
@@ -397,7 +398,7 @@
   padding: 4px;
   border-radius: 14px;
   background: #fff;
-  box-shadow: 0 8px 22px -10px rgba(20, 22, 58, 0.45);
+  box-shadow: 0 8px 22px -10px var(--ink-a45);
   animation: cht-pop 0.14s ease-out;
 }
 .cht-menu button {
@@ -413,7 +414,7 @@
   background: #f1f2fa;
 }
 .cht-menu button.is-danger {
-  color: var(--cherry);
+  color: var(--cherry-strong);
 }
 @keyframes cht-pop {
   from {
@@ -480,7 +481,7 @@
   height: 20px;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--cherry);
+  background: var(--cherry-strong);
   color: #fff;
   font-size: 0.7rem;
   line-height: 20px;
@@ -502,7 +503,7 @@
 .cht-closed {
   margin: 0;
   padding: 8px 14px;
-  background: #fff6d6;
+  background: var(--lemon-tint);
   color: #7a5b00;
   font-size: var(--t-xs);
   text-align: center;
@@ -525,14 +526,14 @@
   border-left: 3px solid var(--cobalt);
 }
 .cht-bar.is-danger .cht-bar__text {
-  border-left-color: var(--cherry);
+  border-left-color: var(--cherry-strong);
 }
 .cht-bar__text strong {
   font-size: var(--t-xs);
   color: var(--cobalt-deep);
 }
 .cht-bar.is-danger .cht-bar__text strong {
-  color: var(--cherry);
+  color: var(--cherry-strong);
 }
 .cht-bar__text span {
   font-size: var(--t-sm);
@@ -555,8 +556,10 @@
   gap: 8px;
   margin: 0;
   padding: 8px 12px;
-  background: #fde3ea;
-  color: #9b1638;
+  background: var(--cherry-tint);
+  /* --cherry-strong на --cherry-tint даёт ~4.48:1 — чуть притемняем к --ink */
+  color: var(--cherry-strong);
+  color: color-mix(in srgb, var(--cherry-strong) 80%, var(--ink));
   font-size: var(--t-sm);
   flex: none;
 }
@@ -625,7 +628,7 @@
   padding: 8px;
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 14px 30px -12px rgba(20, 22, 58, 0.45);
+  box-shadow: 0 14px 30px -12px var(--ink-a45);
   animation: cht-pop 0.14s ease-out;
 }
 .cht-emoji button {
@@ -667,7 +670,7 @@
 .cht-lightbox {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-lightbox);
   display: grid;
   place-items: center;
   padding: 24px;
@@ -689,6 +692,20 @@
 }
 
 /* ════════ Виджет на сайте ════════ */
+.chat-fab.chatw {
+  z-index: var(--z-fab);
+}
+/* Фото открыто из виджета: .chat-fab — свой контекст наложения, поднимаем его целиком над модалками */
+.chat-fab.chatw:has(.cht-lightbox) {
+  z-index: var(--z-lightbox);
+}
+/* В DOM панель идёт после кнопки (порядок Tab), а на экране — над ней */
+.chatw-panel {
+  order: -1;
+}
+.chatw-panel:focus {
+  outline: none;
+}
 .chatw-toggle {
   position: relative;
   display: inline-flex;
@@ -703,7 +720,7 @@
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--cherry);
+  background: var(--cherry-strong);
   color: #fff;
   font-size: 0.75rem;
   line-height: 22px;
@@ -821,13 +838,17 @@
 }
 
 @media (max-width: 559px) {
+  /* Полноэкранная панель: поднимаем весь .chat-fab (у него свой контекст наложения) до слоя оверлеев */
+  .chat-fab.chatw.is-open {
+    z-index: var(--z-overlay);
+  }
   .chatw.is-open .chatw-panel {
     position: fixed;
     inset: 0;
     width: auto;
     height: 100dvh;
     border-radius: 0;
-    z-index: 60;
+    z-index: var(--z-overlay);
   }
   .chatw.is-open .chatw-toggle {
     display: none;
@@ -843,7 +864,7 @@
   border-radius: 18px;
   overflow: hidden;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.06), 0 16px 36px -24px rgba(20, 22, 58, 0.45);
+  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.06), 0 16px 36px -24px var(--ink-a45);
 }
 .achat-side {
   display: flex;
@@ -871,7 +892,7 @@
   height: 24px;
   padding: 0 7px;
   border-radius: 999px;
-  background: var(--cherry);
+  background: var(--cherry-strong);
   color: #fff;
   font: 700 0.78rem/24px var(--font-body);
   text-align: center;
@@ -910,12 +931,13 @@
   border: 0;
   border-radius: 999px;
   padding: 6px 11px;
-  background: #eef0f8;
+  background: var(--line-soft);
   color: var(--ink-soft);
   font: 600 var(--t-xs) var(--font-body);
   cursor: pointer;
 }
-.achat-filters button.is-active {
+.achat-filters button.is-active,
+.achat-filters button[aria-pressed='true'] {
   background: var(--ink);
   color: #fff;
 }
@@ -934,7 +956,7 @@
   text-align: center;
 }
 .achat-note.is-error {
-  color: var(--cherry);
+  color: var(--cherry-strong);
 }
 .achat-item {
   display: flex;
@@ -1115,7 +1137,7 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--cherry);
+  background: var(--cherry-strong);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
@@ -1132,4 +1154,33 @@
   .cht-msg.is-flash .cht-bubble {
     animation: none;
   }
+}
+
+/* Ошибка подгрузки истории / догрузки после переподключения — с кнопкой «Повторить» */
+.cht-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 6px auto;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--cherry-tint);
+  color: color-mix(in srgb, var(--cherry-strong) 80%, var(--ink));
+  font-size: var(--t-sm);
+  text-align: center;
+  list-style: none;
+}
+.cht-error .cht-notice__retry,
+.cht-notice__retry {
+  padding: 4px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  cursor: pointer;
 }

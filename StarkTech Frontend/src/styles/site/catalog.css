@@ -7,9 +7,6 @@
 .cat-page {
   padding-block: 32px 24px;
 }
-.cat-head {
-  margin-bottom: 24px;
-}
 
 .cat-bar {
   display: grid;
@@ -36,7 +33,7 @@
   min-height: 52px;
   padding: 12px 52px 12px 48px;
   border: 1.5px solid var(--site-line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--site-surface);
   font-size: var(--t-md);
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -91,37 +88,19 @@
 .cat-chips::-webkit-scrollbar {
   display: none;
 }
-.cat-chip {
+/* Сами чипы — общий .site-pill (foundation.css); здесь только раскладка ленты */
+.cat-chips > .site-pill {
   flex: 0 0 auto;
   scroll-snap-align: start;
-  min-height: 44px;
-  padding: 0 18px;
-  border: 1.5px solid var(--site-line);
-  border-radius: 999px;
-  background: var(--site-surface);
-  color: var(--ink);
-  font-weight: 600;
-  font-size: var(--t-sm);
   white-space: nowrap;
-  cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
 }
-.cat-chip:hover {
-  border-color: var(--ink);
-}
-.cat-chip[aria-pressed='true'] {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
-}
-.cat-chip:focus-visible {
-  border-radius: 999px;
-}
-.cat-chip--ghost {
+/* Заглушки чипов, пока грузятся категории */
+.cat-chips__ghost {
+  flex: 0 0 auto;
   width: 96px;
+  min-height: 44px;
+  border-radius: var(--radius-pill);
   background: var(--sheet);
-  border-color: transparent;
-  cursor: default;
 }
 
 /* Счётчик результатов */
@@ -200,7 +179,7 @@
 .cat-skel__line {
   height: 14px;
   width: 80%;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   margin-top: 6px;
 }
 .cat-skel__line--short {
@@ -330,7 +309,7 @@
 .pdp-media .gallery__thumb {
   flex-basis: 68px;
   height: 68px;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   opacity: 0.65;
 }
 .pdp-media .gallery__thumb.is-on {
@@ -368,7 +347,7 @@
 }
 .pdp-badge {
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--lemon);
   color: var(--ink);
   font-size: var(--t-xs);
@@ -384,7 +363,7 @@
 .pdp-note {
   padding: 16px 18px;
   border-radius: var(--site-radius);
-  background: #fff6d6;
+  background: var(--lemon-tint);
   font-size: var(--t-sm);
 }
 
@@ -425,7 +404,7 @@
   min-width: 56px;
   padding: 0 20px;
   border: 1.5px solid var(--site-line);
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   background: var(--site-surface);
   color: var(--ink);
   font-weight: 600;
@@ -444,7 +423,7 @@
   transform: rotate(-2deg);
 }
 .pdp-chip:focus-visible {
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   box-shadow: var(--focus);
 }
 
@@ -489,8 +468,8 @@
   align-items: center;
   gap: 5px;
   padding: 4px 10px;
-  border-radius: 999px;
-  background: #e6f5ed;
+  border-radius: var(--radius-pill);
+  background: var(--green-tint);
   color: var(--green);
   font-size: var(--t-xs);
   font-weight: 700;
@@ -509,24 +488,31 @@
 .pdp-photos .photo-picker__add {
   width: 92px;
   height: 92px;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
 }
 .pdp-photos .photo-picker__item img {
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   box-shadow: 0 0 0 1px var(--site-line), 0 6px 14px -8px rgba(20, 22, 58, 0.45);
 }
-.pdp-photos .photo-picker__item:nth-child(odd) img {
+.pdp-photos .pp-cell:nth-child(odd) .photo-picker__item img {
   transform: rotate(-2deg);
 }
-.pdp-photos .photo-picker__item:nth-child(even) img {
+.pdp-photos .pp-cell:nth-child(even) .photo-picker__item img {
   transform: rotate(2deg);
 }
-.pdp-photos .photo-picker__item button {
+.pdp-photos .photo-picker__item .photo-picker__remove {
   width: 32px;
   height: 32px;
   top: -10px;
   right: -10px;
   font-size: 16px;
+}
+/* Крестик выглядит на 32px, но ловит касание в зоне 44×44 */
+.pdp-photos .photo-picker__remove::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
 }
 .pdp-photos .photo-picker__add {
   gap: 4px;
@@ -551,7 +537,7 @@
   min-height: 56px;
   padding: 0 24px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--cobalt);
   color: var(--paper);
   font-weight: 700;
@@ -567,7 +553,11 @@
   transform: translateY(1px);
 }
 .pdp-cta__btn:focus-visible {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
+}
+/* Короткая подпись «В корзину · 1 250 смн» — только на узком телефоне */
+.pdp-cta__short {
+  display: none;
 }
 .pdp-sku {
   margin-top: -10px;
@@ -576,15 +566,16 @@
 }
 
 @media (max-width: 899px) {
+  /* высота липкой панели (10 + 52 + 10) плюс «чёлка» снизу у iPhone */
   .pdp-has-bar {
-    padding-bottom: 72px;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
   .pdp-cta {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 15;
+    z-index: var(--z-bar);
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(10px);
@@ -699,12 +690,12 @@
   font-weight: 700;
 }
 .pdp-review:nth-child(3n + 2) .pdp-review__avatar {
-  background: #fff1b8;
+  background: var(--lemon-tint);
   color: var(--ink);
 }
 .pdp-review:nth-child(3n) .pdp-review__avatar {
-  background: #fde0e7;
-  color: #a51d3e;
+  background: var(--cherry-tint);
+  color: var(--cherry-strong);
 }
 .pdp-review__body {
   display: grid;
@@ -790,7 +781,6 @@
     animation: none;
   }
   .cat-grid,
-  .cat-chip,
   .pdp-chip,
   .pdp-cta__btn {
     transition: none;
@@ -814,36 +804,64 @@
   display: grid;
   gap: 10px;
 }
+/* «Купить сейчас» — второстепенная: белая с контуром, чтобы не спорить с кобальтовой «В корзину» */
 .pdp-cta__buy {
   width: 100%;
   min-height: 56px;
   padding: 0 24px;
   border: 2px solid var(--ink);
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--paper);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
   font: inherit;
   font-weight: 700;
   font-size: var(--t-md);
   cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
-.pdp-cta__buy:hover {
-  background: #262a5e;
-  border-color: #262a5e;
+.pdp-cta__buy:hover:not(:disabled) {
+  background: var(--cobalt-tint);
+  border-color: var(--cobalt-deep);
+  color: var(--cobalt-deep);
 }
 .pdp-cta__buy:focus-visible {
   outline: none;
   box-shadow: var(--focus);
+}
+.pdp-cta__buy:disabled {
+  border-color: var(--line);
+  color: var(--ink-soft);
+  cursor: not-allowed;
+}
+.pdp-cta__btn,
+.pdp-cta__buy {
+  white-space: nowrap;
 }
 @media (max-width: 899px) {
   /* на телефоне обе кнопки в одну строку в липкой панели */
   .pdp-cta {
     grid-template-columns: 1.4fr 1fr;
   }
+  .pdp-cta__btn,
   .pdp-cta__buy {
     min-height: 52px;
     padding: 0 12px;
+    font-size: var(--t-sm);
+  }
+}
+@media (max-width: 480px) {
+  .pdp-cta__btn,
+  .pdp-cta__buy {
+    padding: 0 10px;
+    font-size: var(--t-xs);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pdp-cta__long {
+    display: none;
+  }
+  .pdp-cta__short {
+    display: inline;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -852,6 +870,23 @@
   }
 }
 
+/* С фото количество не выбирается степпером — это сумма стикеров у фото */
+.pdp-qty-total {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  background: var(--cobalt-tint);
+  color: var(--cobalt-deep);
+  font-weight: 700;
+  font-size: var(--t-lg);
+  font-variant-numeric: tabular-nums;
+}
+.pdp-photos .pp-copies {
+  width: 92px;
+}
 .pdp-qty-hint {
   margin: 8px 0 0;
   font-size: var(--t-sm);
@@ -886,4 +921,209 @@
 }
 .pdp-login__actions .btn {
   flex: 1 1 160px;
+}
+
+/* Подсказка «сначала добавьте фото» — на неё ссылаются кнопки покупки (aria-describedby) */
+.pdp-photos__need {
+  margin: 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--cherry-strong);
+}
+/* Кнопка «Сначала добавьте фото» переводит фокус на блок фото */
+.pdp-photos:focus {
+  outline: none;
+}
+.pdp-photos:focus-visible {
+  box-shadow: var(--focus);
+}
+
+/* Скелет страницы товара на время загрузки */
+.pdp-skel__body {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.pdp-skel__title {
+  height: 28px;
+  width: 85%;
+}
+.pdp-skel__price {
+  height: 44px;
+  width: 140px;
+  margin-top: 12px;
+}
+
+/* ════════════ Каталог в формате остальных разделов: баннер + панель фильтров ════════════ */
+.cat-hero {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  margin-bottom: 16px;
+  padding: 26px 22px;
+  border-radius: var(--site-radius-lg);
+  background:
+    radial-gradient(circle at 94% 0%, rgba(255, 216, 74, 0.55) 0 54px, transparent 55px),
+    radial-gradient(circle at 78% 120%, rgba(232, 53, 95, 0.45) 0 80px, transparent 81px),
+    linear-gradient(135deg, var(--cobalt) 0%, var(--cobalt-deep) 100%);
+  color: var(--paper);
+  overflow: hidden;
+  box-shadow: 0 18px 36px -22px rgba(29, 43, 176, 0.75);
+}
+.cat-hero__text {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.cat-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.cat-hero__lead {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--paper);
+  font-size: var(--t-md);
+  line-height: 1.5;
+}
+.cat-hero__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cat-hero__stat {
+  display: grid;
+  justify-items: center;
+  min-width: 104px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(10, 14, 80, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  text-align: center;
+}
+.cat-hero__stat b {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 1.1rem + 0.8vw, 1.7rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.cat-hero__stat small {
+  font-size: var(--t-xs);
+}
+
+/* Поиск и категории — одна белая панель на всю ширину */
+.cat-bar {
+  padding: 14px 16px;
+  border-radius: var(--site-radius-lg);
+  background: var(--site-surface);
+  box-shadow: var(--site-shadow);
+}
+.cat-bar .cat-chips {
+  margin-inline: -16px;
+  padding: 2px 16px 4px;
+}
+.cat-search {
+  max-width: none;
+}
+
+@media (min-width: 900px) {
+  .cat-hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 28px;
+    padding: 32px 36px;
+  }
+  .cat-bar {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+    padding: 14px 18px;
+  }
+  .cat-bar .cat-chips {
+    order: 0;
+    grid-column: auto;
+    margin-inline: 0;
+    padding: 0;
+  }
+}
+
+/* Сроки, доставка и скидки за количество на карточке товара */
+.pdp-ship {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+.pdp-ship li::before {
+  content: '•';
+  margin-right: 6px;
+  color: var(--cobalt);
+}
+.pdp-tiers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.pdp-tiers li {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--green-tint);
+  color: #135c39;
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+.pdp-tiers li.is-on {
+  background: #135c39;
+  color: var(--paper);
+}
+.pdp-tiers__sum {
+  margin: 8px 0 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pdp-tiers__next {
+  margin: 4px 0 0;
+  font-size: var(--t-sm);
+  color: #135c39;
+}
+.pdp-shape-fix {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Фото разной формы — отдельные позиции со своей ценой */
+.pdp-shape-split {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  list-style: none;
+  border-radius: var(--radius-sm);
+  background: var(--line-soft);
+  font-size: var(--t-sm);
+}
+.pdp-shape-split li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pdp-shape-split .is-total {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-weight: 700;
 }

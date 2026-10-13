@@ -34,7 +34,12 @@ export default function Prices() {
       <div className="pr-layout">
         <h1 className="site-title">Цены</h1>
         <p className="site-lead">
-          Цена указана за изделие с вашим фото. Изготовление {CONTACTS.leadTime}, доставка по всему Таджикистану.
+          Цена указана за изделие с вашим фото. Чем больше штук, тем ниже цена за каждую — пороги скидки видны на
+          странице товара. Изготовление {CONTACTS.leadTime}, доставка по всему Таджикистану.
+        </p>
+        <p className="pr-note">
+          Как оплатить, нужна ли предоплата и суммируются ли скидки — в разделе{' '}
+          <Link to="/faq#payment">«Оплата» в вопросах и ответах</Link>.
         </p>
 
         {loading ? (
@@ -64,12 +69,12 @@ export default function Prices() {
                 <ul className="pr-jump">
                   {liveCombos.length > 0 && (
                     <li>
-                      <a href="#pr-combos">Комбо-наборы</a>
+                      <a href="#pr-combos" className="site-pill">Комбо-наборы</a>
                     </li>
                   )}
                   {groups.map(({ cat }) => (
                     <li key={cat.id}>
-                      <a href={`#pr-cat-${cat.id}`}>{nameOf(cat)}</a>
+                      <a href={`#pr-cat-${cat.id}`} className="site-pill">{nameOf(cat)}</a>
                     </li>
                   ))}
                 </ul>

@@ -109,7 +109,10 @@ export const ordersApi = {
 
 export const orderPhotosApi = {
   list: (orderItemId) => http.get(`/api/order-items/${orderItemId}/photos`),
-  upload: (orderItemId, file) => http.upload(`/api/order-items/${orderItemId}/photos`, file),
+  // copies — сколько стикеров сделать с этого фото (по умолчанию 1)
+  upload: (orderItemId, file, copies) =>
+    http.upload(`/api/order-items/${orderItemId}/photos`, file, copies != null ? { extra: { copies } } : undefined),
+  updateCopies: (photoId, copies) => http.put(`/api/order-item-photos/${photoId}/copies`, { copies }),
   uploadPreview: (photoId, file) => http.upload(`/api/order-item-photos/${photoId}/edited-preview`, file),
   updateCrop: (photoId, cropDataJson) => http.put(`/api/order-item-photos/${photoId}/crop`, { cropDataJson }),
   remove: (photoId) => http.del(`/api/order-item-photos/${photoId}`),
@@ -165,4 +168,31 @@ export const chatApi = {
   sendPhoto: (id, file, { text, replyToId } = {}) =>
     http.upload(`/api/chat/conversations/${id}/attachments`, file, { extra: { text, replyToId } }),
   setClosed: (id, closed) => http.put(`/api/chat/conversations/${id}/closed`, { closed }),
+};
+
+// PaymentController — оплата переводом: реквизиты, чеки клиента, проверка чеков сотрудником.
+export const paymentsApi = {
+  settings: () => http.get('/api/payments/settings'),
+  updateSettings: (dto) => http.put('/api/payments/settings', dto),
+  myProofs: (orderId) => http.get(`/api/orders/my/${orderId}/payment-proofs`),
+  uploadProof: (orderId, file, { amount, comment } = {}) =>
+    http.upload(`/api/orders/my/${orderId}/payment-proofs`, file, { extra: { amount, comment } }),
+  proofs: (orderId) => http.get(`/api/orders/${orderId}/payment-proofs`),
+  approve: (proofId, amount) => http.post(`/api/payment-proofs/${proofId}/approve`, { amount }),
+  reject: (proofId, reason) => http.post(`/api/payment-proofs/${proofId}/reject`, { reason }),
+};
+
+// Согласование макета: менеджер загружает макет, клиент одобряет или просит правки.
+export const layoutsApi = {
+  list: (orderId) => http.get(`/api/orders/${orderId}/layouts`),
+  upload: (orderId, file, note) => http.upload(`/api/orders/${orderId}/layouts`, file, { extra: { note } }),
+  mine: (orderId) => http.get(`/api/orders/my/${orderId}/layouts`),
+  approve: (orderId, layoutId) => http.post(`/api/orders/my/${orderId}/layouts/${layoutId}/approve`),
+  requestChanges: (orderId, layoutId, comment) =>
+    http.post(`/api/orders/my/${orderId}/layouts/${layoutId}/request-changes`, { comment }),
+};
+
+/** Проверка промокода покупателем: { id, code, discountType, discountValue } или ошибка с понятным текстом. */
+export const promoCheckApi = {
+  validate: (code) => http.get('/api/promo-codes/validate', { code }),
 };

@@ -1,7 +1,9 @@
 using Application.Interfaces.Repositories;
 using Application.Result;
 using Application.Results;
+using Infrastructure.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using WebApi.Authorization;
 
@@ -54,8 +56,12 @@ public abstract class BaseController : ControllerBase
         {
             // Учётная запись без профиля (старый сбой регистрации): без профиля заказ сохранится
             // без владельца, и клиент не сможет открыть его и загрузить фото. Создаём профиль сразу.
-            var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
-            if (string.IsNullOrWhiteSpace(email))
+            // Профиль создаём только для реально существующего аккаунта Identity (не по одному claim'у
+            // из токена), а email берём из самого аккаунта.
+            var userManager = HttpContext.RequestServices.GetRequiredService<UserManager<AppUser>>();
+            var appUser = await userManager.FindByIdAsync(appUserId);
+            var email = appUser?.Email;
+            if (appUser == null || string.IsNullOrWhiteSpace(email))
                 return null;
 
             profile = Domain.Entities.User.Create(appUserId, email);

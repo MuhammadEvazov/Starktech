@@ -1,5 +1,5 @@
 import '../../styles/site/account.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from '../../lib/router.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { authApi } from '../../api/endpoints.js';
@@ -39,22 +39,24 @@ function AuthShell({ title, lead, children, footer }) {
   );
 }
 
-// Правила пароля из Program.cs (AddIdentity → options.Password)
-const PASSWORD_HINT = 'Минимум 6 символов: заглавная и строчная буква, цифра и символ, например Stark#2026';
+// Правила пароля из Program.cs (AddIdentity → options.Password: RequiredLength = 8)
+const PASSWORD_MIN = 8;
+const PASSWORD_HINT = 'Минимум 8 символов: заглавная и строчная буква, цифра и символ, например Stark#2026';
 const passwordProblems = (p) =>
   [
-    p.length < 6 && 'не короче 6 символов',
-    !/[A-Z]/.test(p) && 'заглавная буква',
-    !/[a-z]/.test(p) && 'строчная буква',
+    p.length < PASSWORD_MIN && 'не короче 8 символов',
+    // Identity проверяет char.IsUpper/IsLower/IsDigit/IsLetterOrDigit — буквы любого алфавита
+    !/\p{Lu}/u.test(p) && 'заглавная буква',
+    !/\p{Ll}/u.test(p) && 'строчная буква',
     !/\d/.test(p) && 'цифра',
-    !/[^A-Za-zА-Яа-я0-9]/.test(p) && 'символ (#, !, @…)',
+    !/[^\p{L}\p{N}]/u.test(p) && 'символ (#, !, @…)',
   ].filter(Boolean);
 
 // Те же правила, что в passwordProblems, — показываем их живым чек-листом под полем
 const PASSWORD_RULES = [
-  ['не короче 6 символов', '6+ символов'],
-  ['заглавная буква', 'Заглавная латинская'],
-  ['строчная буква', 'Строчная латинская'],
+  ['не короче 8 символов', '8+ символов'],
+  ['заглавная буква', 'Заглавная буква'],
+  ['строчная буква', 'Строчная буква'],
   ['цифра', 'Цифра'],
   ['символ (#, !, @…)', 'Символ #!@'],
 ];
@@ -79,6 +81,42 @@ export function PasswordRules({ password, id }) {
   );
 }
 
+// Слишком много попыток: 429 от ограничителя частоты или блокировка аккаунта после неудачных входов.
+const isTooMany = (err) => err?.status === 429 || (err?.messages ?? []).some((m) => /слишком много/i.test(m));
+const COOLDOWN_SEC = 30;
+
+/** Пауза после 429: кнопка отправки неактивна и показывает обратный отсчёт. */
+function useCooldown() {
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    if (left <= 0) return undefined;
+    const t = setTimeout(() => setLeft((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [left]);
+  return [left, (err) => err?.status === 429 && setLeft(COOLDOWN_SEC)];
+}
+
+/** Ошибка формы входа/регистрации; для «слишком много попыток» — понятное пояснение и ссылка на сброс пароля. */
+function AuthError({ error, withReset = false }) {
+  if (!error) return null;
+  if (!isTooMany(error)) return <ErrorBox error={error} />;
+  return (
+    <div className="error-box auth-limit" role="alert">
+      {(error.messages ?? ['Слишком много попыток. Подождите немного и попробуйте снова.']).map((m, i) => (
+        <p key={i}>{m}</p>
+      ))}
+      <p className="auth-limit__hint">
+        Это защита от подбора пароля.{' '}
+        {withReset && (
+          <Link to="/forgot-password" className="auth-switch">
+            Восстановить пароль
+          </Link>
+        )}
+      </p>
+    </div>
+  );
+}
+
 export function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -87,9 +125,11 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [cooldown, startCooldown] = useCooldown();
 
   const submit = async (e) => {
     e.preventDefault();
+    if (cooldown > 0) return;
     setBusy(true);
     setError(null);
     try {
@@ -98,6 +138,7 @@ export function Login() {
       navigate(state?.from || (isStaff ? '/admin' : '/account'), { replace: true });
     } catch (err) {
       setError(err);
+      startCooldown(err);
     } finally {
       setBusy(false);
     }
@@ -127,13 +168,13 @@ export function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <Link to="/forgot-password" className="auth-forgot">
+          <Link to="/forgot-password" state={state} className="auth-forgot">
             Забыли пароль?
           </Link>
         </div>
-        <ErrorBox error={error} />
-        <button className="btn btn--primary btn--block auth-submit" disabled={busy}>
-          {busy ? 'Входим…' : 'Войти'}
+        <AuthError error={error} withReset />
+        <button className="btn btn--primary btn--block auth-submit" disabled={busy || cooldown > 0}>
+          {busy ? 'Входим…' : cooldown > 0 ? `Повторить через ${cooldown} с` : 'Войти'}
         </button>
       </form>
     </AuthShell>
@@ -150,22 +191,44 @@ export function Register() {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const problems = form.password ? passwordProblems(form.password) : [];
   const mismatch = form.confirmPassword && form.confirmPassword !== form.password;
+  const [cooldown, startCooldown] = useCooldown();
+  // Аккаунт создан, но автоматический вход не удался — повторная регистрация не нужна, только вход.
+  const [created, setCreated] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
-    if (problems.length || mismatch) return;
+    if (cooldown > 0) return;
+    if (problems.length) return setError({ messages: [`Пароль: не хватает — ${problems.join(', ')}.`] });
+    if (form.password !== form.confirmPassword) return setError({ messages: ['Пароли не совпадают.'] });
     setBusy(true);
     setError(null);
     try {
       await authApi.register(form);
-      await login(form.email.trim(), form.password);
-      navigate(state?.from || '/account', { replace: true });
     } catch (err) {
       setError(err);
+      startCooldown(err);
+      setBusy(false);
+      return;
+    }
+    try {
+      await login(form.email.trim(), form.password);
+      navigate(state?.from || '/account', { replace: true });
+    } catch {
+      setCreated(true);
     } finally {
       setBusy(false);
     }
   };
+
+  if (created) {
+    return (
+      <AuthShell title="Аккаунт создан" lead="Аккаунт создан, но войти автоматически не получилось. Войдите с вашим email и паролем.">
+        <Link to="/login" state={state} className="btn btn--primary btn--block auth-submit">
+          Войти
+        </Link>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell
@@ -186,6 +249,7 @@ export function Register() {
         <Input
           label="Телефон"
           type="tel"
+          inputMode="tel"
           required
           placeholder="+992 90 000 00 00"
           value={form.phoneNumber}
@@ -215,9 +279,9 @@ export function Register() {
           onChange={set('confirmPassword')}
           error={mismatch ? 'Пароли не совпадают' : null}
         />
-        <ErrorBox error={error} />
-        <button className="btn btn--primary btn--block auth-submit" disabled={busy}>
-          {busy ? 'Создаём аккаунт…' : 'Создать аккаунт'}
+        <AuthError error={error} />
+        <button className="btn btn--primary btn--block auth-submit" disabled={busy || cooldown > 0}>
+          {busy ? 'Создаём аккаунт…' : cooldown > 0 ? `Повторить через ${cooldown} с` : 'Создать аккаунт'}
         </button>
       </form>
     </AuthShell>
@@ -232,13 +296,42 @@ const RESET_STEPS = [
 
 export function ForgotPassword() {
   const navigate = useNavigate();
+  // Откуда пришли на вход (state.from) — передаём дальше, чтобы после входа вернуться туда же.
+  const { state } = useLocation();
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
+  const [resetToken, setResetToken] = useState('');
   const [pw, setPw] = useState({ newPassword: '', confirmPassword: '' });
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  // Сообщение «код отправлен повторно» на шаге ввода кода
+  const [resent, setResent] = useState(false);
+
+  // Повторная отправка кода тем же запросом, что и на первом шаге
+  const resend = async () => {
+    setBusy(true);
+    setError(null);
+    setResent(false);
+    try {
+      await authApi.sendResetCode(email.trim());
+      setCode('');
+      setResent(true);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeEmail = () => {
+    setError(null);
+    setResent(false);
+    setCode('');
+    setResetToken('');
+    setStep('email');
+  };
 
   const run = (fn) => async (e) => {
     e.preventDefault();
@@ -259,7 +352,7 @@ export function ForgotPassword() {
   if (done) {
     return (
       <AuthShell title="Пароль изменён" lead="Готово! Теперь можно войти с новым паролем.">
-        <button className="btn btn--primary btn--block auth-submit" onClick={() => navigate('/login')}>
+        <button className="btn btn--primary btn--block auth-submit" onClick={() => navigate('/login', { state })}>
           Войти
         </button>
       </AuthShell>
@@ -277,7 +370,7 @@ export function ForgotPassword() {
       title="Восстановление пароля"
       lead={leads[step]}
       footer={
-        <Link to="/login" className="auth-switch">
+        <Link to="/login" state={state} className="auth-switch">
           Вернуться ко входу
         </Link>
       }
@@ -300,7 +393,7 @@ export function ForgotPassword() {
       {step === 'email' && (
         <form className="auth-form" onSubmit={run(async () => { await authApi.sendResetCode(email.trim()); setStep('code'); })}>
           <Input label="Email аккаунта" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <ErrorBox error={error} />
+          <AuthError error={error} />
           <button className="btn btn--primary btn--block auth-submit" disabled={busy}>
             {busy ? 'Отправляем…' : 'Отправить код'}
           </button>
@@ -309,8 +402,11 @@ export function ForgotPassword() {
 
       {step === 'code' && (
         <form className="auth-form" onSubmit={run(async () => {
-          const ok = await authApi.verifyResetCode(email.trim(), code.trim());
-          if (ok === false) throw new Error('Неверный или просроченный код.');
+          // Сервер возвращает одноразовый resetToken — без него сброс пароля не пройдёт.
+          const res = await authApi.verifyResetCode(email.trim(), code.trim());
+          const token = res?.resetToken;
+          if (res === false || !token) throw new Error('Неверный или просроченный код.');
+          setResetToken(token);
           setStep('password');
         })}>
           <Input
@@ -322,17 +418,31 @@ export function ForgotPassword() {
             value={code}
             onChange={(e) => setCode(e.target.value)}
           />
-          <ErrorBox error={error} />
+          {resent && (
+            <p className="auth-resent" role="status">
+              Новый код отправлен на {email}. Предыдущий код больше не подойдёт.
+            </p>
+          )}
+          <AuthError error={error} />
           <button className="btn btn--primary btn--block auth-submit" disabled={busy}>
             {busy ? 'Проверяем…' : 'Проверить код'}
           </button>
+          <div className="auth-alt">
+            <button type="button" className="auth-alt__btn" onClick={resend} disabled={busy}>
+              Отправить код ещё раз
+            </button>
+            <button type="button" className="auth-alt__btn" onClick={changeEmail} disabled={busy}>
+              Изменить email
+            </button>
+          </div>
         </form>
       )}
 
       {step === 'password' && (
         <form className="auth-form" onSubmit={run(async () => {
           if (problems.length) throw new Error(`Не хватает: ${problems.join(', ')}`);
-          await authApi.resetPassword({ email: email.trim(), ...pw });
+          if (pw.newPassword !== pw.confirmPassword) throw new Error('Пароли не совпадают.');
+          await authApi.resetPassword({ email: email.trim(), resetToken, ...pw });
           setDone(true);
         })}>
           <div className="auth-form__pw">
@@ -357,7 +467,7 @@ export function ForgotPassword() {
             onChange={(e) => setPw((p) => ({ ...p, confirmPassword: e.target.value }))}
             error={pw.confirmPassword && pw.confirmPassword !== pw.newPassword ? 'Пароли не совпадают' : null}
           />
-          <ErrorBox error={error} />
+          <AuthError error={error} />
           <button className="btn btn--primary btn--block auth-submit" disabled={busy}>
             {busy ? 'Сохраняем…' : 'Сохранить пароль'}
           </button>

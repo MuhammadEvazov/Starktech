@@ -6,6 +6,8 @@ using Application.Results;
 using Domain.Entities;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Npgsql;
 
 namespace Infrastructure.Services;
 
@@ -13,11 +15,23 @@ public class ChatService : IChatService
 {
     private const int MaxTextLength = 4000;
     private readonly AppDbContext _context;
+    private readonly IFileService _fileService;
+    private readonly ILogger<ChatService> _logger;
 
-    public ChatService(AppDbContext context)
+    public ChatService(AppDbContext context, IFileService fileService, ILogger<ChatService> logger)
     {
         _context = context;
+        _fileService = fileService;
+        _logger = logger;
     }
+
+    // Нарушение уникального индекса PostgreSQL (23505)
+    private static bool IsUniqueViolation(DbUpdateException ex)
+        => ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+
+    // Экранирует спецсимволы шаблона LIKE (\ % _), экранирующий символ — обратный слэш
+    private static string EscapeLike(string value)
+        => value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 
     private static readonly Expression<Func<ChatConversation, ChatConversationDto>> ToConversationDto = c => new ChatConversationDto
     {
@@ -94,7 +108,7 @@ public class ChatService : IChatService
         {
             await _context.SaveChangesAsync();
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
             // Две вкладки открыли чат одновременно — переписка уже создана другим запросом.
             _context.Entry(conversation).State = EntityState.Detached;
@@ -122,11 +136,11 @@ public class ChatService : IChatService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var pattern = $"%{search.Trim()}%";
+            var pattern = $"%{EscapeLike(search.Trim())}%";
             query = query.Where(c =>
-                EF.Functions.ILike(c.Customer.FullName, pattern) ||
-                EF.Functions.ILike(c.Customer.Email, pattern) ||
-                (c.Customer.PhoneNumber != null && EF.Functions.ILike(c.Customer.PhoneNumber, pattern)));
+                EF.Functions.ILike(c.Customer.FullName, pattern, "\\") ||
+                EF.Functions.ILike(c.Customer.Email, pattern, "\\") ||
+                (c.Customer.PhoneNumber != null && EF.Functions.ILike(c.Customer.PhoneNumber, pattern, "\\")));
         }
 
         var total = await query.CountAsync();
@@ -186,8 +200,7 @@ public class ChatService : IChatService
         if (text?.Length > MaxTextLength)
             return Result<ChatMessageDto>.Fail($"Сообщение длиннее {MaxTextLength} символов", ErrorType.Validation);
 
-        var conversation = await _context.Set<ChatConversation>().FirstOrDefaultAsync(c => c.Id == conversationId);
-        if (conversation == null)
+        if (!await _context.Set<ChatConversation>().AnyAsync(c => c.Id == conversationId))
             return Result<ChatMessageDto>.Fail("Conversation not found", ErrorType.NotFound);
 
         if (replyToId.HasValue &&
@@ -209,13 +222,32 @@ public class ChatService : IChatService
         };
         _context.Add(message);
 
-        conversation.LastMessageAt = message.CreatedAt;
-        conversation.LastMessagePreview = Preview(text, attachmentUrl != null, false);
-        conversation.IsClosed = false; // новое сообщение снова открывает переписку
-        if (fromStaff) conversation.UnreadByCustomer++;
-        else conversation.UnreadByStaff++;
+        var lastAt = message.CreatedAt;
+        var preview = Preview(text, attachmentUrl != null, false);
 
-        await _context.SaveChangesAsync();
+        // Сообщение и счётчики — в одной транзакции; счётчик увеличиваем атомарно на стороне БД (+1),
+        // чтобы параллельные сообщения не теряли инкременты.
+        await using (var tx = await _context.Database.BeginTransactionAsync())
+        {
+            await _context.SaveChangesAsync();
+
+            var conversations = _context.Set<ChatConversation>().Where(c => c.Id == conversationId);
+            if (fromStaff)
+                await conversations.ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.LastMessageAt, lastAt)
+                    .SetProperty(c => c.LastMessagePreview, preview)
+                    .SetProperty(c => c.IsClosed, false) // новое сообщение снова открывает переписку
+                    .SetProperty(c => c.UnreadByCustomer, c => c.UnreadByCustomer + 1));
+            else
+                await conversations.ExecuteUpdateAsync(s => s
+                    .SetProperty(c => c.LastMessageAt, lastAt)
+                    .SetProperty(c => c.LastMessagePreview, preview)
+                    .SetProperty(c => c.IsClosed, false)
+                    .SetProperty(c => c.UnreadByStaff, c => c.UnreadByStaff + 1));
+
+            await tx.CommitAsync();
+        }
+
         return Result<ChatMessageDto>.Ok(await LoadMessageAsync(message.Id));
     }
 
@@ -251,19 +283,37 @@ public class ChatService : IChatService
         if (message.SenderId != senderId)
             return Result<ChatMessageDto>.Fail("Можно удалять только свои сообщения", ErrorType.Forbidden);
 
+        var attachmentUrl = message.AttachmentUrl;
         message.IsDeleted = true;
         message.Text = null;
+        message.AttachmentUrl = null;
         var conversation = message.Conversation;
-        // Непрочитанное удалённое сообщение больше не ждёт ответа.
-        if (message.ReadAt == null)
-        {
-            if (message.IsFromStaff) conversation.UnreadByCustomer = Math.Max(0, conversation.UnreadByCustomer - 1);
-            else conversation.UnreadByStaff = Math.Max(0, conversation.UnreadByStaff - 1);
-        }
         if (conversation.LastMessageAt == message.CreatedAt)
             conversation.LastMessagePreview = Preview(null, false, true);
 
-        await _context.SaveChangesAsync();
+        await using (var tx = await _context.Database.BeginTransactionAsync())
+        {
+            await _context.SaveChangesAsync();
+
+            // Непрочитанное удалённое сообщение больше не ждёт ответа — уменьшаем счётчик атомарно, не ниже нуля.
+            if (message.ReadAt == null)
+            {
+                var conversations = _context.Set<ChatConversation>().Where(c => c.Id == conversation.Id);
+                if (message.IsFromStaff)
+                    await conversations.ExecuteUpdateAsync(s => s
+                        .SetProperty(c => c.UnreadByCustomer, c => c.UnreadByCustomer > 0 ? c.UnreadByCustomer - 1 : 0));
+                else
+                    await conversations.ExecuteUpdateAsync(s => s
+                        .SetProperty(c => c.UnreadByStaff, c => c.UnreadByStaff > 0 ? c.UnreadByStaff - 1 : 0));
+            }
+
+            await tx.CommitAsync();
+        }
+
+        // Файл вложения удаляем после успешного коммита
+        if (!string.IsNullOrWhiteSpace(attachmentUrl) && !await _fileService.DeleteAsync(attachmentUrl))
+            _logger.LogWarning("Attachment file of deleted chat message {MessageId} was not removed", message.Id);
+
         return Result<ChatMessageDto>.Ok(await LoadMessageAsync(message.Id));
     }
 

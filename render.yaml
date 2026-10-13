@@ -1,0 +1,87 @@
+# Render Blueprint: API StarkTech + PostgreSQL + Key Value (Redis) + постоянный диск для фото.
+# Как применить: Render Dashboard → New → Blueprint → выбрать этот репозиторий. Подробности — DEPLOY.md.
+# Секреты здесь НЕ хранятся: поля с sync: false Render попросит заполнить при создании.
+
+services:
+  - type: web
+    name: starktech-api
+    runtime: docker
+    # Пути — от корня репозитория (папка с пробелом в кавычках)
+    dockerContext: "./StarkTech Backend"
+    dockerfilePath: "./StarkTech Backend/Dockerfile"
+    # Пересобирать API только при изменениях бэкенда
+    buildFilter:
+      paths:
+        - "StarkTech Backend/**"
+    # Бесплатный план: засыпает через 15 минут без запросов (первый запрос после сна ~1 минута),
+    # постоянного диска нет — поэтому файлы хранятся в S3-хранилище (Storage__*, см. ниже и DEPLOY.md).
+    # Перейти на платный: plan: starter (и при желании вернуть диск вместо S3).
+    plan: free
+    region: frankfurt        # ближайший к Душанбе регион Render
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # Базы — внутренние адреса Render (Program.cs переводит URL в нужный формат)
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: starktech-db
+          property: connectionString
+      - key: ConnectionStrings__Redis
+        fromService:
+          type: keyvalue
+          name: starktech-redis
+          property: connectionString
+      # Подпись JWT — Render сгенерирует случайный ключ
+      - key: JWT__Key
+        generateValue: true
+      # Миграции применяются при старте API; за прокси Render — доверяем X-Forwarded-*
+      - key: Database__MigrateOnStartup
+        value: "true"
+      - key: Proxy__TrustForwardedHeaders
+        value: "true"
+      # Адрес сайта на Vercel, например https://starktech.tj или https://starktech.vercel.app
+      - key: Cors__Origins__0
+        sync: false
+      # Превью-деплои Vercel, например -muhammadevazovs-projects.vercel.app
+      - key: Cors__OriginSuffixes__0
+        sync: false
+      # Суперадмин создаётся при первом запуске
+      - key: Seed__SuperAdminEmail
+        sync: false
+      - key: Seed__SuperAdminPassword
+        sync: false
+      # Пароль приложения Gmail для писем (сброс пароля)
+      - key: EmailSettings__Password
+        sync: false
+      # Файлы (фото заказов, чеки, макеты, аватары) — в S3-хранилище (Supabase Storage / Cloudflare R2 / Backblaze B2)
+      - key: Storage__Provider
+        value: s3
+      - key: Storage__S3__ServiceUrl
+        sync: false
+      - key: Storage__S3__Region
+        sync: false
+      - key: Storage__S3__Bucket
+        sync: false
+      - key: Storage__S3__AccessKey
+        sync: false
+      - key: Storage__S3__SecretKey
+        sync: false
+      - key: Storage__S3__PublicBaseUrl
+        sync: false
+
+  - type: keyvalue
+    name: starktech-redis
+    plan: free
+    region: frankfurt
+    ipAllowList: []          # доступ только изнутри сети Render
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  # Бесплатная база Render живёт 30 дней (потом её нужно перевести на платный план, иначе удалится).
+  # Чтобы не терять данные — переходите на basic-256mb до конца срока или используйте бесплатный Neon (DEPLOY.md).
+  - name: starktech-db
+    plan: free
+    region: frankfurt
+    databaseName: starktech
+    ipAllowList: []          # доступ только изнутри сети Render

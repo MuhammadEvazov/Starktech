@@ -1,0 +1,12 @@
+# Не отправляем в образ сборки, логи, локальные загрузки и настройки IDE
+**/bin/
+**/obj/
+**/Logs/
+WebApi/wwwroot/uploads/
+.vs/
+.vscode/
+.idea/
+*.user
+docker-compose.yml
+.env
+*.env

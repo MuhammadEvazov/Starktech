@@ -31,6 +31,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Город доставки по умолчанию: удаление города обнуляет ссылку у клиентов
+        builder.HasOne<DeliveryCity>()
+            .WithMany()
+            .HasForeignKey(x => x.DefaultDeliveryCityId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(x => x.DefaultDeliveryCityId);
+
         builder.HasOne(x => x.TelegramBinding)
             .WithOne(x => x.User)
             .HasForeignKey<AdminTelegramBinding>(x => x.UserId)

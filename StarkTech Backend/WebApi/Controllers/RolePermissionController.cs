@@ -14,10 +14,12 @@ namespace WebApi.Controllers;
 public class RolePermissionController : BaseController
 {
     private readonly IRolePermissionService _rolePermissionService;
+    private readonly ILogger<RolePermissionController> _logger;
 
-    public RolePermissionController(IRolePermissionService rolePermissionService)
+    public RolePermissionController(IRolePermissionService rolePermissionService, ILogger<RolePermissionController> logger)
     {
         _rolePermissionService = rolePermissionService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -38,6 +40,9 @@ public class RolePermissionController : BaseController
     public async Task<IActionResult> SetPermission(SetRolePermissionDto dto)
     {
         var result = await _rolePermissionService.SetPermissionAsync(dto);
+        if (result.IsSuccess)
+            _logger.LogWarning("Permission {Permission} for role {Role} set to {IsGranted} by {CallerId}",
+                dto.PermissionKey, dto.Role, dto.IsGranted, GetCurrentUserId());
         return HandleResult(result);
     }
 }

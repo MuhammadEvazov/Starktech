@@ -7,6 +7,7 @@ public class GetOrderItemPhotoDto
     public string OriginalPhotoUrl { get; set; } = default!;
     public string? EditedPreviewUrl { get; set; }
     public string? CropDataJson { get; set; }
+    public int Copies { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; }
 }

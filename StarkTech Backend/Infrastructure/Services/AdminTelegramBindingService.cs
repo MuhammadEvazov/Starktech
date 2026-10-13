@@ -17,6 +17,7 @@ public class AdminTelegramBindingService : IAdminTelegramBindingService
     private readonly ILogger<AdminTelegramBindingService> _logger;
 
     private static readonly TimeSpan LinkCodeTtl = TimeSpan.FromMinutes(10);
+    private const int MaxConfirmAttempts = 5;
 
     public AdminTelegramBindingService(
         IAdminTelegramBindingRepository bindingRepository,
@@ -59,7 +60,7 @@ public class AdminTelegramBindingService : IAdminTelegramBindingService
         if (!await _userRepository.ExistsAsync(dto.UserId))
             return Result<InitiateLinkResponseDto>.Fail("User not found", ErrorType.NotFound);
 
-        var code = Random.Shared.Next(100_000, 999_999).ToString();
+        var code = System.Security.Cryptography.RandomNumberGenerator.GetInt32(100_000, 1_000_000).ToString();
         var key = LinkCodeKey(code);
 
         await _cache.SetStringAsync(key, dto.UserId.ToString(), new DistributedCacheEntryOptions
@@ -76,13 +77,40 @@ public class AdminTelegramBindingService : IAdminTelegramBindingService
         });
     }
 
-    public async Task<Result<GetAdminTelegramBindingDto>> ConfirmLinkAsync(ConfirmLinkDto dto)
+    public async Task<Result<GetAdminTelegramBindingDto>> ConfirmLinkAsync(ConfirmLinkDto dto, string? callerId = null)
     {
-        var key = LinkCodeKey(dto.Code);
-        var userIdString = await _cache.GetStringAsync(key);
+        // Не больше MaxConfirmAttempts неверных кодов за окно LinkCodeTtl с одного аккаунта (и с одного chatId) —
+        // перебрать 6-значный код не получится.
+        var attemptKeys = new[]
+        {
+            $"TelegramLinkAttempts:caller:{callerId ?? "anonymous"}",
+            $"TelegramLinkAttempts:chat:{dto.TelegramChatId}"
+        };
+
+        foreach (var attemptKey in attemptKeys)
+        {
+            if (int.TryParse(await _cache.GetStringAsync(attemptKey), out var n) && n >= MaxConfirmAttempts)
+                return Result<GetAdminTelegramBindingDto>.Fail(
+                    "Слишком много неверных кодов. Подождите 10 минут и запросите новый код.", ErrorType.Validation);
+        }
+
+        var key = LinkCodeKey((dto.Code ?? string.Empty).Trim());
+        var userIdString = string.IsNullOrWhiteSpace(dto.Code) ? null : await _cache.GetStringAsync(key);
 
         if (userIdString == null || !Guid.TryParse(userIdString, out var userId))
-            return Result<GetAdminTelegramBindingDto>.Fail("Invalid or expired code", ErrorType.Validation);
+        {
+            foreach (var attemptKey in attemptKeys)
+            {
+                var current = int.TryParse(await _cache.GetStringAsync(attemptKey), out var n) ? n : 0;
+                await _cache.SetStringAsync(attemptKey, (current + 1).ToString(), new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = LinkCodeTtl
+                });
+            }
+
+            _logger.LogWarning("Invalid Telegram link code attempt by {CallerId}", callerId);
+            return Result<GetAdminTelegramBindingDto>.Fail("Неверный или просроченный код.", ErrorType.Validation);
+        }
 
         var existingByChatId = await _bindingRepository.GetByChatIdAsync(dto.TelegramChatId);
         if (existingByChatId != null && existingByChatId.UserId != userId)

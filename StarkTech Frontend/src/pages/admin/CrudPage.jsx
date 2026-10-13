@@ -32,6 +32,7 @@ export default function CrudPage({
   headerActions, // доп. кнопки в шапке рядом с «Добавить»
   reloadKey, // смена значения перезагружает список (например, после восстановления)
   deleteConfirm, // { title, text(row), action, done } — тексты окна удаления
+  validate, // (form, mode, item) => текст ошибки | массив текстов | null — проверка до отправки
 }) {
   const toast = useToast();
   const [query, setQuery] = useState({ page: 1, pageSize: 20 });
@@ -141,13 +142,19 @@ export default function CrudPage({
                     <td className="row-actions">
                       {rowActions?.(row, list.reload)}
                       {canEdit && (
-                        <button type="button" className="btn btn--small btn--ghost" onClick={() => setEditing({ mode: 'edit', item: row })}>
-                          Изменить
+                        <button
+                          type="button"
+                          className="icon-action icon-action--edit"
+                          aria-label="Изменить"
+                          title="Изменить"
+                          onClick={() => setEditing({ mode: 'edit', item: row })}
+                        >
+                          <EditIcon />
                         </button>
                       )}
                       {canDelete && (
-                        <button type="button" className="btn btn--small btn--quiet" onClick={() => remove(row)}>
-                          Удалить
+                        <button type="button" className="icon-action icon-action--delete" aria-label="Удалить" title="Удалить" onClick={() => remove(row)}>
+                          <TrashIcon />
                         </button>
                       )}
                     </td>
@@ -157,7 +164,8 @@ export default function CrudPage({
             </table>
           </div>
           )}
-          <p className="muted small">Всего: {list.data.totalCount}</p>
+          {/* С фильтрами счётчик стоит в панели фильтров */}
+          {filters.length === 0 && <p className="muted small">Всего: {list.data.totalCount}</p>}
           <Pagination page={list.data.page} totalPages={list.data.totalPages} onChange={(p) => setQuery((q) => ({ ...q, page: p }))} />
         </>
       )}
@@ -182,6 +190,8 @@ export default function CrudPage({
           extraForm={extraForm}
           onClose={() => setEditing(null)}
           onSubmit={async (form) => {
+            const problems = [].concat(validate?.(form, editing.mode, editing.item) || []).filter(Boolean);
+            if (problems.length) throw { messages: problems };
             const payload = toPayload(form, editing.mode, editing.item);
             const saved =
               editing.mode === 'create' ? await api.create(payload) : await api.update(editing.item.id, payload);
@@ -196,6 +206,7 @@ export default function CrudPage({
   );
 }
 
+/** Единое окно подтверждения удаления/необратимого действия во всей админке. */
 export function ConfirmDelete({ title, text, action = 'Удалить', onCancel, onConfirm }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -235,6 +246,7 @@ export function ConfirmDelete({ title, text, action = 'Удалить', onCancel
 // ─── Фильтры ─────────────────────────────────────────────────────────────────
 // Текстовые фильтры — крупный поиск, да/нет — сегменты рядом с ним,
 // короткие списки — ряд чипов-«стикеров» в один клик, длинные — выпадающий список.
+// Чипы — кнопки-переключатели (aria-pressed): стрелочной навигации, как у radiogroup, у них нет.
 const CHIP_LIMIT = 8;
 
 const filterOptions = (f) =>
@@ -245,7 +257,11 @@ const filterOptions = (f) =>
       ]
     : f.options ?? [];
 
-function FilterBar({ filters, query, total, onChange, onReset }) {
+/**
+ * Панель фильтров списка — общая для всех разделов (в том числе вне CrudPage: пользователи, отзывы, монеты…).
+ * total — число записей: «Всего», пока фильтры не заданы, «Найдено» — когда заданы.
+ */
+export function FilterBar({ filters, query, total, onChange, onReset }) {
   const [resetKey, setResetKey] = useState(0);
   const texts = filters.filter((f) => !f.type || f.type === 'text' || f.type === 'search');
   const toggles = filters.filter((f) => f.type === 'bool');
@@ -267,7 +283,11 @@ function FilterBar({ filters, query, total, onChange, onReset }) {
           <ChipGroup key={f.name} filter={f} value={query[f.name] ?? ''} onChange={(v) => onChange(f.name, v)} variant="segment" />
         ))}
         <div className="filterbar__meta" aria-live="polite">
-          {total !== undefined && <span className="filterbar__count">Найдено: {total}</span>}
+          {total !== undefined && total !== null && (
+            <span className="filterbar__count">
+              {active ? 'Найдено' : 'Всего'}: {total}
+            </span>
+          )}
           {active && (
             <button type="button" className="filterbar__reset" onClick={reset}>
               Сбросить
@@ -326,15 +346,14 @@ function SearchFilter({ filter, value, onChange }) {
 function ChipGroup({ filter, value, onChange, variant }) {
   const options = [{ value: '', label: filter.allLabel || 'Все' }, ...filterOptions(filter)];
   return (
-    <div className={`chip-group chip-group--${variant}`} role="radiogroup" aria-label={filter.label}>
+    <div className={`chip-group chip-group--${variant}`} role="group" aria-label={filter.label}>
       {options.map((o) => {
         const on = String(value) === String(o.value);
         return (
           <button
             key={o.value || 'all'}
             type="button"
-            role="radio"
-            aria-checked={on}
+            aria-pressed={on}
             className={`fchip ${on ? 'is-on' : ''}`}
             onClick={() => onChange(o.value)}
           >
@@ -346,11 +365,34 @@ function ChipGroup({ filter, value, onChange, variant }) {
   );
 }
 
+// ─── Время магазина (Душанбе, UTC+5, без летнего времени) ─────────────────────
+// Поле datetime с zone: 'shop' показывает местное время магазина, а на сервер уходит строка
+// без зоны — бэкенд переводит её в UTC через ShopClock.FromLocal.
+const SHOP_OFFSET_MS = 5 * 60 * 60 * 1000;
+
+/** UTC с сервера → значение <input type="datetime-local"> по времени Душанбе. */
+export function toShopInput(iso) {
+  if (!iso) return '';
+  const s = String(iso);
+  const utc = new Date(/[zZ]$|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+  if (Number.isNaN(utc.getTime())) return '';
+  return new Date(utc.getTime() + SHOP_OFFSET_MS).toISOString().slice(0, 16);
+}
+
+/** Значение поля (время Душанбе) → строка без зоны для сервера. */
+export const fromShopInput = (v) => (v ? (v.length === 16 ? `${v}:00` : v) : null);
+
+/** Дата по времени Душанбе — для списков промокодов и комбо. */
+export const shopDate = (iso) =>
+  iso
+    ? new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Dushanbe' })
+    : '—';
+
 function initialForm(fields, item, defaults) {
   const form = {};
   fields.forEach((f) => {
     let v = item ? item[f.name] : defaults[f.name];
-    if (f.type === 'datetime') v = toInputDate(v);
+    if (f.type === 'datetime') v = f.zone === 'shop' ? toShopInput(v) : toInputDate(v);
     if (f.type === 'checkbox') v = v ?? (item ? false : f.default ?? true);
     form[f.name] = v ?? (f.type === 'checkbox' ? false : '');
   });
@@ -362,7 +404,7 @@ export function normalize(fields, form) {
   fields.forEach((f) => {
     const v = form[f.name];
     if (f.type === 'number') out[f.name] = v === '' || v === null ? (f.nullable ? null : 0) : Number(v);
-    else if (f.type === 'datetime') out[f.name] = fromInputDate(v);
+    else if (f.type === 'datetime') out[f.name] = f.zone === 'shop' ? fromShopInput(v) : fromInputDate(v);
     else if (f.type === 'checkbox') out[f.name] = !!v;
     else if (v === '' && f.nullable !== false && !f.required) out[f.name] = null;
   });

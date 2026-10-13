@@ -10,5 +10,7 @@ public interface ICoinsTransactionService
     Task<Result<GetCoinsTransactionDto>> GetByIdAsync(Guid id);
     Task<Result<GetCoinsTransactionDto>> EarnAsync(Guid userId, int amount, Guid? orderId, string? description);
     Task<Result<GetCoinsTransactionDto>> RedeemAsync(Guid userId, int amount, Guid? orderId, string? description);
+    /// <summary>Вернуть клиенту монеты, списанные на отменённый заказ (тип Refunded).</summary>
+    Task<Result<GetCoinsTransactionDto>> RefundAsync(Guid userId, int amount, Guid? orderId, string? description);
     Task<Result<GetCoinsTransactionDto>> ManualAdjustmentAsync(ManualAdjustCoinsDto dto);
 }

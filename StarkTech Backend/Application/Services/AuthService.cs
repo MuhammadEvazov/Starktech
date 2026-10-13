@@ -2,6 +2,7 @@ using Application.DTOs.Auth;
 using Application.Interfaces.Services;
 using Application.Result;
 using Application.Results;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
 
@@ -9,11 +10,17 @@ public class AuthService : IAuthService
 {
     private readonly IIdentityService _identityService;
     private readonly IEmailService _emailService;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(IIdentityService identityService, IEmailService emailService)
+    // Одинаковый ответ и для существующего, и для несуществующего email — перебором нельзя узнать, кто зарегистрирован.
+    private const string ResetCodeSentMessage =
+        "Если аккаунт с таким email существует, мы отправили на него код. Проверьте почту (и папку «Спам»).";
+
+    public AuthService(IIdentityService identityService, IEmailService emailService, ILogger<AuthService> logger)
     {
         _identityService = identityService;
         _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<Result<RegisterResponseDto>> RegisterAsync(RegisterDto dto)
@@ -61,10 +68,10 @@ public class AuthService : IAuthService
     public async Task<Result<string>> ChangePasswordAsync(string userId, ChangePasswordDto dto)
     {
         if (dto.NewPassword != dto.ConfirmPassword)
-            return Result<string>.Fail("Passwords do not match", ErrorType.Validation);
+            return Result<string>.Fail("Пароли не совпадают.", ErrorType.Validation);
 
         if (dto.OldPassword == dto.NewPassword)
-            return Result<string>.Fail("New password must be different from the old one", ErrorType.Validation);
+            return Result<string>.Fail("Новый пароль должен отличаться от старого.", ErrorType.Validation);
 
         return await _identityService.ChangePasswordAsync(userId, dto.OldPassword, dto.NewPassword);
     }
@@ -72,54 +79,73 @@ public class AuthService : IAuthService
 
     public async Task<Result<string>> SendPasswordResetEmailAsync(SendEmailDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Email))
+            return Result<string>.Fail("Укажите email.", ErrorType.Validation);
+
         var codeResult = await _identityService.GenerateResetCodeAsync(dto.Email);
         if (!codeResult.IsSuccess)
-            return codeResult;
+            return Result<string>.Fail(codeResult.Errors, codeResult.ErrorType);
+
+        // Аккаунта нет — письмо не шлём, но отвечаем так же, как при успехе.
+        if (string.IsNullOrEmpty(codeResult.Data))
+            return Result<string>.Ok(ResetCodeSentMessage);
 
         try
         {
-            await _emailService.SendEmailAsync(dto.Email, "Password Reset Code", $"Your reset code: {codeResult.Data}");
-            return Result<string>.Ok("Reset code sent to your email.");
+            await _emailService.SendEmailAsync(
+                dto.Email.Trim(),
+                "Код для сброса пароля",
+                $"Ваш код для сброса пароля: {codeResult.Data}. Код действует 10 минут. Если вы не запрашивали сброс, просто проигнорируйте это письмо.");
+            return Result<string>.Ok(ResetCodeSentMessage);
         }
         catch (Exception ex)
         {
-            return Result<string>.Fail($"Failed to send email: {ex.Message}", ErrorType.Unknown);
+            // Подробности SMTP — только в лог: клиенту они ни к чему и раскрывают устройство сервера.
+            _logger.LogError(ex, "Failed to send password reset email");
+            return Result<string>.Fail("Не удалось отправить письмо. Попробуйте позже.", ErrorType.Unknown);
         }
     }
 
 
-    public async Task<Result<bool>> VerifyCodeAsync(VerifyCodeDto dto)
-        => await _identityService.VerifyResetCodeAsync(dto.Email, dto.Code);
+    public async Task<Result<VerifyCodeResponseDto>> VerifyCodeAsync(VerifyCodeDto dto)
+    {
+        var result = await _identityService.VerifyResetCodeAsync(dto.Email, dto.Code);
+
+        if (!result.IsSuccess)
+            return Result<VerifyCodeResponseDto>.Fail(result.Errors, result.ErrorType);
+
+        return Result<VerifyCodeResponseDto>.Ok(new VerifyCodeResponseDto { ResetToken = result.Data! });
+    }
 
 
     public async Task<Result<string>> ResetPasswordAsync(ResetPasswordDto dto)
     {
         if (dto.NewPassword != dto.ConfirmPassword)
-            return Result<string>.Fail("Passwords do not match", ErrorType.Validation);
+            return Result<string>.Fail("Пароли не совпадают.", ErrorType.Validation);
 
-        return await _identityService.ResetPasswordAsync(dto.Email, dto.NewPassword);
+        return await _identityService.ResetPasswordAsync(dto.Email, dto.ResetToken, dto.NewPassword);
     }
 
 
 
-    public async Task<Result<string>> AssignRoleAsync(AssignRoleDto dto)
+    public async Task<Result<string>> AssignRoleAsync(string callerId, AssignRoleDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.UserId))
-            return Result<string>.Fail("UserId is required", ErrorType.Validation);
+            return Result<string>.Fail("Не указан пользователь.", ErrorType.Validation);
 
         if (string.IsNullOrWhiteSpace(dto.RoleName))
-            return Result<string>.Fail("RoleName is required", ErrorType.Validation);
+            return Result<string>.Fail("Не указана роль.", ErrorType.Validation);
 
-        return await _identityService.AssignRoleAsync(dto.UserId, dto.RoleName);
+        return await _identityService.AssignRoleAsync(callerId, dto.UserId, dto.RoleName);
     }
 
 
-    public async Task<Result<string>> RemoveRoleAsync(AssignRoleDto dto)
+    public async Task<Result<string>> RemoveRoleAsync(string callerId, AssignRoleDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.UserId) || string.IsNullOrWhiteSpace(dto.RoleName))
-            return Result<string>.Fail("UserId and RoleName are required", ErrorType.Validation);
+            return Result<string>.Fail("Не указаны пользователь и роль.", ErrorType.Validation);
 
-        return await _identityService.RemoveRoleAsync(dto.UserId, dto.RoleName);
+        return await _identityService.RemoveRoleAsync(callerId, dto.UserId, dto.RoleName);
     }
 
 

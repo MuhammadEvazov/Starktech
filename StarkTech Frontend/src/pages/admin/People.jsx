@@ -6,41 +6,54 @@ import {
 } from '../../lib/format.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { Async, Badge, Empty, ErrorBox, Img, Input, Modal, Pagination, Select } from '../../components/ui.jsx';
+import { Async, Badge, Empty, ErrorBox, Img, Input, Modal, Pagination } from '../../components/ui.jsx';
+import { ConfirmDelete, FilterBar } from './CrudPage.jsx';
+import { TrashIcon } from './icons.jsx';
 
-const roleOptions = Object.entries(ROLES).map(([value, label]) => ({ value, label }));
+const opts = (o) => Object.entries(o).map(([value, label]) => ({ value, label }));
+const roleOptions = opts(ROLES);
+
+/** Состояние фильтров списка: смена фильтра возвращает на первую страницу. */
+function useListQuery(initial = { page: 1 }) {
+  const [query, setQuery] = useState(initial);
+  return {
+    query,
+    setPage: (page) => setQuery((q) => ({ ...q, page })),
+    onChange: (name, v) => setQuery((q) => ({ ...q, [name]: v, page: 1 })),
+    onReset: () => setQuery({ page: 1 }),
+  };
+}
+
+const USER_FILTERS = [
+  { name: 'fullName', label: 'Имя', placeholder: 'Найти по имени' },
+  { name: 'email', label: 'Email', placeholder: 'Email' },
+  { name: 'phone', label: 'Телефон', placeholder: 'Телефон' },
+  { name: 'role', label: 'Роль', type: 'select', options: roleOptions, allLabel: 'Все роли' },
+];
+const COIN_FILTERS = [
+  { name: 'userId', label: 'ID профиля', placeholder: 'ID профиля клиента' },
+  { name: 'type', label: 'Тип', type: 'select', options: opts(COIN_TYPE), allLabel: 'Все типы' },
+];
+const NOTIFICATION_FILTERS = [
+  { name: 'channel', label: 'Канал', type: 'select', options: opts(NOTIFICATION_CHANNEL), allLabel: 'Все каналы' },
+  { name: 'status', label: 'Статус', type: 'select', options: opts(NOTIFICATION_STATUS), allLabel: 'Любой статус' },
+];
 
 /* ───────── Пользователи ───────── */
 export function Users() {
   const toast = useToast();
   const { session } = useAuth();
-  const [query, setQuery] = useState({ page: 1 });
+  const q = useListQuery();
   const [rolesFor, setRolesFor] = useState(null);
-  const list = useAsync(() => usersApi.list({ ...query, pageSize: 20 }), [JSON.stringify(query)]);
-  const set = (k) => (e) => setQuery((q) => ({ ...q, [k]: e.target.value, page: 1 }));
-
-  const remove = async (u) => {
-    if (!window.confirm(`Удалить пользователя ${u.email}?`)) return;
-    try {
-      await usersApi.remove(u.id);
-      toast('Пользователь удалён');
-      list.reload();
-    } catch (e) {
-      toast(e.messages?.[0] || 'Не удалось удалить', 'error');
-    }
-  };
+  const [removing, setRemoving] = useState(null);
+  const list = useAsync(() => usersApi.list({ ...q.query, pageSize: 20 }), [JSON.stringify(q.query)]);
 
   return (
     <>
       <header className="admin-head">
         <h1 className="admin-title">Пользователи</h1>
       </header>
-      <div className="filters">
-        <Input label="Имя" type="search" value={query.fullName || ''} onChange={set('fullName')} />
-        <Input label="Email" type="search" value={query.email || ''} onChange={set('email')} />
-        <Input label="Телефон" type="search" value={query.phone || ''} onChange={set('phone')} />
-        <Select label="Роль" placeholder="Все" options={roleOptions} value={query.role || ''} onChange={set('role')} />
-      </div>
+      <FilterBar filters={USER_FILTERS} query={q.query} total={list.data?.totalCount} onChange={q.onChange} onReset={q.onReset} />
       <Async state={list} empty={<Empty title="Никого не нашлось">Измените фильтры.</Empty>}>
         {(data) => (
           <>
@@ -81,8 +94,14 @@ export function Users() {
                           Роли
                         </button>
                         {u.id !== session?.userId && (
-                          <button type="button" className="btn btn--small btn--quiet" onClick={() => remove(u)}>
-                            Удалить
+                          <button
+                            type="button"
+                            className="icon-action icon-action--delete"
+                            aria-label={`Удалить пользователя ${u.email}`}
+                            title="Удалить"
+                            onClick={() => setRemoving(u)}
+                          >
+                            <TrashIcon />
                           </button>
                         )}
                       </td>
@@ -91,11 +110,23 @@ export function Users() {
                 </tbody>
               </table>
             </div>
-            <p className="muted small">Всего: {data.totalCount}</p>
-            <Pagination page={data.page} totalPages={data.totalPages} onChange={(p) => setQuery((q) => ({ ...q, page: p }))} />
+            <Pagination page={data.page} totalPages={data.totalPages} onChange={q.setPage} />
           </>
         )}
       </Async>
+      {removing && (
+        <ConfirmDelete
+          title="Удалить пользователя?"
+          text={`${removing.fullName || removing.email} (${removing.email}) потеряет доступ к аккаунту. Удаление нельзя отменить.`}
+          onCancel={() => setRemoving(null)}
+          onConfirm={async () => {
+            await usersApi.remove(removing.id);
+            setRemoving(null);
+            toast('Пользователь удалён');
+            list.reload();
+          }}
+        />
+      )}
       {rolesFor && (
         <RolesModal
           user={rolesFor}
@@ -165,9 +196,9 @@ function RolesModal({ user, onClose, onChanged }) {
 /* ───────── Монеты ───────── */
 export function Coins() {
   const toast = useToast();
-  const [query, setQuery] = useState({ page: 1 });
+  const q = useListQuery();
   const [adjusting, setAdjusting] = useState(false);
-  const list = useAsync(() => coinsApi.list({ ...query, pageSize: 20 }), [JSON.stringify(query)]);
+  const list = useAsync(() => coinsApi.list({ ...q.query, pageSize: 20 }), [JSON.stringify(q.query)]);
 
   return (
     <>
@@ -180,17 +211,8 @@ export function Coins() {
           Начислить или списать
         </button>
       </header>
-      <div className="filters">
-        <Input label="ID профиля" type="search" value={query.userId || ''} onChange={(e) => setQuery((q) => ({ ...q, userId: e.target.value, page: 1 }))} />
-        <Select
-          label="Тип"
-          placeholder="Все"
-          options={Object.entries(COIN_TYPE).map(([value, label]) => ({ value, label }))}
-          value={query.type || ''}
-          onChange={(e) => setQuery((q) => ({ ...q, type: e.target.value, page: 1 }))}
-        />
-      </div>
-      <Async state={list} empty={<Empty title="Операций нет" />}>
+      <FilterBar filters={COIN_FILTERS} query={q.query} total={list.data?.totalCount} onChange={q.onChange} onReset={q.onReset} />
+      <Async state={list} empty={<Empty title="Операций нет">Монеты начисляются за доставленные заказы.</Empty>}>
         {(data) => (
           <>
             <div className="table-wrap">
@@ -220,7 +242,7 @@ export function Coins() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={data.page} totalPages={data.totalPages} onChange={(p) => setQuery((q) => ({ ...q, page: p }))} />
+            <Pagination page={data.page} totalPages={data.totalPages} onChange={q.setPage} />
           </>
         )}
       </Async>
@@ -304,7 +326,7 @@ export function Permissions() {
           <p className="muted">Изменения применяются сразу, перелогин не нужен.</p>
         </div>
       </header>
-      <Async state={list}>
+      <Async state={list} empty={<Empty title="Права не загрузились">Обновите страницу или попробуйте позже.</Empty>}>
         {(rows) => {
           const keys = [...new Set([...Object.keys(PERMISSION_LABELS), ...rows.map((r) => r.permissionKey)])];
           const granted = (role, key) => rows.find((r) => r.role === role && r.permissionKey === key)?.isGranted ?? false;
@@ -353,9 +375,8 @@ export function Permissions() {
 
 /* ───────── Уведомления ───────── */
 export function Notifications() {
-  const [query, setQuery] = useState({ page: 1 });
-  const list = useAsync(() => notificationsApi.list({ ...query, pageSize: 30 }), [JSON.stringify(query)]);
-  const opts = (o) => Object.entries(o).map(([value, label]) => ({ value, label }));
+  const q = useListQuery();
+  const list = useAsync(() => notificationsApi.list({ ...q.query, pageSize: 30 }), [JSON.stringify(q.query)]);
   return (
     <>
       <header className="admin-head">
@@ -364,11 +385,8 @@ export function Notifications() {
           <p className="muted">Сообщения о смене статуса заказов, отправленные клиентам и администраторам.</p>
         </div>
       </header>
-      <div className="filters">
-        <Select label="Канал" placeholder="Все" options={opts(NOTIFICATION_CHANNEL)} value={query.channel || ''} onChange={(e) => setQuery((q) => ({ ...q, channel: e.target.value, page: 1 }))} />
-        <Select label="Статус" placeholder="Все" options={opts(NOTIFICATION_STATUS)} value={query.status || ''} onChange={(e) => setQuery((q) => ({ ...q, status: e.target.value, page: 1 }))} />
-      </div>
-      <Async state={list} empty={<Empty title="Уведомлений нет" />}>
+      <FilterBar filters={NOTIFICATION_FILTERS} query={q.query} total={list.data?.totalCount} onChange={q.onChange} onReset={q.onReset} />
+      <Async state={list} empty={<Empty title="Уведомлений нет">Они появятся, когда у заказов начнёт меняться статус.</Empty>}>
         {(data) => (
           <>
             <div className="table-wrap">
@@ -395,7 +413,7 @@ export function Notifications() {
                 </tbody>
               </table>
             </div>
-            <Pagination page={data.page} totalPages={data.totalPages} onChange={(p) => setQuery((q) => ({ ...q, page: p }))} />
+            <Pagination page={data.page} totalPages={data.totalPages} onChange={q.setPage} />
           </>
         )}
       </Async>
@@ -411,6 +429,7 @@ export function Telegram() {
   const [code, setCode] = useState(null);
   const [confirm, setConfirm] = useState({ code: '', telegramChatId: '' });
   const [error, setError] = useState(null);
+  const [unlinking, setUnlinking] = useState(null);
 
   const run = async (fn) => {
     setError(null);
@@ -493,7 +512,7 @@ export function Telegram() {
                         <button
                           type="button"
                           className="btn btn--small btn--quiet"
-                          onClick={() => run(async () => { await telegramApi.unlink(b.userId); toast('Привязка отключена'); list.reload(); })}
+                          onClick={() => setUnlinking(b)}
                         >
                           Отвязать
                         </button>
@@ -506,6 +525,21 @@ export function Telegram() {
           </div>
         )}
       </Async>
+
+      {unlinking && (
+        <ConfirmDelete
+          title="Отвязать чат?"
+          text={`${unlinking.userFullName || unlinking.userId} перестанет получать уведомления о заказах в Telegram. Чтобы вернуть их, чат придётся привязать заново с новым кодом.`}
+          action="Отвязать"
+          onCancel={() => setUnlinking(null)}
+          onConfirm={async () => {
+            await telegramApi.unlink(unlinking.userId);
+            setUnlinking(null);
+            toast('Привязка отключена');
+            list.reload();
+          }}
+        />
+      )}
     </>
   );
 }

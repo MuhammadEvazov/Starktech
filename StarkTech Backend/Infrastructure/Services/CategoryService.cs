@@ -177,7 +177,12 @@ public class CategoryService : ICategoryService
         if (hasProducts)
             return Result<bool>.Fail("Category cannot be deleted because it has products", ErrorType.Conflict);
 
+        var imageUrl = category.ImageUrl;
         await _categoryRepository.DeleteAsync(category);
+
+        // Физическое удаление — удаляем и файл изображения (только загруженный в /uploads, FileService проверяет путь)
+        if (!string.IsNullOrWhiteSpace(imageUrl))
+            await _fileService.DeleteAsync(imageUrl);
 
         await _cache.RemoveAsync($"Category:{id}");
         await ClearCategoriesCacheAsync();
@@ -202,7 +207,17 @@ public class CategoryService : ICategoryService
         var previousUrl = category.ImageUrl;
 
         category.ImageUrl = url;
-        await _categoryRepository.UpdateAsync(category);
+        try
+        {
+            await _categoryRepository.UpdateAsync(category);
+        }
+        catch (Exception ex)
+        {
+            // Запись не удалась — удаляем новый файл, старый остаётся
+            _logger.LogError(ex, "Failed to save image for category {Id}", id);
+            await _fileService.DeleteAsync(url);
+            return Result<GetCategoryDto>.Fail("Не удалось сохранить изображение", ErrorType.Unknown);
+        }
 
         if (!string.IsNullOrWhiteSpace(previousUrl))
             await _fileService.DeleteAsync(previousUrl);

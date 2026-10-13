@@ -1,0 +1,345 @@
+/* ───────── Информационные страницы: «Вопросы и ответы» (/faq) ─────────
+   Префикс классов — faq-. Токены — из base.css и site/foundation.css.
+   Фирменный акцент один: стикер «?» в шапке. Остальное — белые карточки и аккордеон. */
+
+.faq-page {
+  padding-top: 24px;
+}
+
+/* ─── Шапка ─── */
+.faq-hero {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  padding: 26px 22px;
+  border-radius: var(--site-radius-lg);
+  background:
+    radial-gradient(circle at 8% 118%, rgba(185, 179, 255, 0.55) 0 70px, transparent 71px),
+    radial-gradient(circle at 70% -30%, rgba(232, 53, 95, 0.4) 0 90px, transparent 91px),
+    linear-gradient(135deg, var(--cobalt) 0%, var(--cobalt-deep) 100%);
+  color: var(--paper);
+  overflow: hidden;
+  box-shadow: 0 18px 36px -22px rgba(29, 43, 176, 0.75);
+}
+.faq-hero__text {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding-right: 72px;
+}
+.faq-hero__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.faq-hero__lead {
+  margin: 0;
+  max-width: 56ch;
+  font-size: var(--t-md);
+  line-height: 1.5;
+}
+.faq-hero__sticker {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--lemon);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.1rem;
+  line-height: 1;
+  box-shadow: 0 0 0 5px var(--paper), 0 12px 22px -8px rgba(10, 14, 80, 0.6);
+  transform: rotate(-8deg);
+}
+
+.faq-search {
+  position: relative;
+  display: block;
+  max-width: 520px;
+}
+.faq-search svg {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+.faq-search input {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 16px 12px 44px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  box-shadow: 0 6px 18px -10px rgba(10, 14, 80, 0.6);
+}
+.faq-search input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--lemon);
+}
+
+/* ─── Раскладка: оглавление + вопросы ─── */
+.faq-layout {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* Цвет раздела — точка в оглавлении и в заголовке */
+.faq-tone--cobalt { --faq-tone: var(--cobalt); }
+.faq-tone--lemon { --faq-tone: #e0a200; }
+.faq-tone--layout { --faq-tone: var(--st-layout); }
+.faq-tone--green { --faq-tone: var(--green); }
+.faq-tone--lilac { --faq-tone: #6c5ce7; }
+.faq-tone--cherry { --faq-tone: var(--cherry-strong); }
+.faq-tone--ready { --faq-tone: var(--st-ready); }
+
+.faq-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--faq-tone, var(--ink-soft));
+}
+
+.faq-toc ul {
+  display: flex;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 2px 16px 6px;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.faq-toc__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--site-surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: var(--t-sm);
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px var(--site-line);
+}
+.faq-toc__link:hover {
+  box-shadow: inset 0 0 0 2px var(--faq-tone);
+}
+.faq-toc__link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+
+.faq-body {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.faq-section {
+  padding: 20px 18px 10px;
+  border-radius: var(--site-radius-lg);
+  background: var(--site-surface);
+  box-shadow: var(--site-shadow);
+  /* Шапка сайта липкая — якорь не должен прятаться под ней */
+  scroll-margin-top: 96px;
+}
+.faq-section__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-lg);
+  line-height: 1.2;
+}
+
+/* ─── Аккордеон ─── */
+.faq-item {
+  border-top: 1px solid var(--line-soft);
+}
+.faq-item:first-child {
+  border-top: 0;
+}
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 4px;
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius-xs);
+}
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.faq-item summary:hover {
+  color: var(--cobalt);
+}
+.faq-item summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.faq-item__chev {
+  flex: none;
+  color: var(--ink-soft);
+  transition: transform 0.18s ease;
+}
+.faq-item[open] .faq-item__chev {
+  transform: rotate(180deg);
+  color: var(--faq-tone, var(--cobalt));
+}
+.faq-item__answer {
+  max-width: 68ch;
+  padding: 0 4px 16px 14px;
+  border-left: 3px solid var(--faq-tone, var(--cobalt));
+  margin-left: 4px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+.faq-item__answer p {
+  margin: 0 0 8px;
+}
+.faq-item__answer p:last-child {
+  margin-bottom: 0;
+}
+.faq-item__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.faq-item__links a {
+  color: var(--cobalt);
+  font-weight: 600;
+}
+
+.faq-empty {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 22px 20px;
+}
+.faq-empty p {
+  margin: 0;
+}
+
+/* ─── Связаться ─── */
+.faq-contact {
+  display: grid;
+  gap: 16px;
+  padding: 22px 20px;
+  border-radius: var(--site-radius-lg);
+  background: var(--ink);
+  color: var(--paper);
+}
+.faq-contact h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: var(--t-lg);
+}
+.faq-contact p {
+  margin: 0;
+  color: var(--ink-muted-on-dark);
+  line-height: 1.5;
+}
+.faq-contact p a {
+  color: var(--paper);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.faq-contact__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.faq-contact__tg {
+  background: transparent;
+  color: var(--paper);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.faq-contact__tg:hover {
+  border-color: var(--paper);
+}
+
+@media (min-width: 900px) {
+  .faq-page {
+    padding-top: 32px;
+  }
+  .faq-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+    align-items: center;
+    gap: 28px;
+    padding: 34px 36px;
+  }
+  .faq-hero__text {
+    padding-right: 0;
+  }
+  .faq-hero__sticker {
+    top: auto;
+    bottom: calc(50% + 34px);
+    right: 52px;
+    width: 76px;
+    height: 76px;
+    font-size: 2.5rem;
+  }
+  .faq-layout {
+    grid-template-columns: 230px minmax(0, 1fr);
+    align-items: start;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  .faq-toc {
+    position: sticky;
+    top: 96px;
+  }
+  .faq-toc ul {
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+  .faq-toc__link {
+    display: flex;
+    background: transparent;
+    box-shadow: none;
+    white-space: normal;
+  }
+  .faq-toc__link:hover {
+    background: var(--site-surface);
+    box-shadow: var(--site-shadow);
+  }
+  .faq-section {
+    padding: 24px 26px 12px;
+  }
+  .faq-contact {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 26px 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faq-item__chev {
+    transition: none;
+  }
+}

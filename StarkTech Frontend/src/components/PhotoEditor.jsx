@@ -4,6 +4,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { assetUrl } from '../api/client.js';
 import { orderPhotosApi } from '../api/endpoints.js';
+import { MAX_COPIES, photoCopies } from '../lib/cartPhotoStore.js';
 import { parseJson } from '../lib/format.js';
 import { SHAPE_LABEL, shapeSvgPath } from '../lib/shapes.js';
 import { ErrorBox, Modal, Spinner } from './ui.jsx';
@@ -21,15 +22,61 @@ const MARGIN = 0.14; // поля рабочей области вокруг фо
 const CORNERS = ['nw', 'ne', 'sw', 'se'];
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+const num = (v) => Number(v).toLocaleString('ru-RU', { maximumFractionDigits: 1 });
+
+// ─── Качество печати ───
+// Стикер по умолчанию 3 см; ~250 px исходного фото на 3 см (≈210 dpi) — нижняя граница чёткой печати.
+export const DEFAULT_PRINT_CM = 3;
+const PX_PER_CM = 250 / 3;
+
+/** Размер печати в см (большая сторона) по атрибутам варианта: «3x3», «5×5 см», «40 мм», «4 см». По умолчанию 3 см. */
+export function printSizeCm(attrs) {
+  const toNum = (v) => Number(String(v).replace(',', '.'));
+  for (const raw of Object.values(attrs || {})) {
+    const v = String(raw ?? '').toLowerCase();
+    const k = /мм|mm/.test(v) ? 0.1 : 1;
+    const pair = v.match(/(\d+(?:[.,]\d+)?)\s*[x×х*]\s*(\d+(?:[.,]\d+)?)/);
+    if (pair) {
+      const cm = Math.max(toNum(pair[1]), toNum(pair[2])) * k;
+      if (cm > 0) return cm;
+    }
+    const single = v.match(/(\d+(?:[.,]\d+)?)\s*(см|cm|мм|mm)/);
+    if (single) {
+      const cm = toNum(single[1]) * k;
+      if (cm > 0) return cm;
+    }
+  }
+  return DEFAULT_PRINT_CM;
+}
+
+/** Мало пикселей на печатный размер: longSidePx — большая сторона кадра в пикселях исходного фото. */
+export const isLowQuality = (longSidePx, cm = DEFAULT_PRINT_CM) => longSidePx > 0 && longSidePx < Math.round(cm * PX_PER_CM);
 
 // shapes — формы стикера из вариантов товара ([{ kind, label }]); если есть, клиент выбирает форму,
 // кадр становится квадратным, а макет вырезается по форме (PNG с прозрачным фоном).
 // Два режима:
 //  • photo — фото уже на сервере (кабинет, админка): кадр и макет сразу отправляются на сервер;
-//  • file  — фото ещё в браузере (страница товара, до заказа): результат отдаём в onApply(cropData, previewFile),
+//  • file  — фото ещё в браузере (страница товара, до заказа): результат отдаём в onApply(cropData, previewFile, copies),
 //            а загрузит его оформление заказа.
+// copies — сколько стикеров сделать с этого фото (по умолчанию file.stCopies / photo.copies / 1); степпер под
+// рабочей областью. maxCopies — потолок (в кабинете: сколько штук позиции ещё не занято другими фото).
+// В режиме photo изменённое число копий сохраняется на сервере (PUT .../copies) вместе с кадром.
 // fixedShape — форма задана выбранным вариантом товара (круг/квадрат/сердце): выбора формы нет.
-export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixedShape, onApply, onClose, onSaved }) {
+// printCm — размер печати в см (printSizeCm по атрибутам варианта): от него зависит предупреждение о нечётком фото.
+export default function PhotoEditor({
+  photo,
+  file,
+  shapes: shapesProp = [],
+  fixedShape,
+  // форма, выбранная по умолчанию, если у фото ещё нет кадра (страница товара: форма текущего варианта)
+  initialShape,
+  printCm = DEFAULT_PRINT_CM,
+  copies: copiesProp,
+  maxCopies = MAX_COPIES,
+  onApply,
+  onClose,
+  onSaved,
+}) {
   const saved = file ? file.stCrop ?? null : parseJson(photo.cropDataJson, null);
   const shapes = fixedShape ? [{ kind: fixedShape, label: SHAPE_LABEL[fixedShape] }] : shapesProp;
   const hasShapes = shapes.length > 0;
@@ -43,13 +90,33 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
     return () => URL.revokeObjectURL(url);
   }, [file]);
   const maskId = useId().replace(/:/g, '');
+  const helpId = useId();
   const stageRef = useRef(null);
   const drag = useRef(null);
+  // Ширину рабочей области берём у реального контейнера в окне (а не у окна браузера):
+  // на узком телефоне модалка уже экрана, и маска с маркерами вылезали бы за край.
+  const [wrapEl, setWrapEl] = useState(null);
+  const [availW, setAvailW] = useState(null);
+  useEffect(() => {
+    if (!wrapEl) return undefined;
+    const measure = () => setAvailW(Math.floor(wrapEl.clientWidth));
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrapEl);
+    return () => ro.disconnect();
+  }, [wrapEl]);
 
   const [img, setImg] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [shape, setShape] = useState(
-    hasShapes ? (shapes.some((s) => s.kind === saved?.shape) ? saved.shape : shapes[0].kind) : null,
+    hasShapes
+      ? shapes.some((s) => s.kind === saved?.shape)
+        ? saved.shape
+        : shapes.some((s) => s.kind === initialShape)
+          ? initialShape
+          : shapes[0].kind
+      : null,
   );
   const [aspectState, setAspect] = useState(saved?.aspect ?? 1);
   const aspect = hasShapes ? 1 : aspectState;
@@ -58,6 +125,12 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
   const [offset, setOffset] = useState({ x: saved?.offsetX ?? 0, y: saved?.offsetY ?? 0 });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // Сколько стикеров с этого фото
+  const initialCopies = copiesProp ?? photoCopies(file ?? photo);
+  const copyLimit = Math.max(1, maxCopies);
+  // сохранённое значение не урезаем, даже если оно выше потолка: уменьшить можно, увеличить — нет
+  const [copies, setCopies] = useState(initialCopies);
+  const copiesId = useId();
 
   useEffect(() => {
     if (!src) return undefined;
@@ -73,7 +146,9 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
   }, [src]);
 
   // Рабочая область (stage) и кадр печати (frame) внутри неё.
-  const stageW = Math.min(440, (typeof window !== 'undefined' ? window.innerWidth : 440) - 64);
+  // До первого замера — грубая оценка по окну, после — точная ширина контейнера.
+  const fallbackW = (typeof window !== 'undefined' ? window.innerWidth : 440) - 96;
+  const stageW = Math.max(160, Math.min(440, availW ?? fallbackW));
   const ratio = aspect || (img ? img.naturalWidth / img.naturalHeight : 1);
   const frameW = Math.round(stageW * (1 - 2 * MARGIN));
   const frameH = Math.round(frameW / ratio);
@@ -203,8 +278,10 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
         ...(shape ? { shape } : {}),
       };
       if (onApply) {
-        await onApply(cropData, previewFile);
+        await onApply(cropData, previewFile, copies);
       } else {
+        // Копии — первыми: если сервер не даст (копий больше, чем штук в позиции), кадр не трогаем.
+        if (copies !== initialCopies) await orderPhotosApi.updateCopies(photo.id, copies);
         await orderPhotosApi.updateCrop(photo.id, JSON.stringify(cropData));
         await orderPhotosApi.uploadPreview(photo.id, previewFile);
       }
@@ -217,6 +294,10 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
       setBusy(false);
     }
   };
+
+  // Сколько пикселей исходного фото попадёт на печать: мало — предупреждаем (сохранить всё равно можно).
+  const qualityPx = geo ? Math.round(Math.max(geo.crop.width, geo.crop.height)) : 0;
+  const lowQuality = isLowQuality(qualityPx, printCm);
 
   // Маркеры по углам фото; если фото больше рабочей области — прижимаем их к краю, чтобы их было видно.
   const handlePos = (c) => ({
@@ -244,13 +325,12 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
               Форма «{SHAPE_LABEL[fixedShape]}» — как в выбранном варианте. Подгоните фото под неё.
             </p>
           ) : hasShapes ? (
-            <div className="photo-editor__shapes" role="radiogroup" aria-label="Форма стикера">
+            <div className="photo-editor__shapes" role="group" aria-label="Форма стикера">
               {shapes.map((s) => (
                 <button
                   key={s.kind}
                   type="button"
-                  role="radio"
-                  aria-checked={shape === s.kind}
+                  aria-pressed={shape === s.kind}
                   className={`photo-editor__shape ${shape === s.kind ? 'is-active' : ''}`}
                   onClick={() => setShape(s.kind)}
                 >
@@ -262,13 +342,12 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
               ))}
             </div>
           ) : (
-            <div className="photo-editor__aspects" role="radiogroup" aria-label="Формат">
+            <div className="photo-editor__aspects" role="group" aria-label="Формат">
               {ASPECTS.map((a) => (
                 <button
                   key={a.label}
                   type="button"
-                  role="radio"
-                  aria-checked={aspect === a.value}
+                  aria-pressed={aspect === a.value}
                   className={`photo-editor__aspect ${aspect === a.value ? 'is-active' : ''}`}
                   onClick={() => setAspect(a.value)}
                 >
@@ -278,13 +357,19 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
             </div>
           )}
 
+          {/* Обёртка во всю ширину окна: по ней меряем место под рабочую область и центрируем её */}
+          <div
+            ref={setWrapEl}
+            style={{ width: '100%', minWidth: 0, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}
+          >
           <div
             ref={stageRef}
             className="photo-editor__stage"
             style={{ width: stageW, height: stageH }}
             tabIndex={0}
-            role="application"
-            aria-label="Фото: перетащите, чтобы сдвинуть; тяните за углы, чтобы изменить размер. Стрелки двигают, плюс и минус меняют размер."
+            role="group"
+            aria-label="Область кадрирования"
+            aria-describedby={helpId}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -326,6 +411,7 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
               />
             ))}
           </div>
+          </div>
 
           <label className="photo-editor__zoom">
             <span className="field__label">Размер фото: {Math.round(zoom * 100)}%</span>
@@ -335,13 +421,49 @@ export default function PhotoEditor({ photo, file, shapes: shapesProp = [], fixe
               max={MAX_ZOOM}
               step={0.01}
               value={zoom}
+              aria-valuetext={`${Math.round(zoom * 100)}%`}
               onChange={(e) => setZoom(Number(e.target.value))}
             />
           </label>
-          <p className="muted small">
+          <p className="muted small" id={helpId}>
             Перетащите фото, чтобы сдвинуть. Тяните за белые уголки, чтобы увеличить или уменьшить.
             {shape ? ' Всё вне контура не попадёт на стикер.' : ''}
+            <span className="sr-only"> С клавиатуры: стрелки двигают фото, плюс и минус меняют размер.</span>
           </p>
+          {/* Сколько стикеров напечатать с этого фото */}
+          <div className="photo-editor__copies">
+            <span className="photo-editor__copies-label" id={copiesId}>
+              Сколько стикеров с этим фото
+            </span>
+            <div className="stepper" role="group" aria-labelledby={copiesId}>
+              <button
+                type="button"
+                aria-label="Меньше"
+                onClick={() => setCopies((c) => Math.max(1, c - 1))}
+                disabled={busy || copies <= 1}
+              >
+                −
+              </button>
+              <span aria-live="polite">{copies}</span>
+              <button
+                type="button"
+                aria-label="Больше"
+                onClick={() => setCopies((c) => Math.min(copyLimit, c + 1))}
+                disabled={busy || copies >= copyLimit}
+              >
+                +
+              </button>
+            </div>
+            {copies >= copyLimit && maxCopies < MAX_COPIES && (
+              <span className="photo-editor__copies-hint">Все штуки позиции уже распределены по фото — чтобы добавить стикеров, сначала увеличьте количество товара.</span>
+            )}
+          </div>
+          {lowQuality && (
+            <p className="photo-editor__quality" role="status">
+              Фото может получиться нечётким: на стикер {num(printCm)} см попадёт всего {qualityPx} px. Уменьшите фото в
+              кадре или выберите снимок крупнее.
+            </p>
+          )}
           <ErrorBox error={error} />
           <div className="photo-editor__actions">
             <button type="button" className="btn btn--quiet" onClick={onClose} disabled={busy}>

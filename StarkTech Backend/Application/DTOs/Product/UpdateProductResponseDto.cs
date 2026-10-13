@@ -9,4 +9,5 @@ public class UpdateProductResponseDto
     public string NameEn { get; set; } = default!;
     public decimal BasePrice { get; set; }
     public bool IsActive { get; set; }
+    public List<QuantityTierDto> QuantityTiers { get; set; } = new();
 }

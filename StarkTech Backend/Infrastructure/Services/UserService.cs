@@ -27,9 +27,15 @@ public class UserService : IUserService
 
     private const string UsersCacheVersionKey = "Users:version";
 
+    // Роли клиента: "User" выдаёт регистрация, "Client" — роль из сида (UserRole.Client)
+    private static readonly string[] ClientRoles = { "User", "Client" };
+
+    private static readonly string[] StaffRoles = { "Admin", "SuperAdmin" };
+
     private static readonly string[] AllowedRoles =
     {
         "User",
+        "Client",
         "Admin"
     };
 
@@ -305,28 +311,39 @@ public class UserService : IUserService
             return false;
 
         var profile = await GetOrCreateProfileAsync(userId, user.Email ?? string.Empty);
+        var previousAvatarUrl = profile.AvatarUrl;
+        string? newFileUrl = null;
 
         if (file == null)
         {
-            if (!string.IsNullOrWhiteSpace(profile.AvatarUrl))
-                await _fileService.DeleteAsync(profile.AvatarUrl);
-
             profile.ClearAvatar();
         }
         else
         {
-            var fileName = await _fileService.UploadAsync(file, "profile");
+            newFileUrl = await _fileService.UploadAsync(file, "profile");
 
-            if (string.IsNullOrWhiteSpace(fileName))
+            if (string.IsNullOrWhiteSpace(newFileUrl))
                 return false;
 
-            if (!string.IsNullOrWhiteSpace(profile.AvatarUrl))
-                await _fileService.DeleteAsync(profile.AvatarUrl);
-
-            profile.UpdateAvatar(fileName);
+            profile.UpdateAvatar(newFileUrl);
         }
 
-        await _context.SaveChangesAsync();
+        // Сначала сохраняем БД, и только потом удаляем старый файл.
+        // Если запись не удалась — удаляем только что сохранённый новый файл.
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save avatar for user {UserId}", userId);
+            if (newFileUrl != null)
+                await _fileService.DeleteAsync(newFileUrl);
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(previousAvatarUrl) && previousAvatarUrl != newFileUrl)
+            await _fileService.DeleteAsync(previousAvatarUrl);
 
         await _cache.RemoveAsync($"User:{userId}");
         await ClearUsersCacheAsync();
@@ -341,39 +358,57 @@ public class UserService : IUserService
         if (user == null)
             return Result<bool>.Fail("User not found", ErrorType.NotFound);
 
-        var isUser = await _userManager.IsInRoleAsync(user, "User");
-
-        if (!isUser)
-            return Result<bool>.Fail("This user is not a User", ErrorType.Validation);
-
-        var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
-
-        if (isAdmin)
-            return Result<bool>.Fail("Admin user cannot be deleted as User", ErrorType.Forbidden);
+        // Роли из сида: Client / Admin / SuperAdmin (регистрация исторически выдаёт "User").
+        // Удалять через этот метод можно только клиентов — сотрудников с ролью Admin/SuperAdmin нельзя.
+        var roles = await _userManager.GetRolesAsync(user);
+        if (roles.Any(r => StaffRoles.Contains(r, StringComparer.OrdinalIgnoreCase)))
+            return Result<bool>.Fail("Сотрудника (Admin/SuperAdmin) нельзя удалить как клиента", ErrorType.Forbidden);
 
         try
         {
             var profile = await _context.Clients
                 .FirstOrDefaultAsync(s => s.AppUserId == id);
 
-            if (profile != null && !string.IsNullOrWhiteSpace(profile.AvatarUrl))
-                await _fileService.DeleteAsync(profile.AvatarUrl);
+            var avatarUrl = profile?.AvatarUrl;
 
-            if (profile != null)
-                _context.Clients.Remove(profile);
+            // Вложения чата клиента: переписка удаляется каскадом, файлы удаляем после коммита
+            var attachmentUrls = profile == null
+                ? new List<string>()
+                : await _context.Set<ChatMessage>()
+                    .Where(m => m.Conversation.CustomerId == profile.Id && m.AttachmentUrl != null)
+                    .Select(m => m.AttachmentUrl!)
+                    .ToListAsync();
 
-            await _context.SaveChangesAsync();
-
-            var result = await _userManager.DeleteAsync(user);
-
-            if (!result.Succeeded)
+            await using (var tx = await _context.Database.BeginTransactionAsync())
             {
-                var errors = result.Errors
-                    .Select(e => e.Description)
-                    .ToList();
+                if (profile != null)
+                {
+                    _context.Clients.Remove(profile);
+                    await _context.SaveChangesAsync();
+                }
 
-                return Result<bool>.Fail(errors, ErrorType.Validation);
+                var result = await _userManager.DeleteAsync(user);
+
+                if (!result.Succeeded)
+                {
+                    await tx.RollbackAsync();
+
+                    var errors = result.Errors
+                        .Select(e => e.Description)
+                        .ToList();
+
+                    return Result<bool>.Fail(errors, ErrorType.Validation);
+                }
+
+                await tx.CommitAsync();
             }
+
+            // Файлы — только после успешного коммита
+            if (!string.IsNullOrWhiteSpace(avatarUrl))
+                await _fileService.DeleteAsync(avatarUrl);
+
+            foreach (var url in attachmentUrls)
+                await _fileService.DeleteAsync(url);
 
             await _cache.RemoveAsync($"User:{id}");
             await ClearUsersCacheAsync();
@@ -389,22 +424,20 @@ public class UserService : IUserService
 
     public async Task<List<UserDropdownDto>> GetAllForDropdownAsync()
     {
-        var UserRoleId = await _context.Roles
-            .Where(r => r.Name == "User")
+        var clientRoleIds = await _context.Roles
+            .Where(r => r.Name != null && ClientRoles.Contains(r.Name))
             .Select(r => r.Id)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
 
-        if (string.IsNullOrWhiteSpace(UserRoleId))
+        if (clientRoleIds.Count == 0)
             return new List<UserDropdownDto>();
 
         var users = await (
             from user in _context.Users.AsNoTracking()
-            join userRole in _context.UserRoles.AsNoTracking()
-                on user.Id equals userRole.UserId
             join profile in _context.Clients.AsNoTracking()
                 on user.Id equals profile.AppUserId into profiles
             from profile in profiles.DefaultIfEmpty()
-            where userRole.RoleId == UserRoleId
+            where _context.UserRoles.Any(ur => ur.UserId == user.Id && clientRoleIds.Contains(ur.RoleId))
             select new
             {
                 user.Id,

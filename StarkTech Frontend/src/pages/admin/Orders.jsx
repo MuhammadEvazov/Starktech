@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearch } from '../../lib/router.jsx';
 import { useAsync, useDebounced } from '../../lib/hooks.js';
-import { chatApi, citiesApi, dashboardApi, ordersApi, productsApi, variantsApi } from '../../api/endpoints.js';
+import { chatApi, citiesApi, dashboardApi, layoutsApi, ordersApi, productsApi, variantsApi } from '../../api/endpoints.js';
+import { assetUrl, http } from '../../api/client.js';
 import {
-  attrValue, dateTime, money, nameOf, ORDER_SOURCE, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, parseJson,
+  attrValue, dateTime, LAYOUT_STATUS, money, nameOf, ORDER_SOURCE, ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, parseJson,
 } from '../../lib/format.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -11,16 +12,35 @@ import {
   Async, Empty, ErrorBox, Input, Modal, OrderStatusBadge, Pagination, PaymentStatusBadge, Select, Textarea,
 } from '../../components/ui.jsx';
 import { OrderItemPhotos } from '../account/Account.jsx';
+import PaymentReview from './PaymentReview.jsx';
 import { Stepper } from '../shop/Product.jsx';
 import { ConfirmDelete } from './CrudPage.jsx';
 import VariantPicker from '../../components/VariantPicker.jsx';
+import PhotoZoom from '../../components/PhotoZoom.jsx';
 
 // OrderService.AllowedTransitions — статус меняется только на следующий шаг.
-const NEXT = { New: 'Confirmed', Confirmed: 'InProduction', InProduction: 'ReadyForDelivery', ReadyForDelivery: 'Delivered' };
+// Из «Подтверждён» можно сразу в производство или на согласование макета (необязательный шаг).
+const TRANSITIONS = {
+  New: ['Confirmed'],
+  Confirmed: ['InProduction', 'AwaitingLayoutApproval'],
+  AwaitingLayoutApproval: ['InProduction'],
+  InProduction: ['ReadyForDelivery'],
+  ReadyForDelivery: ['Delivered'],
+};
+// Переход, перед которым сервер проверяет, хватает ли фото у позиций (C11).
+const PHOTO_CHECKED = ['AwaitingLayoutApproval', 'InProduction'];
+// Макет можно загружать, пока заказ подтверждён или уже на согласовании.
+const LAYOUT_STATUSES = ['Confirmed', 'AwaitingLayoutApproval'];
+
+/** Смена статуса заказа; ignoreMissingPhotos — продолжить, хотя фото у позиций не хватает. */
+const putStatus = (id, dto) => http.put(`/api/orders/${id}/status`, dto);
+
+/** Граница дня по местному времени: «YYYY-MM-DD» + время → ISO. */
+const dayBound = (d, time) => (d ? new Date(`${d}T${time}`).toISOString() : undefined);
 const opts = (obj) => Object.entries(obj).map(([value, label]) => ({ value, label }));
 
 // Порядок чипов — путь заказа; у каждого статуса свой цвет (тот же на полосе строки).
-const STATUS_ORDER = ['New', 'Confirmed', 'InProduction', 'ReadyForDelivery', 'Delivered', 'Cancelled'];
+const STATUS_ORDER = ['New', 'Confirmed', 'AwaitingLayoutApproval', 'InProduction', 'ReadyForDelivery', 'Delivered', 'Cancelled'];
 
 export function Orders() {
   const navigate = useNavigate();
@@ -43,8 +63,9 @@ export function Orders() {
         status: params.status,
         paymentStatus: params.paymentStatus,
         orderNumber: params.orderNumber,
-        createdFrom: params.from ? new Date(params.from).toISOString() : undefined,
-        createdTo: params.to ? new Date(params.to + 'T23:59:59').toISOString() : undefined,
+        // Обе границы — местное время: начало дня «с» и конец дня «по».
+        createdFrom: dayBound(params.from, '00:00:00'),
+        createdTo: dayBound(params.to, '23:59:59.999'),
       }),
     [page, params.status, params.paymentStatus, params.orderNumber, params.from, params.to],
   );
@@ -108,11 +129,10 @@ export function Orders() {
           </div>
         </div>
 
-        <div className="orders-status" role="radiogroup" aria-label="Статус заказа">
+        <div className="orders-status" role="group" aria-label="Статус заказа">
           <button
             type="button"
-            role="radio"
-            aria-checked={!params.status}
+            aria-pressed={!params.status}
             className={`orders-status__chip ${!params.status ? 'is-on' : ''}`}
             onClick={() => update({ status: '' })}
           >
@@ -125,8 +145,7 @@ export function Orders() {
               <button
                 key={s}
                 type="button"
-                role="radio"
-                aria-checked={on}
+                aria-pressed={on}
                 className={`orders-status__chip st-${s} ${on ? 'is-on' : ''}`}
                 onClick={() => update({ status: on ? '' : s })}
               >
@@ -138,15 +157,14 @@ export function Orders() {
           })}
         </div>
 
-        <div className="chip-group chip-group--segment orders-pay" role="radiogroup" aria-label="Оплата">
+        <div className="chip-group chip-group--segment orders-pay" role="group" aria-label="Оплата">
           {[['', 'Любая оплата'], ...Object.entries(PAYMENT_STATUS)].map(([value, label]) => {
             const on = (params.paymentStatus || '') === value;
             return (
               <button
                 key={value || 'all'}
                 type="button"
-                role="radio"
-                aria-checked={on}
+                aria-pressed={on}
                 className={`fchip ${on ? 'is-on' : ''}`}
                 onClick={() => update({ paymentStatus: value })}
               >
@@ -160,14 +178,20 @@ export function Orders() {
       <Async
         state={list}
         empty={
-          <div className="section-empty">
-            <p className="section-empty__title">{hasFilters ? 'По этим условиям заказов нет' : 'Заказов пока нет'}</p>
-            <p>
-              {hasFilters
-                ? 'Попробуйте другой статус или даты — или сбросьте фильтры.'
-                : 'Заказы с сайта появятся здесь сами. Заказ из переписки в Instagram добавьте кнопкой «Заказ из Instagram».'}
-            </p>
-          </div>
+          <Empty
+            title={hasFilters ? 'По этим условиям заказов нет' : 'Заказов пока нет'}
+            action={
+              hasFilters && (
+                <button type="button" className="btn btn--ghost btn--small" onClick={reset}>
+                  Сбросить фильтры
+                </button>
+              )
+            }
+          >
+            {hasFilters
+              ? 'Попробуйте другой статус или даты — или сбросьте фильтры.'
+              : 'Заказы с сайта появятся здесь сами. Заказ из переписки в Instagram добавьте кнопкой «Заказ из Instagram».'}
+          </Empty>
         }
       >
         {(data) => (
@@ -175,33 +199,7 @@ export function Orders() {
             <ul className="orders-list">
               {data.items.map((o) => (
                 <li key={o.id}>
-                  <Link to={`/admin/orders/${o.id}`} className={`orders-row st-${o.status}`}>
-                    <span className="orders-row__main">
-                      <span className="orders-row__number">{o.orderNumber}</span>
-                      <span className="orders-row__date">
-                        {dateTime(o.createdAt)}, {ORDER_SOURCE[o.source] || o.source}
-                      </span>
-                    </span>
-                    <span className="orders-row__client">
-                      <span className="orders-row__avatar" aria-hidden="true">
-                        {(o.contactName || '?').trim()[0]?.toUpperCase()}
-                      </span>
-                      <span>
-                        <span className="orders-row__name">{o.contactName}</span>
-                        <span className="orders-row__phone">{o.contactPhone}</span>
-                      </span>
-                    </span>
-                    <span className="orders-row__badges">
-                      <OrderStatusBadge status={o.status} />
-                      <PaymentStatusBadge status={o.paymentStatus} />
-                      {o.hasClientChanges && <span className="orders-row__changed">Изменён клиентом</span>}
-                      <span className="orders-row__method">{PAYMENT_METHOD[o.paymentMethod]}</span>
-                    </span>
-                    <span className="orders-row__sum">{money(o.payableAmount)}</span>
-                    <svg className="orders-row__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
-                  </Link>
+                  <OrderRow order={o} />
                 </li>
               ))}
             </ul>
@@ -215,9 +213,47 @@ export function Orders() {
   );
 }
 
+/** Строка заказа с цветной полосой статуса — в списке заказов и на обзоре. */
+export function OrderRow({ order: o }) {
+  return (
+    <Link to={`/admin/orders/${o.id}`} className={`orders-row st-${o.status}`}>
+      <span className="orders-row__main">
+        <span className="orders-row__number">{o.orderNumber}</span>
+        <span className="orders-row__date">
+          {dateTime(o.createdAt)}, {ORDER_SOURCE[o.source] || o.source}
+        </span>
+      </span>
+      <span className="orders-row__client">
+        <span className="orders-row__avatar" aria-hidden="true">
+          {(o.contactName || '?').trim()[0]?.toUpperCase()}
+        </span>
+        <span>
+          <span className="orders-row__name">{o.contactName}</span>
+          <span className="orders-row__phone">{o.contactPhone}</span>
+        </span>
+      </span>
+      <span className="orders-row__badges">
+        <OrderStatusBadge status={o.status} />
+        <PaymentStatusBadge status={o.paymentStatus} />
+        {o.hasClientChanges && <span className="orders-row__changed">Изменён клиентом</span>}
+        {o.hasPendingPaymentProof && <span className="orders-row__changed orders-row__proof">Чек на проверке</span>}
+        <span className="orders-row__method">{PAYMENT_METHOD[o.paymentMethod]}</span>
+      </span>
+      <span className="orders-row__sum">{money(o.payableAmount)}</span>
+      <svg className="orders-row__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m9 18 6-6-6-6" />
+      </svg>
+    </Link>
+  );
+}
+
 // Путь заказа — настоящая последовательность, поэтому шкала с номерами.
-const STAGES = ['New', 'Confirmed', 'InProduction', 'ReadyForDelivery', 'Delivered'];
-const PAY_TONE = { Pending: 'wait', Paid: 'ok', Failed: 'bad', Refunded: 'muted' };
+// Согласование макета — необязательный шаг: его могут пропустить.
+const STAGES = ['New', 'Confirmed', 'AwaitingLayoutApproval', 'InProduction', 'ReadyForDelivery', 'Delivered'];
+const OPTIONAL_STAGES = ['AwaitingLayoutApproval'];
+
+/** Ошибка сервера «у позиций не хватает фото» (400 при переводе в макет/производство). */
+const isMissingPhotos = (e) => e?.status === 400 && (e.messages || []).some((m) => /фото/i.test(m));
 
 /** Телефон в формат для ссылки WhatsApp: только цифры, с кодом Таджикистана. */
 const waPhone = (phone) => {
@@ -254,7 +290,12 @@ export function OrderDetail() {
   const order = useAsync(() => ordersApi.get(id), [id]);
   const cities = useAsync(() => citiesApi.list({ pageSize: 100 }), []);
   const activity = useAsync(() => ordersApi.activity(id), [id]);
+  const layouts = useAsync(() => layoutsApi.list(id), [id]);
   const [adding, setAdding] = useState(false);
+  // Подтверждение перед сменой статуса: { kind: 'prepay' | 'photos', target, messages }
+  const [step, setStep] = useState(null);
+  // Подтверждение ручной отметки оплаты: { value, title, text, action }
+  const [payConfirm, setPayConfirm] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -273,14 +314,81 @@ export function OrderDetail() {
     }
   };
 
+  const changeStatus = async (o, target, { prepayOk = false, ignoreMissingPhotos = false } = {}) => {
+    // Предоплата не внесена — сначала спрашиваем, точно ли запускать производство.
+    if (target === 'InProduction' && Number(o.dueNowAmount) > 0 && !prepayOk) {
+      setStep({ kind: 'prepay', target });
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await putStatus(o.id, { status: target, ...(ignoreMissingPhotos ? { ignoreMissingPhotos: true } : {}) });
+      setStep(null);
+      toast(`Статус: ${ORDER_STATUS[target]}`);
+      order.reload();
+      activity.reload();
+    } catch (e) {
+      if (!ignoreMissingPhotos && PHOTO_CHECKED.includes(target) && isMissingPhotos(e)) {
+        setStep({ kind: 'photos', target, messages: e.messages });
+      } else {
+        setStep(null);
+        setError(e);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Async state={order}>
       {(o) => {
-        const next = NEXT[o.status];
+        const transitions = TRANSITIONS[o.status] ?? [];
         const editable = o.status === 'New' || o.status === 'Confirmed';
         const cancelled = o.status === 'Cancelled';
         const closed = o.status === 'Delivered' || cancelled;
         const stageIndex = STAGES.indexOf(o.status);
+        const hasLayouts = (layouts.data ?? []).length > 0;
+        const paid = Number(o.paidAmount) || 0;
+        const refundDue = Number(o.refundDueAmount) || 0;
+        const overpaid = Number(o.overpaidAmount) || 0;
+        // Сколько отмечаем полученным «вне сайта»: остаток, а если его нет — вся сумма к оплате.
+        const toReceive = Number(o.remainingAmount) > 0 ? o.remainingAmount : o.payableAmount;
+        const payOptions = [
+          !cancelled && o.paymentStatus !== 'Paid' && {
+            value: 'Paid',
+            label: 'Оплата получена (наличными/вне сайта)',
+            tone: 'ok',
+            title: 'Оплата получена?',
+            text: `Отметить, что получено ${money(toReceive)}? Заказ станет «Оплачен».`,
+            action: 'Да, получено',
+          },
+          paid > 0 && o.paymentStatus !== 'Refunded' && {
+            value: 'Refunded',
+            label: 'Возврат',
+            tone: 'muted',
+            title: 'Отметить возврат?',
+            text: `Отмечайте возврат, только когда деньги (${money(refundDue || paid)}) уже вернули клиенту.`,
+            action: 'Деньги вернули',
+          },
+          !cancelled && o.paymentStatus !== 'Failed' && {
+            value: 'Failed',
+            label: 'Ошибка оплаты',
+            tone: 'bad',
+            title: 'Ошибка оплаты?',
+            text: 'Отметить, что оплата не прошла? Клиент увидит статус «Ошибка оплаты».',
+            action: 'Отметить',
+          },
+          // «Ожидает оплаты» — только пока ничего не принято (например, вернуть после ошибки).
+          !cancelled && paid === 0 && o.paymentStatus !== 'Pending' && {
+            value: 'Pending',
+            label: PAYMENT_STATUS.Pending,
+            tone: 'wait',
+            title: 'Вернуть «Ожидает оплаты»?',
+            text: 'Статус оплаты снова станет «Ожидает оплаты».',
+            action: 'Вернуть',
+          },
+        ].filter(Boolean);
         const city = cities.data?.items?.find((c) => c.id === o.deliveryCityId);
         const wa = waPhone(o.contactPhone);
         const itemsCount = o.items.reduce((s, i) => s + i.quantity, 0);
@@ -315,15 +423,19 @@ export function OrderDetail() {
                 </p>
               </div>
               <div className="order-hero__actions">
-                {next && (
+                {transitions.map((t, i) => (
                   <button
+                    key={t}
                     type="button"
-                    className="btn btn--primary btn--large"
+                    className={`btn ${i === 0 ? 'btn--primary btn--large' : 'btn--ghost'}`}
                     disabled={busy}
-                    onClick={() => act(() => ordersApi.updateStatus(o.id, next), `Статус: ${ORDER_STATUS[next]}`)}
+                    onClick={() => changeStatus(o, t)}
                   >
-                    {busy ? 'Сохраняем…' : `Перевести в «${ORDER_STATUS[next]}»`}
+                    {busy && i === 0 ? 'Сохраняем…' : `Перевести в «${ORDER_STATUS[t]}»`}
                   </button>
+                ))}
+                {transitions.includes('InProduction') && Number(o.dueNowAmount) > 0 && (
+                  <p className="od-hint">Предоплата не внесена: ждём ещё {money(o.dueNowAmount)}.</p>
                 )}
                 {!closed && (
                   <button type="button" className="btn btn--ghost order-hero__cancel" disabled={busy} onClick={() => setCancelling(true)}>
@@ -335,19 +447,29 @@ export function OrderDetail() {
               {cancelled ? (
                 <p className="order-cancelled" role="status">
                   Заказ отменён. Промокод и монеты вернулись клиенту.
+                  {refundDue > 0 && <> Нужно вернуть клиенту {money(refundDue)}.</>}
                 </p>
               ) : (
                 <ol className="order-track" aria-label="Этапы заказа">
-                  {STAGES.map((s, i) => (
-                    <li
-                      key={s}
-                      className={i < stageIndex ? 'is-done' : i === stageIndex ? 'is-current' : ''}
-                      aria-current={i === stageIndex ? 'step' : undefined}
-                    >
-                      <span className="order-track__dot" aria-hidden="true">{i < stageIndex ? '✓' : i + 1}</span>
-                      <span className="order-track__label">{ORDER_STATUS[s]}</span>
-                    </li>
-                  ))}
+                  {STAGES.map((s, i) => {
+                    const optional = OPTIONAL_STAGES.includes(s);
+                    // Необязательный шаг пройден без макетов — значит, его пропустили.
+                    const skipped = optional && i < stageIndex && !!layouts.data && !hasLayouts;
+                    const state = skipped ? 'is-skipped' : i < stageIndex ? 'is-done' : i === stageIndex ? 'is-current' : '';
+                    return (
+                      <li
+                        key={s}
+                        className={`${state} ${optional ? 'is-optional' : ''}`}
+                        aria-current={i === stageIndex ? 'step' : undefined}
+                      >
+                        <span className="order-track__dot" aria-hidden="true">{skipped ? '–' : i < stageIndex ? '✓' : i + 1}</span>
+                        <span className="order-track__label">
+                          {ORDER_STATUS[s]}
+                          {optional && <small className="order-track__opt">{skipped ? 'пропущен' : 'необязательно'}</small>}
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ol>
               )}
             </section>
@@ -389,7 +511,7 @@ export function OrderDetail() {
             <div className="order-grid">
               {/* Клиент */}
               <section className="panel od-panel">
-                <h2 className="section__title">Клиент</h2>
+                <h2 className="adm-section__title">Клиент</h2>
                 <div className="order-client">
                   <span className="order-client__avatar" aria-hidden="true">
                     {(o.contactName || '?').trim()[0]?.toUpperCase()}
@@ -436,7 +558,7 @@ export function OrderDetail() {
 
               {/* Оплата — как чек */}
               <section className="panel od-panel">
-                <h2 className="section__title">Оплата</h2>
+                <h2 className="adm-section__title">Оплата</h2>
                 <p className="order-paymethod">{PAYMENT_METHOD[o.paymentMethod]}</p>
                 <dl className="order-receipt">
                   <div>
@@ -466,48 +588,69 @@ export function OrderDetail() {
                 </dl>
                 {o.coinsEarned > 0 && <p className="muted small">Клиенту начислено монет: {o.coinsEarned}</p>}
 
-                {!cancelled && (
+                {refundDue > 0 && (
+                  <p className="od-alert od-alert--danger" role="status">
+                    <strong>Нужно вернуть клиенту {money(refundDue)}</strong>
+                    Заказ отменён, а оплата уже принята. После возврата отметьте «Возврат».
+                  </p>
+                )}
+                {overpaid > 0 && (
+                  <p className="od-alert" role="status">
+                    <strong>Переплата {money(overpaid)}</strong>
+                    Принято больше, чем к оплате (состав заказа изменился). Нужно вернуть клиенту {money(overpaid)}.
+                  </p>
+                )}
+
+                {payOptions.length > 0 && (
                   <div className="order-paystatus">
-                    <span className="field__label" id="paystatus-label">Статус оплаты</span>
-                    <div className="order-paystatus__options" role="radiogroup" aria-labelledby="paystatus-label">
-                      {Object.entries(PAYMENT_STATUS).map(([value, label]) => {
-                        const on = o.paymentStatus === value;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            role="radio"
-                            aria-checked={on}
-                            disabled={busy || on}
-                            className={`order-paystatus__opt tone-${PAY_TONE[value]} ${on ? 'is-on' : ''}`}
-                            onClick={() => act(() => ordersApi.updateStatus(o.id, o.status, value), `Оплата: ${label}`)}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
+                    <span className="field__label" id="paystatus-label">Отметить вручную</span>
+                    <div className="order-paystatus__options" role="group" aria-labelledby="paystatus-label">
+                      {payOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          disabled={busy}
+                          className={`order-paystatus__opt tone-${opt.tone}`}
+                          onClick={() => setPayConfirm(opt)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
+                    <p className="muted small">«Ожидает оплаты» и «Частично оплачен» ставятся сами по принятым чекам.</p>
                   </div>
                 )}
+
+                {/* Чеки переводов от клиента: принять или отклонить */}
+                {!cancelled && <PaymentReview order={o} onChanged={order.reload} />}
               </section>
             </div>
 
+            <LayoutSection
+              order={o}
+              layouts={layouts}
+              onChanged={() => {
+                order.reload();
+                activity.reload();
+              }}
+            />
+
             {/* Товары */}
-            <section className="section">
-              <header className="section__head">
+            <section className="adm-section">
+              <header className="adm-section__head">
                 <div>
-                  <h2 className="section__title">
+                  <h2 className="adm-section__title">
                     Товары
-                    <span className="section__count">{o.items.length}</span>
+                    <span className="adm-section__count">{o.items.length}</span>
                   </h2>
-                  <p className="section__lead">
+                  <p className="adm-section__lead">
                     {editable
                       ? 'Пока заказ новый, можно менять количество, добавлять и убирать товары. Фото под товарами загружает только клиент.'
                       : 'Состав можно менять, только пока заказ «Новый» или «Подтверждён». Фото под товарами загружает только клиент.'}
                   </p>
                 </div>
                 {editable && (
-                  <div className="section__actions">
+                  <div className="adm-section__actions">
                     <button type="button" className="btn btn--ghost" onClick={() => setAdding(true)}>
                       Добавить товар
                     </button>
@@ -551,11 +694,11 @@ export function OrderDetail() {
             </section>
 
             {(activity.data ?? []).length > 0 && (
-              <section className="section">
-                <header className="section__head">
-                  <h2 className="section__title">
+              <section className="adm-section">
+                <header className="adm-section__head">
+                  <h2 className="adm-section__title">
                     История изменений
-                    <span className="section__count">{activity.data.length}</span>
+                    <span className="adm-section__count">{activity.data.length}</span>
                   </h2>
                 </header>
                 <ol className="order-history">
@@ -583,6 +726,62 @@ export function OrderDetail() {
               />
             )}
 
+            {step && (
+              <Modal title={step.kind === 'prepay' ? 'Предоплата не внесена' : 'Не хватает фото'} onClose={busy ? () => {} : () => setStep(null)}>
+                {step.kind === 'prepay' ? (
+                  <p>
+                    Клиент ещё должен внести предоплату {money(o.dueNowAmount)}. Всё равно перевести заказ в «
+                    {ORDER_STATUS[step.target]}»?
+                  </p>
+                ) : (
+                  <>
+                    <ul className="od-photos-missing">
+                      {step.messages.map((m) => (
+                        <li key={m}>{m}</li>
+                      ))}
+                    </ul>
+                    <p>Всё равно продолжить и перевести заказ в «{ORDER_STATUS[step.target]}»?</p>
+                  </>
+                )}
+                <div className="form-actions">
+                  <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => setStep(null)}>
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    disabled={busy}
+                    onClick={() => changeStatus(o, step.target, { prepayOk: true, ignoreMissingPhotos: step.kind === 'photos' })}
+                  >
+                    {busy ? 'Сохраняем…' : 'Всё равно продолжить'}
+                  </button>
+                </div>
+              </Modal>
+            )}
+
+            {payConfirm && (
+              <Modal title={payConfirm.title} onClose={busy ? () => {} : () => setPayConfirm(null)}>
+                <p>{payConfirm.text}</p>
+                <div className="form-actions">
+                  <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => setPayConfirm(null)}>
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    disabled={busy}
+                    onClick={() => {
+                      const opt = payConfirm;
+                      setPayConfirm(null);
+                      act(() => ordersApi.updateStatus(o.id, o.status, opt.value), `Оплата: ${PAYMENT_STATUS[opt.value]}`);
+                    }}
+                  >
+                    {payConfirm.action}
+                  </button>
+                </div>
+              </Modal>
+            )}
+
             {cancelling && (
               <ConfirmDelete
                 title="Отменить заказ?"
@@ -601,6 +800,151 @@ export function OrderDetail() {
         );
       }}
     </Async>
+  );
+}
+
+// Подписи статусов макета для сотрудника (LAYOUT_STATUS — формулировки для клиента).
+const LAYOUT_STATUS_ADMIN = { Pending: 'Ждёт ответа клиента' };
+const MAX_LAYOUT_MB = 10;
+
+/** «Макет для клиента»: загрузка макета на согласование и ответы клиента. */
+function LayoutSection({ order: o, layouts, onChanged }) {
+  const toast = useToast();
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [zoom, setZoom] = useState(null);
+  const fileRef = useRef(null);
+  const canUpload = LAYOUT_STATUSES.includes(o.status);
+  const list = layouts.data ?? [];
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  if (!canUpload && list.length === 0) return null;
+
+  const pick = (f) => {
+    setError(null);
+    if (f && f.size > MAX_LAYOUT_MB * 1024 * 1024) {
+      setError({ messages: [`Файл больше ${MAX_LAYOUT_MB} МБ.`] });
+      return;
+    }
+    setFile(f || null);
+  };
+
+  const upload = async (e) => {
+    e.preventDefault();
+    if (!file) return setError({ messages: ['Выберите файл макета.'] });
+    setBusy(true);
+    setError(null);
+    try {
+      await layoutsApi.upload(o.id, file, note.trim() || undefined);
+      toast('Макет отправлен клиенту на согласование');
+      setFile(null);
+      setNote('');
+      if (fileRef.current) fileRef.current.value = '';
+      layouts.reload();
+      onChanged();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="adm-section olayout" aria-labelledby="olayout-title">
+      <header className="adm-section__head">
+        <div>
+          <h2 id="olayout-title" className="adm-section__title">
+            Макет для клиента
+            {list.length > 0 && <span className="adm-section__count">{list.length}</span>}
+          </h2>
+          <p className="adm-section__lead">
+            {canUpload
+              ? 'Загрузите макет — заказ перейдёт в «Согласование макета», а клиент одобрит его или попросит правки в личном кабинете. После одобрения заказ сам уйдёт в производство.'
+              : 'Новые макеты можно загружать, пока заказ «Подтверждён» или на согласовании макета.'}
+          </p>
+        </div>
+      </header>
+
+      {canUpload && (
+        <form className="olayout__form" onSubmit={upload}>
+          <div className="olayout__pick">
+            {preview ? (
+              <img src={preview} alt="Выбранный макет" className="olayout__preview" />
+            ) : (
+              <span className="olayout__noimg">Файл не выбран</span>
+            )}
+            <label className="btn btn--ghost btn--small">
+              {file ? 'Выбрать другой' : 'Выбрать макет'}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={(e) => pick(e.target.files?.[0])}
+              />
+            </label>
+          </div>
+          <Textarea
+            label="Комментарий для клиента"
+            hint="Необязательно. Например: «Проверьте имя и дату на брелке»"
+            maxLength={500}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <div className="form-actions">
+            <button className="btn btn--primary" disabled={busy || !file}>
+              {busy ? 'Отправляем…' : 'Отправить на согласование'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      <ErrorBox error={error || layouts.error} />
+
+      {list.length > 0 && (
+        <ul className="olayout__list">
+          {list.map((l) => (
+            <li key={l.id} className={`olayout__item is-${String(l.status).toLowerCase()}`}>
+              <button
+                type="button"
+                className="olayout__thumb"
+                aria-label="Открыть макет крупно"
+                onClick={() => setZoom({ src: assetUrl(l.imageUrl), title: `Макет от ${dateTime(l.createdAt)}` })}
+              >
+                <img src={assetUrl(l.imageUrl)} alt="" loading="lazy" />
+              </button>
+              <div className="olayout__info">
+                <span className="olayout__status">{LAYOUT_STATUS_ADMIN[l.status] || LAYOUT_STATUS[l.status] || l.status}</span>
+                <span className="muted small">
+                  {dateTime(l.createdAt)}
+                  {l.uploadedBy && <>, {l.uploadedBy}</>}
+                </span>
+                {l.note && <span className="olayout__note">Комментарий: {l.note}</span>}
+                {l.customerComment && (
+                  <span className="olayout__comment">
+                    Клиент: «{l.customerComment}»{l.respondedAt && <> · {dateTime(l.respondedAt)}</>}
+                  </span>
+                )}
+                {!l.customerComment && l.respondedAt && <span className="muted small">Ответ {dateTime(l.respondedAt)}</span>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {zoom && <PhotoZoom src={zoom.src} title={zoom.title} onClose={() => setZoom(null)} />}
+    </section>
   );
 }
 
