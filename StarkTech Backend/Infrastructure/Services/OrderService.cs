@@ -27,6 +27,7 @@ public class OrderService : IOrderService
     private readonly INotificationService _notificationService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IOrderActivityService _activity;
+    private readonly IFileService _fileService;
     private readonly AppDbContext _context;
     private readonly ILogger<OrderService> _logger;
 
@@ -66,6 +67,7 @@ public class OrderService : IOrderService
         INotificationService notificationService,
         IUnitOfWork unitOfWork,
         IOrderActivityService activity,
+        IFileService fileService,
         AppDbContext context,
         ILogger<OrderService> logger)
     {
@@ -81,6 +83,7 @@ public class OrderService : IOrderService
         _notificationService = notificationService;
         _unitOfWork = unitOfWork;
         _activity = activity;
+        _fileService = fileService;
         _context = context;
         _logger = logger;
     }
@@ -298,8 +301,8 @@ public class OrderService : IOrderService
             DeliveryCityId = dto.DeliveryCityId,
             DeliveryAddress = dto.DeliveryAddress,
             DeliveryCost = deliveryCost,
-            ContactName = dto.ContactName,
-            ContactPhone = dto.ContactPhone,
+            ContactName = dto.ContactName.Trim(),
+            ContactPhone = dto.ContactPhone.Trim(),
             ContactEmail = dto.ContactEmail,
             PaymentMethod = dto.PaymentMethod,
             PaymentStatus = PaymentStatus.Pending,
@@ -348,6 +351,7 @@ public class OrderService : IOrderService
             return Result<GetOrderDto>.Fail("Unknown payment status", ErrorType.Validation);
 
         Order? orderWithNewStatus = null;
+        var photoFilesToDelete = new List<string>();
 
         var result = await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
@@ -397,6 +401,10 @@ public class OrderService : IOrderService
             if (paymentNote != null)
                 await _activity.LogAsync(order.Id, paymentNote, byClient: false);
 
+            // Заказ изготовлен — фото клиента больше не нужны: удаляем записи, файлы — после коммита.
+            if (statusChanges && order.Status == OrderStatus.ReadyForDelivery && order.PhotosDeletedAt == null)
+                photoFilesToDelete = await DeleteCustomerPhotosAsync(order);
+
             if (earnsCoins && order.CoinsEarned > 0)
             {
                 var earnResult = await _coinsTransactionService.EarnAsync(
@@ -418,7 +426,35 @@ public class OrderService : IOrderService
         if (result.IsSuccess && orderWithNewStatus != null)
             await NotifyStatusAsync(orderWithNewStatus);
 
+        if (result.IsSuccess)
+            foreach (var url in photoFilesToDelete)
+                await _fileService.DeleteAsync(url);
+
         return result;
+    }
+
+    // Удаляет все фото клиента по заказу (включая мягко удалённые) и помечает заказ. Возвращает файлы для удаления.
+    private async Task<List<string>> DeleteCustomerPhotosAsync(Order order)
+    {
+        var photos = await _context.OrderItemPhotos
+            .Where(p => p.OrderItem.OrderId == order.Id)
+            .ToListAsync();
+
+        var files = photos
+            .SelectMany(p => new[] { p.OriginalPhotoUrl, p.EditedPreviewUrl })
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u!)
+            .Distinct()
+            .ToList();
+
+        _context.OrderItemPhotos.RemoveRange(photos);
+        order.PhotosDeletedAt = DateTime.UtcNow;
+        await _orderRepository.UpdateAsync(order);
+
+        if (photos.Count > 0)
+            await _activity.LogAsync(order.Id, $"Фото клиента удалены после изготовления ({photos.Count} шт.)", byClient: false);
+
+        return files;
     }
 
     // Ручная смена статуса оплаты сотрудником. Возвращает текст ошибки или null.
@@ -930,6 +966,7 @@ public class OrderService : IOrderService
         dto.RemainingAmount = remaining;
         dto.DueNowAmount = Math.Min(remaining, Math.Max(0, dto.PrepaymentAmount - order.PaidAmount));
         dto.HasPendingPaymentProof = order.HasPendingPaymentProof;
+        dto.PhotosDeletedAt = order.PhotosDeletedAt;
         dto.CanCustomerEdit = CustomerMayEdit(order);
         dto.OverpaidAmount = !cancelled && order.PaymentStatus != PaymentStatus.Refunded
             ? Math.Max(0, order.PaidAmount - payable)

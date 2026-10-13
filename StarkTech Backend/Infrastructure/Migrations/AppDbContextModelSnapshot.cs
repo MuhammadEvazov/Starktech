@@ -408,6 +408,9 @@ namespace Infrastructure.Migrations
                     b.Property<int>("PaymentStatus")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("PhotosDeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("PrepaymentPercent")
                         .HasColumnType("integer");
 
@@ -1059,6 +1062,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<Guid?>("DefaultDeliveryCityId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()

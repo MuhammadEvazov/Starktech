@@ -1521,3 +1521,75 @@
   margin-top: 6px;
   font-size: var(--t-sm);
 }
+
+/* ════════════ Согласие при регистрации ════════════ */
+.auth-consent {
+  gap: 6px;
+}
+.auth-consent__label {
+  align-items: flex-start;
+  font-size: var(--t-sm);
+  line-height: 1.45;
+}
+.auth-consent__label input {
+  flex: none;
+  margin-top: 1px;
+}
+.auth-consent.field--error .auth-consent__label input {
+  outline: 2px solid var(--cherry-strong);
+  outline-offset: 2px;
+}
+
+/* ════════════ Опасная зона: удаление аккаунта ════════════ */
+.acc-card.acc-danger {
+  border-top-color: var(--cherry-strong);
+}
+.acc-prof__icon--cherry {
+  background: var(--cherry-tint);
+  color: var(--cherry-strong);
+}
+.acc-danger__text {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  max-width: 60ch;
+}
+.acc-danger__btn {
+  justify-self: start;
+}
+.acc-danger__form {
+  max-width: 52ch;
+}
+.acc-danger__list {
+  margin: 0;
+  padding: 12px 14px 12px 30px;
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--cherry);
+  background: var(--cherry-tint);
+  display: grid;
+  gap: 6px;
+  font-size: var(--t-sm);
+  line-height: 1.45;
+}
+@media (max-width: 479.98px) {
+  .acc-danger__btn {
+    justify-self: stretch;
+  }
+  .acc-danger__form .form-actions .btn {
+    flex: 1 1 100%;
+  }
+}
+
+/* Пометка о хранении фото клиента (кабинет и админка) */
+.photos-note {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line, currentColor);
+  font-size: var(--t-sm, 0.875rem);
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+.photos-note--deleted {
+  border-style: solid;
+}

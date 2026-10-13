@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using Application.Validation;
 using Domain.Enums;
 
 namespace Application.DTOs.Order;
@@ -6,7 +8,9 @@ public class CreateOrderDto
 {
     public Guid? UserId { get; set; }
 
+    [Required, PersonName]
     public string ContactName { get; set; } = default!;
+    [Required, PhoneNumberFormat]
     public string ContactPhone { get; set; } = default!;
     public string? ContactEmail { get; set; }
 

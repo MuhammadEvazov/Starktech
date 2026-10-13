@@ -118,7 +118,8 @@ export const http = {
   get: (path, query) => request('GET', path, { query }),
   post: (path, body) => request('POST', path, { body: body ?? {} }),
   put: (path, body) => request('PUT', path, { body: body ?? {} }),
-  del: (path) => request('DELETE', path),
+  // Тело у DELETE — только если передано (например, пароль при удалении аккаунта).
+  del: (path, body) => request('DELETE', path, body === undefined ? {} : { body }),
   upload: (path, file, { method = 'POST', field = 'file', extra } = {}) =>
     request(method, path, { form: fileForm(file, field, extra) }),
   form: (path, fields, method = 'POST') => {

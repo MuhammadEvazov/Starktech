@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from '../lib/router.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { CONTACTS } from '../lib/contacts.js';
+import { COMPANY } from '../lib/legal.js';
 import ChatWidget from './chat/ChatWidget.jsx';
 
 export function Logo() {
@@ -83,9 +84,14 @@ export default function ShopLayout({ children }) {
             <Link to="/prices">Цены</Link>
             <Link to="/portfolio">Наши работы</Link>
             <Link to="/faq">Вопросы и ответы</Link>
-            <Link to="/faq#returns">Возврат и брак</Link>
             <Link to="/cart">Корзина</Link>
             <Link to="/account">Личный кабинет</Link>
+          </nav>
+          <nav className="shop-footer__nav" aria-label="Документы">
+            <Link to="/terms">Публичная оферта</Link>
+            <Link to="/privacy">Политика конфиденциальности</Link>
+            <Link to="/refund">Возврат и брак</Link>
+            <Link to="/privacy#cookies">Cookies</Link>
           </nav>
           <address className="shop-footer__contacts">
             <a href={CONTACTS.phoneHref}>{CONTACTS.phone}</a>
@@ -98,7 +104,12 @@ export default function ShopLayout({ children }) {
               {CONTACTS.city}, срок изготовления {CONTACTS.leadTime}
             </span>
           </address>
-          <p className="shop-footer__copy">© {new Date().getFullYear()} StarkTech</p>
+          <p className="shop-footer__copy">
+            © {new Date().getFullYear()} StarkTech
+            <span className="shop-footer__requisites">
+              {COMPANY.legalName} · ИНН {COMPANY.tin} · {COMPANY.address}
+            </span>
+          </p>
         </div>
       </footer>
 

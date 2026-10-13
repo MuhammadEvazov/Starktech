@@ -4,6 +4,7 @@ import { Link, NavLink, Routes, useLocation, useNavigate, useParams } from '../.
 import { useAsync } from '../../lib/hooks.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { useCart } from '../../context/CartContext.jsx';
 import { authApi, citiesApi, layoutsApi, orderPhotosApi, ordersApi, profileApi, variantsApi } from '../../api/endpoints.js';
 import { SHAPE_LABEL, shapesFromVariants } from '../../lib/shapes.js';
 import { photoCopies, sumCopies } from '../../lib/cartPhotoStore.js';
@@ -20,6 +21,7 @@ import {
   parseJson,
   PAYMENT_METHOD,
 } from '../../lib/format.js';
+import { contactErrors } from '../../lib/validate.js';
 import PhotoEditor from '../../components/PhotoEditor.jsx';
 import PhotoZoom from '../../components/PhotoZoom.jsx';
 import PaymentBox from '../../components/PaymentBox.jsx';
@@ -139,6 +141,7 @@ const ICONS = {
   truck: svg(<><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="18" r="2" /><circle cx="17" cy="18" r="2" /></>),
   receipt: svg(<><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" /><path d="M9 8h6M9 12h6M9 16h3" /></>),
   photo: svg(<><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="2" /><path d="M21 16l-5-5-8 8" /></>),
+  trash: svg(<><path d="M4 7h16M10 11v6M14 11v6" /><path d="M6 7l1 13h10l1-13M9 7V4h6v3" /></>),
 };
 
 /** Цветная шапка раздела кабинета: иконка (или media — например, загрузка аватара), заголовок, пояснение и (необязательно) цифры справа. */
@@ -514,6 +517,25 @@ function LayoutApproval({ order: o, state, onChanged, highlight = false }) {
   );
 }
 
+// Фото клиента хранятся только до изготовления: при переходе в «Готов к доставке» сервер их удаляет.
+const PHOTOS_KEPT_STATUSES = ['New', 'Confirmed', 'AwaitingLayoutApproval', 'InProduction'];
+
+/** Пометка о хранении фото клиента (кабинет клиента и админка). */
+export function PhotosRetentionNote({ order: o }) {
+  if (o.photosDeletedAt)
+    return (
+      <p className="photos-note photos-note--deleted" role="note">
+        Фото клиента удалены {date(o.photosDeletedAt)} — заказ изготовлен, они больше не хранятся.
+      </p>
+    );
+  if (!PHOTOS_KEPT_STATUSES.includes(o.status)) return null;
+  return (
+    <p className="photos-note" role="note">
+      Фото хранятся только до изготовления: когда заказ станет «{ORDER_STATUS.ReadyForDelivery}», они будут удалены.
+    </p>
+  );
+}
+
 // canEditPreview — кадрирование и макет (только в кабинете клиента; сервер разрешает их для статусов New/Confirmed).
 // Компонент также используется в админке (pages/admin/Orders.jsx): разметка и классы общие,
 // новый вид кабинета задаётся только внутри .acc-page (styles/site/account.css).
@@ -543,6 +565,7 @@ function MyOrderItems({ order: o, editable, canPhotos = editable, onChanged }) {
   return (
     <>
       <ErrorBox error={error} />
+      <PhotosRetentionNote order={o} />
       <ul className="acc-items">
         {o.items.map((item) => (
           <li key={item.id}>
@@ -987,7 +1010,7 @@ function MyCoins() {
 }
 
 function ProfileForm() {
-  const { profile, setProfile, refreshProfile } = useAuth();
+  const { profile, setProfile, refreshProfile, isAdmin } = useAuth();
   const toast = useToast();
   const [form, setForm] = useState({ fullName: '', bio: '', phoneNumber: '', deliveryCityId: '', deliveryAddress: '' });
   const [error, setError] = useState(null);
@@ -1012,6 +1035,8 @@ function ProfileForm() {
 
   const submit = async (e) => {
     e.preventDefault();
+    const invalid = contactErrors(form.fullName, form.phoneNumber);
+    if (invalid) return setError(invalid);
     setBusy(true);
     setError(null);
     try {
@@ -1129,7 +1154,96 @@ function ProfileForm() {
         </button>
       </div>
     </form>
+    {/* Сотрудникам удаление недоступно (сервер всё равно откажет) — карточку не показываем. */}
+    {!isAdmin && <DeleteAccount />}
     </div>
+  );
+}
+
+/** «Опасная зона»: удаление своего аккаунта с подтверждением паролем. */
+function DeleteAccount() {
+  const { logout } = useAuth();
+  const cart = useCart();
+  const toast = useToast();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const close = () => {
+    if (busy) return;
+    setOpen(false);
+    setPassword('');
+    setError(null);
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!password) return setError({ messages: ['Введите пароль, чтобы подтвердить удаление.'] });
+    setBusy(true);
+    setError(null);
+    try {
+      await profileApi.deleteAccount(password);
+    } catch (err) {
+      setError(err);
+      setBusy(false);
+      return;
+    }
+    // Аккаунта больше нет: чистим корзину, уходим на главную и выходим.
+    cart?.clear?.();
+    navigate('/', { replace: true });
+    logout();
+    toast('Аккаунт удалён');
+  };
+
+  return (
+    <section className="acc-card acc-danger" aria-labelledby="acc-danger-title">
+      <header className="acc-prof__head">
+        <span className="acc-prof__icon acc-prof__icon--cherry" aria-hidden="true">
+          {ICONS.trash}
+        </span>
+        <h3 id="acc-danger-title">Удаление аккаунта</h3>
+      </header>
+      <p className="acc-danger__text">
+        Аккаунт и личные данные будут удалены без возможности восстановления. Неистраченные монеты сгорят.
+      </p>
+      <button type="button" className="btn btn--danger acc-danger__btn" onClick={() => setOpen(true)}>
+        Удалить аккаунт
+      </button>
+
+      {open && (
+        <Modal title="Удалить аккаунт?" onClose={close}>
+          <form className="acc-form acc-danger__form" onSubmit={submit}>
+            <ul className="acc-danger__list">
+              <li>Имя, email, телефон, адрес, фото профиля и переписка в чате будут удалены или обезличены.</li>
+              <li>История заказов сохранится в обезличенном виде — она нужна для бухгалтерского учёта.</li>
+              <li>Неистраченные StarkCoins сгорят.</li>
+              <li>Действие необратимо — восстановить аккаунт будет нельзя.</li>
+              <li>Если у вас есть заказы в работе, лучше дождаться их выполнения.</li>
+            </ul>
+            <Input
+              label="Пароль"
+              type="password"
+              required
+              autoFocus
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <ErrorBox error={error} />
+            <div className="form-actions">
+              <button type="button" className="btn btn--ghost" onClick={close} disabled={busy}>
+                Отмена
+              </button>
+              <button type="submit" className="btn btn--danger" disabled={busy}>
+                {busy ? 'Удаляем…' : 'Удалить навсегда'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </section>
   );
 }
 

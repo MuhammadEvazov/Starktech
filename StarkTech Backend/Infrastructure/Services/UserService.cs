@@ -93,6 +93,8 @@ public class UserService : IUserService
                 join profile in _context.Clients.AsNoTracking()
                     on user.Id equals profile.AppUserId into profiles
                 from profile in profiles.DefaultIfEmpty()
+                // Удалённые по запросу владельца аккаунты в списках не показываем
+                where profile == null || profile.DeletedAt == null
                 select new
                 {
                     User = user,
@@ -437,6 +439,7 @@ public class UserService : IUserService
             join profile in _context.Clients.AsNoTracking()
                 on user.Id equals profile.AppUserId into profiles
             from profile in profiles.DefaultIfEmpty()
+            where profile == null || profile.DeletedAt == null
             where _context.UserRoles.Any(ur => ur.UserId == user.Id && clientRoleIds.Contains(ur.RoleId))
             select new
             {
@@ -576,4 +579,4 @@ public class UserService : IUserService
             "Users cache version incremented to {Version}",
             nextVersion);
     }
-}
+}

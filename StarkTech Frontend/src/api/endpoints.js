@@ -27,6 +27,8 @@ export const profileApi = {
   update: (dto) => http.put('/api/profile', dto),
   uploadAvatar: (file) => http.upload('/api/profile/avatar', file, { method: 'PUT', field: 'File' }),
   coins: (query) => http.get('/api/profile/coins', query), // история монет текущего пользователя
+  // Удаление своего аккаунта: личные данные стираются/обезличиваются, нужен текущий пароль.
+  deleteAccount: (password) => http.del('/api/profile', { password }),
 };
 
 export const categoriesApi = {

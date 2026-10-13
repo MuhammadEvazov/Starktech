@@ -280,9 +280,14 @@ body {
 }
 .shop-footer__row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
   gap: 32px;
   width: min(100% - 32px, var(--site-max));
+}
+@media (max-width: 1000px) {
+  .shop-footer__row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .shop-footer__text {
   margin-top: 12px;
@@ -313,6 +318,13 @@ body {
   padding-top: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   font-size: var(--t-xs);
+}
+/* Реквизиты продавца — из lib/legal.js */
+.shop-footer__requisites {
+  display: block;
+  margin-top: 4px;
+  opacity: 0.8;
+  overflow-wrap: anywhere;
 }
 
 /* ─── Телефон: меню под шапкой ─── */
@@ -408,4 +420,12 @@ body {
   .product-card:hover {
     transform: none;
   }
+}
+
+/* Мелкая юридическая пометка (например, под загрузкой фото) */
+.legal-note {
+  margin: 6px 0 0;
+  font-size: var(--t-xs);
+  line-height: 1.45;
+  color: var(--ink-soft);
 }

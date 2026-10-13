@@ -12,6 +12,9 @@ import OrderPlaced from './pages/shop/OrderPlaced.jsx';
 import Portfolio from './pages/shop/Portfolio.jsx';
 import Prices from './pages/shop/Prices.jsx';
 import Faq from './pages/shop/Faq.jsx';
+import Privacy from './pages/shop/Privacy.jsx';
+import Terms from './pages/shop/Terms.jsx';
+import Refund from './pages/shop/Refund.jsx';
 import { Login, Register, ForgotPassword } from './pages/auth/Auth.jsx';
 import Account from './pages/account/Account.jsx';
 import { lazy, Suspense } from 'react';
@@ -73,6 +76,9 @@ export default function App() {
                 { path: '/portfolio', title: t('Наши работы'), element: shop(<Portfolio />) },
                 { path: '/prices', title: t('Цены'), element: shop(<Prices />) },
                 { path: '/faq', title: t('Вопросы и ответы'), element: shop(<Faq />) },
+                { path: '/privacy', title: t('Политика конфиденциальности'), element: shop(<Privacy />) },
+                { path: '/terms', title: t('Публичная оферта'), element: shop(<Terms />) },
+                { path: '/refund', title: t('Политика возврата'), element: shop(<Refund />) },
                 // Корзина и фото — только после входа; гость может смотреть каталог.
                 { path: '/cart', title: t('Корзина'), element: <RequireAuth>{shop(<Cart />)}</RequireAuth> },
                 // Заказ оформляет только вошедший покупатель: у заказа есть владелец, фото загружаются сами.

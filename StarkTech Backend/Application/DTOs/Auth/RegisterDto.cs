@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Application.Validation;
 
 namespace Application.DTOs.Auth;
 
@@ -6,6 +7,7 @@ public class RegisterDto
 {
     [Required]
     [MaxLength(100)]
+    [PersonName]
     public string FullName { get; set; } = string.Empty;
     [Required]
     [MaxLength(100)]
@@ -13,6 +15,7 @@ public class RegisterDto
     public string Email { get; set; } = string.Empty;
 
     [Required]
+    [PhoneNumberFormat]
     public string PhoneNumber { get; set; } = string.Empty;
 
     [Required]

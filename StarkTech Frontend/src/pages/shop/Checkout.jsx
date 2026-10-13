@@ -10,6 +10,7 @@ import { itemTotal, uploadCartPhoto, useCart, useCartCheck } from '../../context
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ErrorBox, Input, Select, Textarea } from '../../components/ui.jsx';
 import { CartCheckNotice, misfitPhotos } from './Cart.jsx';
+import { contactErrors } from '../../lib/validate.js';
 
 // Короткие пояснения под способами оплаты.
 const PAYMENT_HINT = {
@@ -190,6 +191,8 @@ export default function Checkout() {
   const submit = async (e) => {
     e.preventDefault();
     if (submitting.current || misfit || photosLoading || !items.length) return; // защита от двойного нажатия
+    const invalid = contactErrors(form.contactName, form.contactPhone);
+    if (invalid) return setError(invalid);
     submitting.current = true;
     setError(null);
     setStage('order');
@@ -622,6 +625,21 @@ export default function Checkout() {
           <button className="btn btn--primary btn--large btn--block chk-go" disabled={submitDisabled}>
             {busyLabel || 'Подтвердить заказ'}
           </button>
+          <p className="chk-fine chk-legal">
+            Оформляя заказ, вы соглашаетесь с{' '}
+            <Link to="/terms" className="text-link">
+              условиями оферты
+            </Link>
+            ,{' '}
+            <Link to="/refund" className="text-link">
+              политикой возврата
+            </Link>{' '}
+            и{' '}
+            <Link to="/privacy" className="text-link">
+              обработкой персональных данных
+            </Link>
+            .
+          </p>
           <p className="chk-fine chk-faq">
             <Link to="/faq" className="text-link">
               Условия возврата и FAQ

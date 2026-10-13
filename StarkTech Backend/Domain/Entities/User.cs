@@ -24,6 +24,9 @@ public class User : BaseEntity
     public DateTime RegisterAt { get; private set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; private set; } = DateTime.UtcNow;
 
+    // Аккаунт удалён по запросу владельца: личные данные стёрты, запись осталась ради заказов и отчётности.
+    public DateTime? DeletedAt { get; private set; }
+
     // Navigation
     public ICollection<Order> Orders { get; set; } = new List<Order>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
@@ -78,6 +81,30 @@ public class User : BaseEntity
     {
         AvatarUrl = null;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public const string DeletedUserName = "Удалённый пользователь";
+
+    /// <summary>
+    /// Удаление аккаунта по запросу владельца: стираем личные данные, но оставляем запись,
+    /// на которую ссылаются заказы, отзывы и история монет. Email заменяется уникальной «заглушкой»,
+    /// чтобы тот же адрес можно было зарегистрировать заново.
+    /// </summary>
+    public void Anonymize(string tombstoneEmail)
+    {
+        var now = DateTime.UtcNow;
+
+        FullName = DeletedUserName;
+        Email = tombstoneEmail;
+        PhoneNumber = null;
+        Bio = null;
+        AvatarUrl = null;
+        DefaultDeliveryCityId = null;
+        DefaultDeliveryAddress = null;
+        EmailConfirmed = false;
+        IsActive = false;
+        DeletedAt = now;
+        UpdatedAt = now;
     }
 
     public void SetRegisterAtIfDefault(DateTime registerAt)

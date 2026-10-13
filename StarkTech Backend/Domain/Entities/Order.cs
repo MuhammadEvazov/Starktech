@@ -48,6 +48,9 @@ public class Order : BaseEntity
     public decimal PaidAmount { get; set; }
     public bool HasPendingPaymentProof { get; set; }
 
+    // Когда фото клиента удалены (при переходе в «Готов к отправке» — заказ уже изготовлен).
+    public DateTime? PhotosDeletedAt { get; set; }
+
     // Navigation
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();

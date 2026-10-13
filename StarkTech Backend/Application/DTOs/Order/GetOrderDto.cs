@@ -47,6 +47,8 @@ public class GetOrderDto
     public decimal DueNowAmount { get; set; }
     /// <summary>Есть чек, который ждёт проверки сотрудником.</summary>
     public bool HasPendingPaymentProof { get; set; }
+    // Фото клиента удалены после изготовления (null — ещё хранятся)
+    public DateTime? PhotosDeletedAt { get; set; }
     /// <summary>Клиент может сам менять состав: статус «Новый»/«Подтверждён», ничего не оплачено и нет чека на проверке.</summary>
     public bool CanCustomerEdit { get; set; }
     /// <summary>Переплата: принято больше, чем к оплате (например, после правки состава сотрудником).</summary>

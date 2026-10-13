@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from '../lib/router.jsx';
 import { SHAPE_LABEL } from '../lib/shapes.js';
 import { fileId, MAX_COPIES, photoCopies } from '../lib/cartPhotoStore.js';
 import { DEFAULT_PRINT_CM, isLowQuality } from './PhotoEditor.jsx';
@@ -217,6 +218,13 @@ export default function PhotoPicker({
           фото — сколько стикеров с него напечатать. Фото загрузятся вместе с заказом.
         </p>
       )}
+      <p className="legal-note">
+        Загружая фото, вы подтверждаете, что{' '}
+        <Link to="/terms" className="text-link">
+          имеете право на их использование
+        </Link>
+        .
+      </p>
     </div>
   );
 }

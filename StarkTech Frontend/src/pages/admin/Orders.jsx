@@ -11,7 +11,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import {
   Async, Empty, ErrorBox, Input, Modal, OrderStatusBadge, Pagination, PaymentStatusBadge, Select, Textarea,
 } from '../../components/ui.jsx';
-import { OrderItemPhotos } from '../account/Account.jsx';
+import { OrderItemPhotos, PhotosRetentionNote } from '../account/Account.jsx';
 import PaymentReview from './PaymentReview.jsx';
 import { Stepper } from '../shop/Product.jsx';
 import { ConfirmDelete } from './CrudPage.jsx';
@@ -292,7 +292,7 @@ export function OrderDetail() {
   const activity = useAsync(() => ordersApi.activity(id), [id]);
   const layouts = useAsync(() => layoutsApi.list(id), [id]);
   const [adding, setAdding] = useState(false);
-  // Подтверждение перед сменой статуса: { kind: 'prepay' | 'photos', target, messages }
+  // Подтверждение перед сменой статуса: { kind: 'prepay' | 'photos' | 'purge', target, messages }
   const [step, setStep] = useState(null);
   // Подтверждение ручной отметки оплаты: { value, title, text, action }
   const [payConfirm, setPayConfirm] = useState(null);
@@ -314,10 +314,15 @@ export function OrderDetail() {
     }
   };
 
-  const changeStatus = async (o, target, { prepayOk = false, ignoreMissingPhotos = false } = {}) => {
+  const changeStatus = async (o, target, { prepayOk = false, ignoreMissingPhotos = false, purgeOk = false } = {}) => {
     // Предоплата не внесена — сначала спрашиваем, точно ли запускать производство.
     if (target === 'InProduction' && Number(o.dueNowAmount) > 0 && !prepayOk) {
       setStep({ kind: 'prepay', target });
+      return;
+    }
+    // «Готов к доставке» — сервер удалит фото клиента; предупреждаем заранее.
+    if (target === 'ReadyForDelivery' && !o.photosDeletedAt && !purgeOk) {
+      setStep({ kind: 'purge', target });
       return;
     }
     setBusy(true);
@@ -657,6 +662,7 @@ export function OrderDetail() {
                   </div>
                 )}
               </header>
+              <PhotosRetentionNote order={o} />
               <ul className="order-items order-items--admin">
                 {o.items.map((item) => (
                   <li key={item.id}>
@@ -727,8 +733,16 @@ export function OrderDetail() {
             )}
 
             {step && (
-              <Modal title={step.kind === 'prepay' ? 'Предоплата не внесена' : 'Не хватает фото'} onClose={busy ? () => {} : () => setStep(null)}>
-                {step.kind === 'prepay' ? (
+              <Modal
+                title={{ prepay: 'Предоплата не внесена', photos: 'Не хватает фото', purge: 'Фото клиента будут удалены' }[step.kind]}
+                onClose={busy ? () => {} : () => setStep(null)}
+              >
+                {step.kind === 'purge' ? (
+                  <p>
+                    После перевода в «{ORDER_STATUS[step.target]}» все фото, которые прислал клиент, и их подгонка кадра будут
+                    удалены безвозвратно. Убедитесь, что заказ изготовлен и фото больше не понадобятся.
+                  </p>
+                ) : step.kind === 'prepay' ? (
                   <p>
                     Клиент ещё должен внести предоплату {money(o.dueNowAmount)}. Всё равно перевести заказ в «
                     {ORDER_STATUS[step.target]}»?
@@ -751,9 +765,11 @@ export function OrderDetail() {
                     type="button"
                     className="btn btn--primary"
                     disabled={busy}
-                    onClick={() => changeStatus(o, step.target, { prepayOk: true, ignoreMissingPhotos: step.kind === 'photos' })}
+                    onClick={() =>
+                      changeStatus(o, step.target, { prepayOk: true, ignoreMissingPhotos: step.kind === 'photos', purgeOk: true })
+                    }
                   >
-                    {busy ? 'Сохраняем…' : 'Всё равно продолжить'}
+                    {busy ? 'Сохраняем…' : step.kind === 'purge' ? 'Перевести и удалить фото' : 'Всё равно продолжить'}
                   </button>
                 </div>
               </Modal>

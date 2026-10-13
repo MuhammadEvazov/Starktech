@@ -5,6 +5,8 @@ using Application.Interfaces.Services;
 using Application.Results;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using WebApi.MiddleWares;
 
 namespace WebApi.Controllers;
 
@@ -16,11 +18,16 @@ public class ProfileController : BaseController
 
     private readonly IProfileService _profileService;
     private readonly ICoinsTransactionService _coinsTransactionService;
+    private readonly IAccountDeletionService _accountDeletionService;
 
-    public ProfileController(IProfileService profileService, ICoinsTransactionService coinsTransactionService)
+    public ProfileController(
+        IProfileService profileService,
+        ICoinsTransactionService coinsTransactionService,
+        IAccountDeletionService accountDeletionService)
     {
         _profileService = profileService;
         _coinsTransactionService = coinsTransactionService;
+        _accountDeletionService = accountDeletionService;
     }
 
 
@@ -97,7 +104,21 @@ public class ProfileController : BaseController
         return HandleResult(result);
     }
 
-        private string? GetUserId()
+    // DELETE /api/profile — удаление своего аккаунта: личные данные стираются, заказы обезличиваются
+    [HttpDelete]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountDto dto)
+    {
+        var userId = GetUserId();
+
+        if (userId is null)
+            return Unauthorized();
+
+        var result = await _accountDeletionService.DeleteOwnAccountAsync(userId, dto.Password);
+        return HandleResult(result);
+    }
+
+    private string? GetUserId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier);
     }

@@ -959,3 +959,10 @@ body:has(.chk-bar) .chat-fab {
 .done-issue__hide {
   justify-self: start;
 }
+
+/* Юридическая пометка под кнопкой оформления */
+.chk-legal {
+  font-size: var(--t-xs);
+  text-align: center;
+  overflow-wrap: anywhere;
+}

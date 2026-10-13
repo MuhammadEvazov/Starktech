@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from '../../lib/router.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { authApi } from '../../api/endpoints.js';
 import { ErrorBox, Input } from '../../components/ui.jsx';
+import { contactErrors } from '../../lib/validate.js';
 
 /* Небольшая витрина стикеров справа от формы (только на широких экранах) */
 function AuthAside() {
@@ -194,10 +195,20 @@ export function Register() {
   const [cooldown, startCooldown] = useCooldown();
   // Аккаунт создан, но автоматический вход не удался — повторная регистрация не нужна, только вход.
   const [created, setCreated] = useState(false);
+  // Согласие с офертой и политикой конфиденциальности — обязательно для регистрации.
+  const [agree, setAgree] = useState(false);
+  const [agreeError, setAgreeError] = useState(null);
 
   const submit = async (e) => {
     e.preventDefault();
     if (cooldown > 0) return;
+    if (!agree) {
+      setAgreeError('Чтобы создать аккаунт, примите условия оферты и политики конфиденциальности.');
+      document.getElementById('reg-consent')?.focus();
+      return;
+    }
+    const invalid = contactErrors(form.fullName, form.phoneNumber);
+    if (invalid) return setError(invalid);
     if (problems.length) return setError({ messages: [`Пароль: не хватает — ${problems.join(', ')}.`] });
     if (form.password !== form.confirmPassword) return setError({ messages: ['Пароли не совпадают.'] });
     setBusy(true);
@@ -279,6 +290,36 @@ export function Register() {
           onChange={set('confirmPassword')}
           error={mismatch ? 'Пароли не совпадают' : null}
         />
+        <div className={`field auth-consent${agreeError ? ' field--error' : ''}`}>
+          <label className="checkbox auth-consent__label" htmlFor="reg-consent">
+            <input
+              id="reg-consent"
+              type="checkbox"
+              checked={agree}
+              onChange={(e) => {
+                setAgree(e.target.checked);
+                if (e.target.checked) setAgreeError(null);
+              }}
+              aria-invalid={agreeError ? true : undefined}
+              aria-describedby={agreeError ? 'reg-consent-error' : undefined}
+            />
+            <span>
+              Я принимаю условия{' '}
+              <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-link">
+                Публичной оферты<span className="sr-only"> (откроется в новой вкладке)</span>
+              </Link>{' '}
+              и{' '}
+              <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-link">
+                Политики конфиденциальности<span className="sr-only"> (откроется в новой вкладке)</span>
+              </Link>
+            </span>
+          </label>
+          {agreeError && (
+            <p className="field__error" id="reg-consent-error" role="alert">
+              {agreeError}
+            </p>
+          )}
+        </div>
         <AuthError error={error} />
         <button className="btn btn--primary btn--block auth-submit" disabled={busy || cooldown > 0}>
           {busy ? 'Создаём аккаунт…' : cooldown > 0 ? `Повторить через ${cooldown} с` : 'Создать аккаунт'}

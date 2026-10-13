@@ -36,8 +36,8 @@ public class AuthService : IAuthService
         {
             Id = userId,
             Email = dto.Email,
-            FullName = dto.FullName,
-            PhoneNumber = dto.PhoneNumber,
+            FullName = dto.FullName.Trim(),
+            PhoneNumber = dto.PhoneNumber.Trim(),
             RegisteredAt = DateTime.UtcNow
         });
     }

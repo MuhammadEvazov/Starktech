@@ -29,8 +29,9 @@ await DockerBootstrapper.EnsureRunningAsync(builder.Environment, builder.Configu
 // ─── Logging ────────────────────────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
-    // Консоль — для хостинга (Render собирает stdout в раздел Logs); файл — для локальной разработки.
-    .WriteTo.Console()
+    // Консоль — только предупреждения и ошибки (Render собирает stdout в раздел Logs);
+    // полный журнал (запросы, SQL) — в файле Logs/log-*.json.
+    .WriteTo.Console(restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning)
     .WriteTo.File(
         path: "Logs/log-.json",
         rollingInterval: RollingInterval.Day,
@@ -150,6 +151,7 @@ builder.Services.AddScoped<IRolePermissionService, RolePermissionService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<ILayoutService, LayoutService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IAccountDeletionService, AccountDeletionService>();
 builder.Services.AddScoped<ChatNotifier>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
