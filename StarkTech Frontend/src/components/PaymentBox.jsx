@@ -100,7 +100,7 @@ export default function PaymentBox({ order: o, onChanged }) {
           <span className="pay-box__icon" aria-hidden="true">↩</span>
           <div>
             <strong>К возврату {money(refundDue)}</strong>
-            <p>Заказ отменён. Менеджер вернёт оплаченную сумму — если есть вопросы, напишите в чат.</p>
+            <p>Заказ отменён. Менеджер вернёт оплаченную сумму — если есть вопросы, напиши в чат.</p>
           </div>
         </section>
       );
@@ -117,7 +117,7 @@ export default function PaymentBox({ order: o, onChanged }) {
         <span className="pay-box__icon" aria-hidden="true">↩</span>
         <div>
           <strong>Оплата возвращена</strong>
-          <p>Менеджер оформил возврат. Если есть вопросы, напишите в чат.</p>
+          <p>Менеджер оформил возврат. Если есть вопросы, напиши в чат.</p>
         </div>
       </section>
     );
@@ -153,8 +153,8 @@ export default function PaymentBox({ order: o, onChanged }) {
     setError(null);
     const raw = toNumber(amount);
     const value = Number.isFinite(raw) ? round2(raw) : NaN;
-    if (!file) return setError({ messages: ['Прикрепите скриншот или фото чека перевода.'] });
-    if (!(value > 0)) return setError({ messages: ['Укажите сумму перевода.'] });
+    if (!file) return setError({ messages: ['Прикрепи скриншот или фото чека перевода.'] });
+    if (!(value > 0)) return setError({ messages: ['Укажи сумму перевода.'] });
     if (value > remaining) return setError({ messages: [`Сумма больше, чем осталось оплатить (${money(remaining)}).`] });
     setBusy(true);
     try {
@@ -181,12 +181,12 @@ export default function PaymentBox({ order: o, onChanged }) {
           </h3>
           <p>
             {dueNow > 0
-              ? 'Переведите предоплату и загрузите чек — после проверки мы начнём работу над заказом.'
+              ? 'Переведи предоплату и загрузи чек — после проверки мы начнём работу над заказом.'
               : cashOnly
-                ? `Оплатите ${money(remaining)} наличными курьеру или при самовывозе. Можно и переводом заранее.`
+                ? `Оплати ${money(remaining)} наличными курьеру или при самовывозе. Можно и переводом заранее.`
                 : waitConfirm && paid === 0
-                  ? 'Менеджер подтвердит заказ — после этого переведите сумму. Можно оплатить и сейчас.'
-                  : 'Переведите оставшуюся сумму удобным способом и загрузите чек.'}
+                  ? 'Менеджер подтвердит заказ — после этого переведи сумму. Можно оплатить и сейчас.'
+                  : 'Переведи оставшуюся сумму удобным способом и загрузи чек.'}
           </p>
         </div>
         <PaymentStatusBadge status={o.paymentStatus} />
@@ -293,11 +293,11 @@ export default function PaymentBox({ order: o, onChanged }) {
                 {file ? (
                   <>
                     <strong>{file.name}</strong>
-                    <small>Нажмите, чтобы выбрать другой файл</small>
+                    <small>Нажми, чтобы выбрать другой файл</small>
                   </>
                 ) : (
                   <>
-                    <strong>Прикрепить чек</strong>
+                    <strong>Загрузи чек</strong>
                     <small>Скриншот из приложения банка — JPG, PNG или WEBP до 5 МБ</small>
                   </>
                 )}

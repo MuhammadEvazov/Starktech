@@ -24,14 +24,14 @@
   border: 0;
   border-radius: var(--radius-pill);
   padding: 12px 20px;
-  background: var(--cobalt);
+  background: var(--stark-red);
   color: var(--paper);
   font: 600 var(--t-md) var(--font-body);
   box-shadow: var(--shadow-lift);
   cursor: pointer;
 }
 .chat-fab__toggle:hover {
-  background: var(--cobalt-deep);
+  background: var(--stark-red-deep);
 }
 .chat-fab__toggle:focus-visible {
   outline: none;
@@ -41,7 +41,7 @@
 /* ───────── Лист стикеров (components/StickerSheet.jsx) ───────── */
 .sheet {
   background-color: var(--sheet);
-  background-image: radial-gradient(rgba(20, 22, 58, 0.09) 1px, transparent 1.2px);
+  background-image: radial-gradient(rgba(18, 19, 20, 0.09) 1px, transparent 1.2px);
   background-size: 16px 16px;
   border-radius: 22px;
   padding: 28px 24px 18px;
@@ -101,7 +101,7 @@
 }
 .sticker__cut {
   fill: transparent;
-  stroke: rgba(20, 22, 58, 0.38);
+  stroke: rgba(18, 19, 20, 0.38);
   stroke-width: 1.6;
   stroke-dasharray: 5 5;
   transform: rotate(var(--rot)) scale(1.1);
@@ -113,14 +113,14 @@
   stroke-width: 12;
   stroke-linejoin: round;
   paint-order: stroke;
-  filter: drop-shadow(0 3px 2px rgba(20, 22, 58, 0.22));
+  filter: drop-shadow(0 3px 2px rgba(18, 19, 20, 0.22));
   transform: rotate(var(--rot));
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.3, 1.1), filter 0.25s;
 }
 .sticker__cam {
   stroke-width: 0;
   filter: none;
-  fill: rgba(20, 22, 58, 0.18);
+  fill: rgba(18, 19, 20, 0.18);
 }
 .sticker__label {
   position: relative;
@@ -156,7 +156,7 @@
 .sticker--cherry .sticker__body { fill: var(--cherry); }
 .sticker--cherry .sticker__label { color: var(--paper); }
 .sticker--lilac .sticker__body { fill: var(--lilac); }
-.sticker--clear .sticker__body { fill: rgba(223, 226, 255, 0.75); }
+.sticker--clear .sticker__body { fill: var(--mist); }
 
 /* Отклеенный стикер и отклик на наведение: надсечка остаётся на листе */
 .sticker--peel .sticker__cut,
@@ -178,7 +178,7 @@
 .sticker--peel .sticker__body,
 .sticker:hover .sticker__body,
 .sticker:focus-visible .sticker__body {
-  filter: drop-shadow(0 14px 12px rgba(20, 22, 58, 0.28));
+  filter: drop-shadow(0 14px 12px rgba(18, 19, 20, 0.28));
 }
 .sticker:focus-visible {
   box-shadow: none;
@@ -191,21 +191,27 @@
 .stepper {
   display: inline-flex;
   align-items: center;
-  border: 1.5px solid var(--line);
-  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-round);
+  background: var(--paper);
   width: max-content;
 }
 .stepper button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 0;
   background: none;
+  color: var(--text);
   font-size: 20px;
   cursor: pointer;
   border-radius: 50%;
 }
 .stepper button:hover:not(:disabled) {
-  background: var(--sheet);
+  background: var(--surface-raised);
+}
+.stepper button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
 }
 .stepper button:disabled {
   opacity: 0.35;
@@ -239,9 +245,9 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: var(--radius-sm);
-  border: 3px solid var(--paper);
-  box-shadow: 0 0 0 1px var(--line);
+  border-radius: var(--r-sm);
+  border: 0;
+  box-shadow: 0 0 0 1px var(--border);
 }
 /* Крестик «удалить»: у фото в выборе и у миниатюры макета.
    У миниатюры — только кнопка без класса или .thumb__del, чтобы не задеть
@@ -252,24 +258,25 @@
   position: absolute;
   top: -6px;
   right: -6px;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   border: 2px solid var(--paper);
-  background: var(--ink);
+  background: var(--graphite);
   color: var(--paper);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
 }
 .photo-picker__add {
-  border: 2px dashed var(--ink-soft);
+  border: 2px dashed var(--stark-red);
   display: grid;
   place-content: center;
   text-align: center;
   font-size: var(--t-xs);
-  font-weight: 600;
-  color: var(--ink-soft);
+  font-weight: 700;
+  color: var(--stark-red);
+  background: var(--paper);
   cursor: pointer;
   gap: 0;
 }
@@ -278,8 +285,12 @@
   line-height: 1;
 }
 .photo-picker__add:hover {
-  border-color: var(--cobalt);
-  color: var(--cobalt);
+  border-style: solid;
+  background: var(--stark-red-tint);
+  color: var(--stark-red-deep);
+}
+.photo-picker__add:focus-within {
+  box-shadow: var(--focus);
 }
 .photo-picker--compact .photo-picker__add span:last-child {
   display: none;
@@ -289,8 +300,9 @@
 }
 
 .subhead {
+  font-family: var(--font-display);
   font-size: var(--t-lg);
-  font-weight: 700;
+  font-weight: 600;
   margin: 24px 0 12px;
 }
 .order-items {
@@ -335,8 +347,9 @@
   position: absolute;
   left: 4px;
   bottom: 4px;
-  background: var(--lemon);
-  font-size: 10px;
+  background: var(--arc-cyan);
+  color: var(--ink-pure);
+  font-size: 11px;
   font-weight: 700;
   padding: 0 6px;
   border-radius: var(--radius-pill);
@@ -351,8 +364,8 @@
   cursor: pointer;
 }
 .thumb--add:hover {
-  border-color: var(--cobalt);
-  color: var(--cobalt);
+  border-color: var(--stark-red);
+  color: var(--stark-red);
 }
 
 /* ───────── Адаптив ───────── */
@@ -382,9 +395,9 @@
   padding: 2px 7px;
   border: 1px solid var(--paper);
   border-radius: var(--radius-pill);
-  background: var(--cobalt);
+  background: var(--stark-red);
   color: var(--paper);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -398,19 +411,30 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  border: 1px solid var(--line);
+  border: 1.5px solid var(--border);
   background: var(--paper);
-  color: var(--ink);
-  border-radius: var(--radius-pill);
+  color: var(--text);
+  border-radius: var(--r-round);
   padding: 0 16px;
   font: inherit;
   font-size: var(--t-sm);
+  font-weight: 600;
   cursor: pointer;
 }
+.photo-editor__aspect:hover {
+  border-color: var(--graphite);
+}
+.photo-editor__aspect:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
 .photo-editor__aspect.is-active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  background: var(--graphite);
+  border-color: var(--graphite);
+  color: #ffffff;
+}
+.photo-editor__zoom input {
+  accent-color: var(--stark-red);
 }
 .photo-editor__zoom {
   display: grid;
@@ -432,9 +456,9 @@
 }
 .gallery__stage {
   position: relative;
-  border-radius: 22px;
+  border-radius: var(--r-lg);
   overflow: hidden;
-  background: var(--sheet);
+  background: var(--mist);
   aspect-ratio: 1;
 }
 .gallery__track {
@@ -450,7 +474,7 @@
 }
 .gallery__track:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 3px var(--cobalt);
+  box-shadow: inset 0 0 0 3px var(--arc-teal);
 }
 .gallery__slide {
   flex: 0 0 100%;
@@ -472,9 +496,9 @@ video.gallery__img {
 }
 .gallery--empty {
   aspect-ratio: 1;
-  border-radius: 22px;
+  border-radius: var(--r-lg);
   overflow: hidden;
-  background: var(--sheet);
+  background: var(--mist);
 }
 .gallery__arrow {
   position: absolute;
@@ -486,9 +510,9 @@ video.gallery__img {
   height: 44px;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
-  box-shadow: 0 4px 14px -4px rgba(20, 22, 58, 0.4);
+  background: var(--paper);
+  color: var(--graphite);
+  box-shadow: 0 4px 14px -4px rgba(18, 19, 20, 0.4);
   cursor: pointer;
 }
 .gallery__arrow--prev {
@@ -511,7 +535,7 @@ video.gallery__img {
   bottom: 12px;
   padding: 3px 10px;
   border-radius: var(--radius-pill);
-  background: rgba(20, 22, 58, 0.72);
+  background: rgba(24, 25, 25, 0.82);
   color: var(--paper);
   font-size: var(--t-xs);
   font-weight: 700;
@@ -531,11 +555,11 @@ video.gallery__img {
   height: 64px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-sm);
   overflow: hidden;
-  background: var(--sheet);
+  background: var(--mist);
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 .gallery__thumb img,
 .gallery__thumb video,
@@ -551,7 +575,7 @@ video.gallery__img {
 }
 .gallery__thumb.is-on {
   opacity: 1;
-  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--cobalt);
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--stark-red);
 }
 .gallery__thumb:focus-visible {
   outline: none;
@@ -585,10 +609,10 @@ video.gallery__img {
   gap: 8px;
   height: 44px;
   padding: 0 16px 0 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-round);
   background: var(--paper);
-  color: var(--ink);
+  color: var(--text);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -597,20 +621,21 @@ video.gallery__img {
   color: var(--ink-soft);
 }
 .photo-editor__shape:hover {
-  background: var(--sheet);
+  border-color: var(--graphite);
 }
 .photo-editor__shape:focus-visible {
   outline: none;
   box-shadow: var(--focus);
 }
 .photo-editor__shape.is-active {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
-  box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px var(--ink);
+  background: var(--graphite);
+  border-color: var(--graphite);
+  color: #ffffff;
 }
+/* неоновый значок формы — циан только на тёмном */
 .photo-editor__shape.is-active svg {
-  color: var(--lemon);
+  color: var(--arc-cyan);
+  filter: drop-shadow(0 0 4px rgba(17, 242, 244, 0.6));
 }
 
 /* ───────── Рабочая область редактора: сдвиг и размер фото за угловые маркеры ───────── */
@@ -645,7 +670,7 @@ video.gallery__img {
   pointer-events: none;
 }
 .photo-editor__shade {
-  fill: rgba(20, 22, 58, 0.55);
+  fill: rgba(18, 19, 20, 0.55);
 }
 .photo-editor__outline {
   fill: none;
@@ -656,7 +681,7 @@ video.gallery__img {
 .photo-editor__bbox {
   position: absolute;
   border: 1.5px dashed rgba(255, 255, 255, 0.9);
-  outline: 1px dashed rgba(20, 22, 58, 0.5);
+  outline: 1px dashed rgba(18, 19, 20, 0.5);
   pointer-events: none;
 }
 .photo-editor__handle {
@@ -666,8 +691,8 @@ video.gallery__img {
   margin: -9px 0 0 -9px;
   border-radius: 5px;
   background: var(--paper);
-  border: 2px solid var(--cobalt);
-  box-shadow: 0 2px 6px rgba(20, 22, 58, 0.35);
+  border: 2px solid var(--stark-red);
+  box-shadow: 0 2px 6px rgba(18, 19, 20, 0.35);
   touch-action: none;
 }
 /* на телефоне зона касания больше самого маркера */
@@ -761,7 +786,7 @@ video.gallery__img {
   bottom: 6px;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: var(--lemon);
+  background: var(--arc-cyan);
   color: var(--ink);
   font-size: 11px;
   font-weight: 700;
@@ -777,28 +802,28 @@ video.gallery__img {
   gap: 10px;
   margin: 0;
   padding: 10px 14px;
-  border-radius: var(--r-control);
-  background: var(--cobalt-tint);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
   font-weight: 600;
 }
 .photo-editor__fixed svg {
   flex-shrink: 0;
-  color: var(--cobalt);
+  color: var(--stark-red);
 }
 
 /* Предупреждение о качестве печати: мало пикселей исходного фото на размер стикера */
 .photo-picker__tag.pp-q-tag {
-  background: var(--ink);
-  color: var(--lemon);
+  background: var(--graphite);
+  color: var(--arc-cyan);
 }
 .pp-q-note,
 .photo-editor__quality {
   margin: 0;
   padding: 10px 14px;
-  border-radius: var(--r-control);
-  border-left: 4px solid var(--lemon);
-  background: var(--lemon-tint);
-  color: #5c4300;
+  border-radius: var(--r-sm);
+  border-left: 4px solid var(--stark-red);
+  background: var(--stark-red-tint);
+  color: var(--text);
   font-size: var(--t-sm);
   line-height: 1.5;
 }
@@ -817,8 +842,8 @@ video.gallery__img {
   top: 4px;
   z-index: 1;
   padding: 1px 6px;
-  border-radius: var(--radius-pill);
-  background: var(--ink);
+  border-radius: var(--r-sm);
+  background: var(--graphite);
   color: var(--paper);
   font-size: 11px;
   font-weight: 700;
@@ -831,16 +856,18 @@ video.gallery__img {
   align-items: center;
   justify-content: space-between;
   width: 84px;
-  border: 1.5px solid var(--line);
-  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-round);
   background: var(--paper);
 }
 .photo-picker--compact .pp-copies {
   width: 60px;
 }
+/* 32px на вид, зона касания расширена ::after */
 .pp-copies button {
-  width: 28px;
-  height: 28px;
+  position: relative;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 0;
   border-radius: var(--radius-pill);
@@ -854,8 +881,13 @@ video.gallery__img {
   width: 22px;
   height: 24px;
 }
+.pp-copies button::after {
+  content: '';
+  position: absolute;
+  inset: -6px -2px;
+}
 .pp-copies button:hover:not(:disabled) {
-  background: var(--sheet);
+  background: var(--surface-raised);
 }
 .pp-copies button:focus-visible {
   outline: none;
@@ -881,8 +913,8 @@ video.gallery__img {
   justify-content: space-between;
   gap: 8px 12px;
   padding: 10px 14px;
-  border-radius: var(--r-control);
-  background: var(--cobalt-tint);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
 }
 .photo-editor__copies-label {
   font-weight: 700;

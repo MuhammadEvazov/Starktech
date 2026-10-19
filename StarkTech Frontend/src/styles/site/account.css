@@ -1,18 +1,21 @@
-/* ───────── StarkTech — вход/регистрация (auth-*) и личный кабинет (acc-*) ─────────
+/* ───────── Stark Tech — вход/регистрация (auth-*) и личный кабинет (acc-*) ─────────
    Использует токены base.css и foundation.css. Все классы с префиксом,
    общие классы (.thumb, .order-item и т. п.) переопределяются только внутри .acc-page,
-   чтобы не задеть админку, где используется тот же OrderItemPhotos. */
+   чтобы не задеть админку, где используется тот же OrderItemPhotos.
+
+   Язык бренда здесь: светлые карточки (радиус 16) на --site-bg; тёмные шапки разделов
+   (--graphite / --promo-navy) с неоновой циановой иконкой «дугового реактора»; цифры —
+   Oswald; главное действие — кирпично-красная пилюля; ссылки — arc-teal. */
 
 /* ════════════ Auth ════════════ */
 .auth-page {
   padding-block: 32px 72px;
 }
 .auth-layout {
-  width: min(100% - 32px, 920px);
+  width: min(100% - 32px, 1000px);
   margin-inline: auto;
   display: grid;
   justify-items: center;
-  gap: 40px;
 }
 .auth-card {
   width: 100%;
@@ -21,7 +24,8 @@
   gap: 22px;
   padding: 28px 24px;
   background: var(--site-surface);
-  border-radius: var(--site-radius-lg);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
   box-shadow: var(--site-shadow);
 }
 .auth-card__head {
@@ -31,12 +35,12 @@
 .auth-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.45rem, 1.2rem + 1vw, 1.85rem);
+  font-size: var(--t-h1);
   line-height: 1.15;
-  letter-spacing: -0.015em;
+  letter-spacing: 0.005em;
 }
 .auth-lead {
-  color: var(--ink-soft);
+  color: var(--text-muted);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -47,7 +51,7 @@
 .auth-card .input,
 .acc-form .input {
   min-height: 48px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-sm);
   font-size: var(--t-md); /* 16px — iOS не зумит поле при фокусе */
 }
 .auth-form__pw,
@@ -61,12 +65,13 @@
   align-items: center;
   min-height: 44px;
   margin-block: -6px -10px;
-  color: var(--cobalt);
+  color: var(--arc-teal);
   font-weight: 600;
   font-size: var(--t-sm);
   text-decoration: none;
 }
 .auth-forgot:hover {
+  color: var(--arc-teal-deep);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -82,21 +87,25 @@
   column-gap: 8px;
   padding-top: 14px;
   border-top: 1px solid var(--site-line);
-  color: var(--ink-soft);
+  color: var(--text-muted);
   font-size: var(--t-sm);
 }
 .auth-switch {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--cobalt);
+  color: var(--arc-teal);
   font-weight: 700;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
 }
 .auth-switch:hover {
+  color: var(--arc-teal-deep);
   text-decoration-thickness: 2px;
+}
+.auth-card .text-link {
+  color: var(--arc-teal);
 }
 
 /* Чек-лист правил пароля (используется и в кабинете) */
@@ -113,9 +122,9 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 7px;
-  border-radius: var(--radius-pill);
-  background: var(--sheet);
-  color: var(--ink-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  color: var(--text-muted);
   font-size: var(--t-xs);
   font-weight: 600;
   line-height: 1.3;
@@ -130,12 +139,12 @@
   flex-shrink: 0;
 }
 .auth-rules li.is-ok {
-  background: var(--green-tint);
-  color: #12623c;
+  background: var(--arc-teal-tint);
+  color: var(--arc-teal-deep);
 }
 .auth-rules li.is-ok .auth-rules__mark {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--arc-teal);
+  border-color: var(--arc-teal);
 }
 .auth-rules li.is-ok .auth-rules__mark::after {
   content: '';
@@ -149,7 +158,7 @@
   transform: rotate(45deg);
 }
 
-/* Шаги восстановления пароля */
+/* Шаги восстановления пароля — настоящая последовательность, поэтому с номерами */
 .auth-steps {
   list-style: none;
   margin: 0;
@@ -164,9 +173,9 @@
   gap: 8px;
   min-height: 44px;
   padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--sheet);
-  color: var(--ink-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  color: var(--text-muted);
   font-size: var(--t-sm);
   font-weight: 600;
   line-height: 1.2;
@@ -179,25 +188,27 @@
   place-items: center;
   flex-shrink: 0;
   background: var(--paper);
-  font-size: var(--t-xs);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--t-sm);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .auth-steps li.is-active {
-  background: var(--cobalt-tint);
-  color: var(--cobalt-deep);
+  background: var(--stark-red-tint);
+  color: var(--stark-red-deep);
 }
 .auth-steps li.is-active .auth-steps__num {
-  background: var(--cobalt);
-  color: var(--paper);
+  background: var(--stark-red);
+  color: var(--on-accent);
 }
 .auth-steps li.is-done .auth-steps__num {
-  background: var(--green);
+  background: var(--arc-teal);
   color: var(--paper);
 }
 .auth-code .input {
-  font-size: 1.375rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
   letter-spacing: 0.3em;
   font-variant-numeric: tabular-nums;
 }
@@ -217,33 +228,33 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--cobalt);
+  color: var(--arc-teal);
   font: inherit;
   font-weight: 600;
   font-size: var(--t-sm);
   cursor: pointer;
 }
 .auth-alt__btn:hover {
+  color: var(--arc-teal-deep);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 .auth-alt__btn:disabled {
-  color: var(--ink-soft);
+  color: var(--text-muted);
   cursor: default;
   text-decoration: none;
 }
 .auth-resent {
   margin: 0;
   padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--green-tint);
-  color: #12623c;
+  border-radius: var(--r-sm);
+  background: var(--arc-teal-tint);
+  color: var(--arc-teal-deep);
   font-size: var(--t-sm);
   line-height: 1.45;
 }
 
-
-/* Стикеры сбоку (только на широком экране) */
+/* Промо-панель бренда сбоку (только на широком экране) */
 .auth-aside {
   display: none;
 }
@@ -252,66 +263,90 @@
     padding-block: 56px 96px;
   }
   .auth-layout {
-    grid-template-columns: minmax(0, 460px) minmax(0, 320px);
+    grid-template-columns: minmax(0, 460px) minmax(0, 420px);
     justify-content: center;
-    align-items: center;
-    gap: 64px;
+    align-items: stretch;
+    gap: 24px;
   }
   .auth-card {
     padding: 36px 36px 28px;
+    align-self: start;
   }
   .auth-aside {
+    position: relative;
     display: grid;
-    gap: 20px;
-    justify-items: start;
+    align-content: space-between;
+    gap: 32px;
+    min-height: 460px;
+    padding: 40px 36px 32px;
+    border-radius: var(--r-lg);
+    background:
+      radial-gradient(circle at 105% -5%, transparent 0 118px, rgba(17, 242, 244, 0.28) 119px 120px, transparent 121px),
+      radial-gradient(circle at 105% -5%, transparent 0 168px, rgba(17, 242, 244, 0.12) 169px 170px, transparent 171px),
+      var(--promo-navy);
+    color: var(--text-on-dark);
+    overflow: hidden;
   }
 }
-.auth-aside__stickers {
-  position: relative;
-  width: 300px;
-  height: 250px;
+.auth-aside__slogan {
+  max-width: 9ch;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 1.6rem + 2vw, 3.25rem);
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--paper);
 }
-.auth-sticker {
-  position: absolute;
+.auth-aside__art {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+/* «Вырубка» стикера: неоновый контур со свечением, как «3×3 см» на промо */
+.auth-aside__cut {
+  flex: none;
   display: grid;
   place-items: center;
-  font-weight: 700;
-  font-size: var(--t-md);
-  box-shadow: var(--sticker-edge);
+  width: 112px;
+  height: 112px;
+  border-radius: var(--r-lg);
+  box-shadow: var(--glow-cyan);
+  transform: rotate(-6deg);
 }
-.auth-sticker--lemon {
-  left: 0;
-  top: 20px;
-  width: 150px;
-  height: 150px;
+.auth-aside__size {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+.auth-aside__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  font-weight: 600;
+}
+.auth-aside__list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.auth-aside__list li::before {
+  content: '';
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--lemon);
-  color: var(--ink);
-  transform: rotate(-8deg);
-}
-.auth-sticker--cobalt {
-  left: 140px;
-  top: 0;
-  width: 128px;
-  height: 128px;
-  border-radius: 30px;
-  background: var(--cobalt);
-  color: var(--paper);
-  transform: rotate(7deg);
-}
-.auth-sticker--cherry {
-  left: 110px;
-  top: 150px;
-  width: 170px;
-  height: 72px;
-  border-radius: var(--radius-pill);
-  background: var(--cherry);
-  color: var(--paper);
-  transform: rotate(-4deg);
+  background: var(--arc-cyan);
+  box-shadow: 0 0 8px rgba(17, 242, 244, 0.8);
+  flex: none;
 }
 .auth-aside__text {
-  max-width: 28ch;
-  color: var(--ink-soft);
+  max-width: 34ch;
+  color: var(--text-muted-on-dark);
+  font-size: var(--t-sm);
   line-height: 1.5;
 }
 
@@ -322,7 +357,7 @@
   padding-block: 24px 72px;
 }
 
-/* Шапка */
+/* Шапка: аватар в красном кольце · имя · монеты · выход */
 .acc-head {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -340,16 +375,16 @@
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px var(--site-line);
+  box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--stark-red);
 }
 .acc-avatar--empty {
   display: grid;
   place-items: center;
-  background: var(--cobalt-tint);
-  color: var(--cobalt-deep);
+  background: var(--graphite);
+  color: var(--paper);
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--t-lg);
+  font-weight: 600;
+  font-size: var(--t-xl);
   text-transform: uppercase;
 }
 .acc-head__who {
@@ -359,69 +394,83 @@
 .acc-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.2rem, 1rem + 1.1vw, 1.75rem);
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  font-size: clamp(1.4rem, 1.1rem + 1.3vw, 2.1rem);
+  line-height: 1.15;
+  letter-spacing: 0.005em;
   overflow-wrap: anywhere;
 }
 .acc-email {
   margin-top: 2px;
-  color: var(--ink-soft);
+  color: var(--text-muted);
   font-size: var(--t-sm);
   overflow-wrap: anywhere;
 }
+/* Баланс монет — графитовая пилюля с неоновой монетой */
 .acc-coins {
   grid-area: coins;
   justify-self: start;
   display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   min-height: 44px;
-  padding: 10px 16px 9px;
-  border-radius: 14px;
-  background: var(--lemon);
-  color: var(--ink);
+  padding: 6px 18px 6px 7px;
+  border-radius: var(--r-round);
+  background: var(--graphite);
+  color: var(--text-on-dark);
   text-decoration: none;
   line-height: 1;
-  box-shadow: var(--sticker-edge);
-  transform: rotate(-3deg);
-  transition: transform 0.15s ease;
+  transition: background-color 0.15s;
 }
 .acc-coins:hover {
-  transform: rotate(-1deg) translateY(-1px);
+  background: var(--graphite-soft);
 }
 .acc-coins:focus-visible {
-  border-radius: 14px;
-  box-shadow: var(--sticker-edge), 0 0 0 7px var(--cobalt);
+  border-radius: var(--r-round);
+}
+.acc-coins__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--arc-cyan);
+  color: var(--ink-pure);
+}
+.acc-coins__icon svg {
+  width: 20px;
+  height: 20px;
 }
 .acc-coins__num {
-  font-weight: 800;
-  font-size: var(--t-lg);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-xl);
   font-variant-numeric: tabular-nums;
+  color: var(--paper);
 }
 .acc-coins__unit {
   font-weight: 600;
   font-size: var(--t-sm);
+  color: var(--text-muted-on-dark);
 }
 .acc-logout {
   grid-area: out;
   align-self: start;
   min-height: 44px;
-  padding: 0 16px;
-  border-radius: var(--radius-pill);
-  border: 1.5px solid var(--site-line);
-  background: var(--site-surface);
-  color: var(--ink-soft);
+  padding: 0 18px;
+  border-radius: var(--r-round);
+  border: 1.5px solid var(--border);
+  background: var(--paper);
+  color: var(--text);
   font-weight: 600;
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
 .acc-logout:hover {
-  color: var(--cherry-strong);
-  border-color: var(--cherry-strong);
+  color: var(--stark-red);
+  border-color: var(--stark-red);
 }
 .acc-logout:focus-visible {
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-round);
 }
 @media (min-width: 640px) {
   .acc-page {
@@ -438,7 +487,7 @@
     align-self: center;
   }
   .acc-avatar--empty {
-    font-size: var(--t-xl);
+    font-size: var(--t-2xl);
   }
   .acc-coins {
     justify-self: end;
@@ -448,19 +497,15 @@
   }
 }
 
-/* Вкладки — сегментированный переключатель, листается на телефоне */
+/* Вкладки — пилюли; активная — кирпично-красная */
 .acc-tabs {
   display: flex;
-  gap: 4px;
-  width: max-content;
+  gap: 8px;
   max-width: 100%;
-  margin: 28px 0 28px;
-  padding: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--sheet);
+  margin: 28px 0;
+  padding: 2px;
   overflow-x: auto;
   scrollbar-width: none;
-  scroll-snap-type: x proximity;
 }
 .acc-tabs::-webkit-scrollbar {
   display: none;
@@ -471,35 +516,36 @@
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: 0 18px;
-  border-radius: var(--radius-pill);
-  color: var(--ink-soft);
+  padding: 0 20px;
+  border-radius: var(--r-round);
+  border: 1.5px solid var(--border);
+  background: var(--paper);
+  color: var(--text);
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
-  scroll-snap-align: start;
-  transition: background-color 0.15s, color 0.15s;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 .acc-tabs__item:hover {
-  color: var(--ink);
+  border-color: var(--text);
 }
 .acc-tabs__item.is-active {
-  background: var(--paper);
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.08), 0 4px 10px -6px rgba(20, 22, 58, 0.35);
+  background: var(--stark-red);
+  border-color: var(--stark-red);
+  color: var(--on-accent);
 }
 .acc-tabs__item:focus-visible {
-  border-radius: var(--radius-pill);
-  box-shadow: inset 0 0 0 2px var(--cobalt);
+  border-radius: var(--r-round);
 }
 
-/* ════════════ Разделы кабинета: цветная шапка AccHero + карточки .acc-card ════════════ */
+/* ════════════ Разделы кабинета: тёмная шапка AccHero + карточки .acc-card ════════════ */
 .acc-section {
   display: grid;
   gap: 16px;
 }
 
-/* Шапка раздела: иконка (или аватар) · текст · цифры */
+/* Шапка раздела: неоновая иконка (или аватар) · текст · цифры.
+   Фон — графит; в углу два тонких циановых кольца — «дуговой реактор». */
 .acc-prof__hero {
   position: relative;
   display: grid;
@@ -507,30 +553,33 @@
   align-items: center;
   gap: 22px;
   padding: 24px;
-  border-radius: var(--site-radius-lg);
-  /* Жёлтый круг — в углу, за краем: не попадает под цифры справа */
+  border-radius: var(--r-lg);
   background:
-    radial-gradient(circle at 99% -14%, rgba(255, 216, 74, 0.55) 0 46px, transparent 47px),
-    radial-gradient(circle at 80% 110%, rgba(232, 53, 95, 0.45) 0 70px, transparent 71px),
-    linear-gradient(135deg, var(--cobalt) 0%, var(--cobalt-deep) 100%);
-  color: var(--paper);
+    radial-gradient(circle at 100% 0, transparent 0 84px, rgba(17, 242, 244, 0.3) 85px 86px, transparent 87px),
+    radial-gradient(circle at 100% 0, transparent 0 124px, rgba(17, 242, 244, 0.12) 125px 126px, transparent 127px),
+    var(--graphite);
+  color: var(--text-on-dark);
   overflow: hidden;
-  box-shadow: 0 18px 36px -22px rgba(29, 43, 176, 0.75);
+}
+/* Монеты — промо-синий, как баннеры бренда */
+.acc-hero--navy {
+  background:
+    radial-gradient(circle at 100% 0, transparent 0 84px, rgba(17, 242, 244, 0.34) 85px 86px, transparent 87px),
+    radial-gradient(circle at 100% 0, transparent 0 124px, rgba(17, 242, 244, 0.14) 125px 126px, transparent 127px),
+    var(--promo-navy);
 }
 .acc-hero__icon {
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
-  color: var(--paper);
-  transform: rotate(-6deg);
+  width: 60px;
+  height: 60px;
+  border-radius: var(--r-lg);
+  box-shadow: var(--glow-cyan);
+  color: var(--arc-cyan);
 }
 .acc-hero__icon svg {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
 }
 .acc-prof__intro {
   display: grid;
@@ -540,16 +589,18 @@
 .acc-prof__title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.4rem, 1.1rem + 1.2vw, 1.9rem);
-  line-height: 1.1;
-  letter-spacing: -0.015em;
+  font-weight: 700;
+  font-size: var(--t-h2);
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  color: var(--paper);
   overflow-wrap: anywhere;
 }
 .acc-prof__lead {
   margin: 0;
-  max-width: 46ch;
-  color: rgba(255, 255, 255, 0.9);
-  line-height: 1.45;
+  max-width: 50ch;
+  color: var(--text-muted-on-dark);
+  line-height: 1.5;
 }
 .acc-hero__side {
   display: flex;
@@ -557,64 +608,32 @@
   gap: 10px;
   position: relative;
 }
-/* Цифры — на сплошной тёмной подложке, чтобы белый текст читался поверх любых кругов фона */
 .acc-hero__stat {
   display: grid;
   justify-items: center;
+  gap: 2px;
   min-width: 96px;
   padding: 12px 16px;
-  border-radius: var(--radius-md);
-  background: var(--cobalt-deep);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
   text-align: center;
 }
 .acc-hero__stat b {
   font-family: var(--font-display);
-  font-size: clamp(1.3rem, 1.1rem + 0.8vw, 1.7rem);
+  font-weight: 600;
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: var(--paper);
 }
 .acc-hero__stat small {
   font-size: var(--t-xs);
+  color: var(--text-muted-on-dark);
 }
 .acc-hero__badges {
   margin-top: 4px;
-}
-
-/* Цвета шапок */
-.acc-hero--lemon {
-  background:
-    radial-gradient(circle at 99% -14%, rgba(255, 255, 255, 0.55) 0 46px, transparent 47px),
-    radial-gradient(circle at 78% 115%, rgba(232, 53, 95, 0.3) 0 70px, transparent 71px),
-    linear-gradient(135deg, #ffe066 0%, #ffbf3c 100%);
-  color: var(--ink);
-  box-shadow: 0 18px 36px -22px rgba(200, 140, 0, 0.75);
-}
-.acc-hero--lemon .acc-prof__lead {
-  color: rgba(20, 22, 58, 0.8);
-}
-.acc-hero--lemon .acc-hero__icon {
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.5);
-}
-.acc-hero--lemon .acc-hero__stat {
-  background: var(--paper);
-  box-shadow: none;
-}
-/* Белый текст на вишнёвом: заливка от --cherry-strong, пояснение — сплошной белый */
-.acc-hero--cherry {
-  background:
-    radial-gradient(circle at 99% -14%, rgba(255, 216, 74, 0.55) 0 46px, transparent 47px),
-    radial-gradient(circle at 80% 110%, rgba(185, 179, 255, 0.45) 0 70px, transparent 71px),
-    linear-gradient(135deg, var(--cherry-strong) 0%, #a51d42 100%);
-  box-shadow: 0 18px 36px -22px rgba(181, 30, 72, 0.75);
-}
-.acc-hero--cherry .acc-prof__lead {
-  color: var(--paper);
-}
-.acc-hero--cherry .acc-hero__stat {
-  background: #8f1a3b;
 }
 
 /* Аватар в шапке профиля */
@@ -639,8 +658,8 @@
   height: 96px;
   border-radius: 50%;
   object-fit: cover;
-  background: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.9), 0 10px 24px -10px rgba(0, 0, 0, 0.5);
+  background: var(--graphite-soft);
+  box-shadow: 0 0 0 3px var(--graphite), 0 0 0 5px var(--arc-cyan), 0 0 18px 2px rgba(17, 242, 244, 0.35);
 }
 .acc-prof__avatar .image-upload__actions {
   display: grid;
@@ -652,15 +671,18 @@
   min-height: 44px;
   padding: 0 16px;
   background: var(--paper);
-  color: var(--cobalt-deep);
+  color: var(--ink);
   border-color: transparent;
 }
 .acc-prof__avatar .btn:hover {
-  background: var(--lemon);
-  color: var(--ink);
+  background: var(--arc-cyan);
+  color: var(--ink-pure);
+}
+.acc-prof__avatar .image-upload__pick:focus-within {
+  box-shadow: 0 0 0 2px var(--graphite), 0 0 0 4px var(--arc-cyan);
 }
 .acc-prof__avatar .image-upload__actions :is(small, p, .field__hint) {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-muted-on-dark);
   font-size: var(--t-xs);
 }
 
@@ -676,20 +698,22 @@
   flex: 1 1 140px;
   max-width: 220px;
   height: 8px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.25);
+  border-radius: var(--r-round);
+  background: rgba(255, 255, 255, 0.16);
   overflow: hidden;
 }
 .acc-prof__bar > span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--lemon);
+  background: var(--arc-cyan);
+  box-shadow: 0 0 10px rgba(17, 242, 244, 0.7);
   transition: width 0.35s ease;
 }
 .acc-prof__count {
   font-size: var(--t-sm);
   font-weight: 600;
+  color: var(--paper);
 }
 
 /* Карточка раздела — единая для профиля, пароля, монет и заказа */
@@ -703,15 +727,16 @@
   gap: 16px;
   min-width: 0;
   padding: 22px 20px;
-  border-radius: var(--site-radius-lg);
+  border-radius: var(--r-lg);
   background: var(--site-surface);
+  border: 1px solid var(--line-soft);
   box-shadow: var(--site-shadow);
-  border-top: 4px solid var(--lilac);
 }
-/* Объявлено после .acc-card, чтобы акцент не сбрасывался */
+/* Вспомогательная карточка — подложка без тени (советы, данные для заказа) */
 .acc-card--accent {
-  border-top-color: var(--lemon);
-  background: linear-gradient(180deg, var(--lemon-tint) 0%, var(--site-surface) 120px);
+  background: var(--surface-raised);
+  border-color: transparent;
+  box-shadow: none;
 }
 .acc-prof__head {
   display: flex;
@@ -721,8 +746,10 @@
 .acc-prof__head h3 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--t-lg);
+  font-weight: 600;
+  font-size: var(--t-xl);
   line-height: 1.2;
+  letter-spacing: 0.005em;
 }
 .acc-prof__icon {
   display: grid;
@@ -730,18 +757,21 @@
   width: 40px;
   height: 40px;
   flex: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-sm);
   color: var(--ink);
 }
 .acc-prof__icon svg {
   width: 22px;
   height: 22px;
 }
+/* Нейтральная иконка — серая подложка */
 .acc-prof__icon--lilac {
-  background: var(--lilac);
+  background: var(--mist);
 }
+/* Акцентная иконка — графит с неоновым циановым знаком */
 .acc-prof__icon--lemon {
-  background: var(--lemon);
+  background: var(--graphite);
+  color: var(--arc-cyan);
 }
 
 /* Формы профиля и пароля: кнопка сохранения слева, одного размера */
@@ -783,18 +813,20 @@
   color: var(--ink);
   text-decoration: none;
   background: var(--site-surface);
-  border-radius: 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-soft);
   border-left: 6px solid var(--st);
   box-shadow: var(--site-shadow);
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .acc-order:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(20, 22, 58, 0.06), 0 18px 32px -18px rgba(20, 22, 58, 0.45);
+  border-color: var(--silver);
+  border-left-color: var(--st);
+  box-shadow: 0 2px 4px rgba(18, 19, 20, 0.06), 0 18px 32px -18px rgba(18, 19, 20, 0.45);
 }
 .acc-order:focus-visible {
-  border-radius: 18px;
-  box-shadow: inset 0 0 0 3px var(--cobalt);
+  border-radius: var(--r-lg);
+  box-shadow: var(--focus);
 }
 /* Цвета статусов — общие токены base.css (как у бейджей и в админке) */
 .acc-order--New { --st: var(--st-new); --st-tint: var(--st-new-tint); }
@@ -803,13 +835,14 @@
 .acc-order--ReadyForDelivery { --st: var(--st-ready); --st-tint: var(--st-ready-tint); }
 .acc-order--Delivered { --st: var(--st-delivered); --st-tint: var(--st-delivered-tint); }
 .acc-order--Cancelled { --st: var(--st-cancelled); --st-tint: var(--st-cancelled-tint); }
+.acc-order--AwaitingLayoutApproval { --st: var(--st-layout); --st-tint: var(--st-layout-tint); }
 .acc-order__icon {
   grid-area: icon;
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--r-sm);
   background: var(--st-tint);
   color: var(--st);
 }
@@ -824,7 +857,11 @@
   min-width: 0;
 }
 .acc-order__num {
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
   overflow-wrap: anywhere;
 }
 .acc-order__date {
@@ -837,7 +874,9 @@
 }
 .acc-order__sum {
   grid-area: sum;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
@@ -848,7 +887,7 @@
   color: var(--ink-soft);
 }
 .acc-order:hover .acc-chevron {
-  color: var(--cobalt);
+  color: var(--stark-red);
 }
 .acc-chevron {
   flex-shrink: 0;
@@ -865,7 +904,7 @@
   gap: 6px;
   min-height: 44px;
   margin-block: -10px -6px;
-  color: var(--cobalt);
+  color: var(--arc-teal);
   font-weight: 600;
   text-decoration: none;
 }
@@ -911,20 +950,20 @@
   border: 2px solid var(--sheet-deep);
 }
 .acc-track li.is-done::before {
-  background: var(--green);
+  background: var(--graphite);
 }
 .acc-track li.is-done .acc-track__dot {
-  background: var(--green);
-  border-color: var(--green);
+  background: var(--graphite);
+  border-color: var(--graphite);
 }
 .acc-track li.is-current {
   color: var(--ink);
   font-weight: 700;
 }
 .acc-track li.is-current .acc-track__dot {
-  background: var(--cobalt);
-  border-color: var(--cobalt);
-  box-shadow: 0 0 0 4px var(--cobalt-tint);
+  background: var(--stark-red);
+  border-color: var(--stark-red);
+  box-shadow: 0 0 0 4px var(--stark-red-tint);
 }
 .acc-track__label {
   display: block;
@@ -956,9 +995,10 @@
 /* Товары и фото */
 .acc-note {
   margin: 0;
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--lemon-tint);
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border-left: 4px solid var(--arc-teal);
+  background: var(--arc-teal-tint);
   font-size: var(--t-sm);
   line-height: 1.45;
 }
@@ -1012,7 +1052,7 @@
   gap: 14px;
   padding: 16px 16px 18px;
   border: 1px solid var(--site-line);
-  border-radius: var(--radius-md);
+  border-radius: var(--r-lg);
   background: var(--site-surface);
   box-shadow: none;
 }
@@ -1052,7 +1092,7 @@
 .acc-page .thumb .img-fallback {
   border-radius: 14px;
   border: 3px solid var(--paper);
-  box-shadow: 0 0 0 1px var(--site-line), 0 6px 14px -10px rgba(20, 22, 58, 0.5);
+  box-shadow: 0 0 0 1px var(--site-line), 0 6px 14px -10px rgba(18, 19, 20, 0.5);
 }
 .acc-page .thumb figcaption {
   left: 7px;
@@ -1113,19 +1153,19 @@
   padding: 0 12px;
   border: 2px solid var(--paper);
   border-radius: var(--radius-pill);
-  background: var(--cobalt);
-  color: var(--paper);
+  background: var(--stark-red);
+  color: var(--on-accent);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
 }
 .acc-page .thumb .thumb__edit:hover {
-  background: var(--cobalt-deep);
+  background: var(--stark-red-deep);
 }
 .acc-page .thumb :is(.thumb__del, .thumb__edit):focus-visible {
   border-radius: var(--radius-pill);
-  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--cobalt);
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--arc-teal);
 }
 .acc-page .thumb--add {
   border: 2px dashed var(--sheet-deep);
@@ -1137,8 +1177,8 @@
 }
 .acc-page .thumb--add:hover,
 .acc-page .thumb--add:focus-within {
-  border-color: var(--cobalt);
-  color: var(--cobalt);
+  border-color: var(--stark-red);
+  color: var(--stark-red);
 }
 .acc-page .thumb--add:focus-within {
   box-shadow: var(--focus);
@@ -1184,8 +1224,9 @@
   font-variant-numeric: tabular-nums;
 }
 .acc-ledger__amount {
-  font-weight: 800;
-  font-size: var(--t-lg);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-xl);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1218,7 +1259,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--lemon) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314163a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-8'/%3E%3C/svg%3E") center / 12px no-repeat;
+  background: var(--arc-teal) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-8'/%3E%3C/svg%3E") center / 12px no-repeat;
 }
 
 /* Пустые состояния и пагинация внутри кабинета */
@@ -1282,13 +1323,13 @@
   .acc-tabs {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 2px;
+    gap: 6px;
     width: 100%;
     overflow: visible;
   }
   .acc-tabs__item {
     min-width: 0;
-    padding: 0 6px;
+    padding: 0 4px;
     font-size: var(--t-sm);
   }
   /* Шкала статусов — вертикальный список, слова не рвутся */
@@ -1340,10 +1381,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .acc-coins,
-  .acc-coins:hover,
-  .auth-sticker,
-  .acc-order:hover {
+  .auth-aside__cut {
     transform: none;
   }
   .acc-coins,
@@ -1487,8 +1525,8 @@
   color: color-mix(in srgb, var(--green) 75%, var(--ink));
 }
 .acc-layout__status--ChangesRequested {
-  background: var(--lemon-tint);
-  color: var(--ink);
+  background: var(--stark-red-tint);
+  color: var(--stark-red-deep);
 }
 .acc-layout__date {
   color: var(--ink-soft);
@@ -1542,7 +1580,7 @@
 
 /* ════════════ Опасная зона: удаление аккаунта ════════════ */
 .acc-card.acc-danger {
-  border-top-color: var(--cherry-strong);
+  border-color: color-mix(in srgb, var(--cherry-strong) 22%, var(--paper));
 }
 .acc-prof__icon--cherry {
   background: var(--cherry-tint);

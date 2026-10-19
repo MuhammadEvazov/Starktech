@@ -1,22 +1,40 @@
-/* ───────── StarkTech — основа витрины (общая для всех страниц сайта) ─────────
-   Идея: «вырезанный стикер». Толстая белая кромка + мягкая тень + лёгкий наклон
-   есть только у ценников и выбранных чипов — это фирменный акцент.
-   Всё остальное спокойное: белые поверхности, светлый фон, крупные фото.
-   Страницы подключают свои файлы из styles/site/*.css и используют
-   классы и токены отсюда, не переопределяя их. */
+/* ───────── Stark Tech — основа витрины (общая для всех страниц сайта) ─────────
+   Светлая спокойная витрина (--surface / --site-bg), кирпично-красный акцент на кнопках,
+   графитовый подвал. Единственная «громкая» вещь бренда — неоновый циан «дугового реактора»
+   на тёмно-синем промо (--promo-navy): им и стоит пользоваться для героя и баннеров.
+   Страницы подключают свои файлы из styles/site/*.css и используют классы и токены отсюда
+   и из base.css, не переопределяя их.
+
+   Брендовые утилиты (можно ставить на любой элемент страницы):
+   .promo-panel      — промо-блок: фон --promo-navy, белый текст, радиус 16, паддинг 24/32.
+                       Ссылки внутри — циан. Кнопка внутри — .btn--neon (циан, текст ink).
+   .neon-outline     — неоновая циановая обводка со свечением (как «3×3 см» в промо-постах).
+                       Только на тёмном фоне. Радиус по умолчанию 16, есть .neon-outline--sm (6).
+   .section-dark     — тёмная секция: фон --graphite, светлый текст.
+   .display-upper    — Oswald, ВЕРХНИЙ регистр, плотный интерлиньяж — заголовки баннеров/промо.
+   .t-hero / .t-h1 / .t-h2 / .t-price — роли шрифта бренда (Oswald 56/60, 40/46, 28/34, 32/36).
+   .t-lead / .t-label — Manrope 18/28 500 и 12/16 700.
+   .neon-underline   — циановое подчёркивание-«неон» (только на тёмном).
+   .brand-underline  — кирпично-красное подчёркивание для светлого фона.
+   .brand-chip       — небольшой чип/метка, радиус 6 (категории, характеристики).
+   .round-cover      — круглая обложка категории «как хайлайты Instagram» (кольцо красное + белый зазор).
+   .card-raised      — плашка-подложка --surface-raised, радиус 16, паддинг 16.
+   .sticker-price    — ценник (Oswald, графитовая плашка). Без наклона и белой кромки.
+   Кнопки: .btn--primary (красная), .btn--ghost (нейтральная), .btn--neon и .btn--on-dark — в base.css. */
 
 :root {
-  --site-bg: #f4f5fa;
+  --site-bg: #f4f4f6;
   --site-surface: #ffffff;
-  --site-line: #e3e5ef;
-  --site-radius-lg: 24px;
-  --site-radius: 16px;
-  --site-radius-sm: 12px;
-  --site-shadow: 0 1px 2px rgba(20, 22, 58, 0.05), 0 12px 28px -18px rgba(20, 22, 58, 0.35);
-  --sticker-edge: 0 0 0 3px var(--paper), 0 0 0 4px var(--site-line), 0 8px 18px -8px rgba(20, 22, 58, 0.45);
+  --site-line: #e2e3e7;
+  --site-radius-lg: 16px;
+  --site-radius: 12px;
+  --site-radius-sm: 8px;
+  --site-shadow: 0 1px 2px rgba(18, 19, 20, 0.05), 0 12px 28px -18px rgba(18, 19, 20, 0.32);
+  /* Бывшая «белая кромка вырубки». Оставлена для совместимости — теперь просто тонкий контур с тенью */
+  --sticker-edge: 0 0 0 1px var(--site-line), 0 8px 18px -10px rgba(18, 19, 20, 0.4);
   --site-max: 1180px;
-  /* Приглушённый текст на тёмном (--ink) фоне: подвал, тёмные плашки */
-  --ink-muted-on-dark: #c9cce6;
+  /* Приглушённый текст на тёмном (--graphite / --ink) фоне: подвал, тёмные плашки (9:1) */
+  --ink-muted-on-dark: #b7bbc3;
 }
 
 body {
@@ -34,9 +52,9 @@ body {
 .site-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.4rem);
-  line-height: 1.12;
-  letter-spacing: -0.015em;
+  font-size: var(--t-h1);
+  line-height: 1.15;
+  letter-spacing: 0.005em;
   margin: 0;
 }
 .site-lead {
@@ -52,27 +70,169 @@ body {
   box-shadow: var(--site-shadow);
 }
 
-/* Ценник-стикер — главный фирменный элемент */
+/* ─── Брендовые роли шрифта ─── */
+.display-upper {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+.t-hero {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-hero);
+  line-height: 1.07;
+  letter-spacing: 0.005em;
+}
+.t-h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-h1);
+  line-height: 1.15;
+}
+.t-h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-h2);
+  line-height: 1.21;
+}
+.t-price {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-price);
+  line-height: 1.125;
+  font-variant-numeric: tabular-nums;
+}
+.t-lead {
+  font-size: var(--t-lead);
+  line-height: 1.556;
+  font-weight: 500;
+}
+.t-label {
+  font-size: 0.75rem;
+  line-height: 1.333;
+  font-weight: 700;
+}
+
+/* ─── Промо и тёмные секции ─── */
+.promo-panel {
+  position: relative;
+  padding: var(--space-3);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(90% 70% at 100% 0%, rgba(17, 242, 244, 0.13), transparent 62%),
+    var(--promo-navy);
+  color: #ffffff;
+  overflow: hidden;
+}
+@media (min-width: 900px) {
+  .promo-panel {
+    padding: 32px;
+  }
+}
+.promo-panel a:not(.btn) {
+  color: var(--arc-cyan);
+}
+.promo-panel .muted,
+.section-dark .muted {
+  color: var(--text-muted-on-dark);
+}
+.section-dark {
+  background: var(--graphite);
+  color: var(--text-on-dark);
+}
+.section-dark a:not(.btn) {
+  color: #ffffff;
+}
+.section-dark a:not(.btn):hover {
+  color: var(--arc-cyan);
+}
+
+.neon-outline {
+  border: 2px solid var(--arc-cyan);
+  border-radius: var(--r-lg);
+  box-shadow:
+    0 0 10px rgba(17, 242, 244, 0.55),
+    0 0 26px -4px rgba(17, 242, 244, 0.45),
+    inset 0 0 10px rgba(17, 242, 244, 0.25);
+}
+.neon-outline--sm {
+  border-radius: var(--r-sm);
+}
+.neon-underline {
+  text-decoration: underline;
+  text-decoration-color: var(--arc-cyan);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.22em;
+  text-decoration-skip-ink: none;
+}
+.brand-underline {
+  text-decoration: underline;
+  text-decoration-color: var(--stark-red);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.22em;
+  text-decoration-skip-ink: none;
+}
+
+/* ─── Плашки, чипы, круглые обложки ─── */
+.card-raised {
+  padding: var(--space-2);
+  border-radius: var(--r-lg);
+  background: var(--surface-raised);
+}
+.brand-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 3px 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: var(--t-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.brand-chip--dark {
+  background: var(--graphite);
+  color: #ffffff;
+}
+.round-cover {
+  display: block;
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: var(--r-round);
+  object-fit: cover;
+  background: var(--mist);
+  box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--stark-red);
+}
+
+/* ─── Ценник: Oswald на графитовой плашке ─── */
 .sticker-price {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  padding: 7px 13px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--paper);
-  color: var(--ink);
-  font-weight: 700;
+  padding: 6px 11px 7px;
+  border-radius: var(--r-sm);
+  background: var(--graphite);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: var(--t-lg);
   line-height: 1;
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
-  box-shadow: var(--sticker-edge);
-  transform: rotate(-3deg);
+  box-shadow: 0 6px 14px -8px rgba(18, 19, 20, 0.55);
 }
 .sticker-price__from,
 .sticker-price__unit {
+  font-family: var(--font-body);
   font-size: var(--t-xs);
   font-weight: 600;
-  color: var(--ink-soft);
+  letter-spacing: 0;
+  color: var(--silver);
 }
 
 /* Пилюля: фильтры, переключатели, быстрые ссылки (каталог, работы, цены) */
@@ -83,7 +243,7 @@ body {
   min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--site-line);
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-round);
   background: var(--paper);
   color: var(--ink);
   font: 600 var(--t-sm) var(--font-body);
@@ -93,8 +253,8 @@ body {
   transition: border-color 0.15s, background-color 0.15s, color 0.15s;
 }
 .site-pill:hover {
-  border-color: var(--cobalt);
-  color: var(--cobalt-deep);
+  border-color: var(--ink);
+  color: var(--ink);
 }
 .site-pill[aria-pressed='true'],
 .site-pill[aria-current='page'],
@@ -113,8 +273,8 @@ body {
   position: sticky;
   top: 0;
   z-index: var(--z-bar);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: saturate(1.4) blur(10px);
+  background: rgba(253, 253, 253, 0.94);
+  backdrop-filter: saturate(1.2) blur(10px);
   border-bottom: 1px solid var(--site-line);
 }
 .shop-header__row {
@@ -128,24 +288,36 @@ body {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: var(--t-lg);
+  font-size: 1.375rem;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   text-decoration: none;
-  letter-spacing: -0.01em;
+  color: var(--graphite);
 }
 .logo__mark {
-  width: 30px;
-  height: 30px;
-  filter: drop-shadow(0 2px 2px rgba(20, 22, 58, 0.25));
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+.logo__word {
+  white-space: nowrap;
+}
+.logo__stark {
+  color: var(--stark-red);
+}
+.logo__tech {
+  color: var(--graphite);
 }
 .shop-header__burger {
   display: none;
   min-height: 44px;
   padding: 0 16px;
   border: 1.5px solid var(--site-line);
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-round);
   background: var(--paper);
   color: var(--ink);
   font: 600 var(--t-md) var(--font-body);
@@ -161,55 +333,65 @@ body {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-round);
   font-weight: 600;
   text-decoration: none;
 }
 .shop-nav a:hover {
-  background: var(--sheet);
+  background: var(--surface-raised);
 }
 .shop-nav a.is-active {
-  color: var(--cobalt);
-  background: var(--cobalt-tint);
+  color: var(--stark-red);
+  background: var(--stark-red-tint);
 }
 /* Корзина — тёмная пилюля; селекторы сильнее «.shop-nav a…», поэтому без !important */
 .shop-nav a.shop-nav__cart {
   margin-left: 6px;
-  border: 1.5px solid var(--ink);
-  background: var(--ink);
+  border: 1.5px solid var(--graphite);
+  background: var(--graphite);
   color: var(--paper);
 }
 .shop-nav a.shop-nav__cart:hover,
 .shop-nav a.shop-nav__cart.is-active {
-  border-color: var(--cobalt);
-  background: var(--cobalt);
+  border-color: var(--stark-red);
+  background: var(--stark-red);
   color: var(--paper);
 }
+/* Счётчик — неоновая точка реактора на тёмной пилюле */
 .cart-count {
   display: inline-grid;
   place-items: center;
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
-  border-radius: var(--radius-pill);
-  background: var(--lemon);
-  color: var(--ink);
+  border-radius: var(--r-round);
+  background: var(--arc-cyan);
+  color: var(--ink-pure);
   font-size: var(--t-xs);
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
 }
 
-/* ─── Карточка товара: без рамки, фото крупно, ценник-стикер на фото ─── */
+/* ─── Карточка товара: белая карточка 16px, фото 10px, ценник на фото ─── */
 .product-card {
   display: grid;
-  gap: 10px;
+  gap: 0;
+  padding: 10px 10px 16px;
+  border-radius: var(--r-lg);
+  background: var(--site-surface);
+  box-shadow: var(--site-shadow);
   text-decoration: none;
   color: var(--ink);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 2px 4px rgba(18, 19, 20, 0.06), 0 22px 40px -22px rgba(18, 19, 20, 0.45);
 }
 .product-card__media {
   position: relative;
   aspect-ratio: 1;
-  border-radius: var(--site-radius-lg);
+  border-radius: 10px;
   overflow: visible;
 }
 .product-card__media .product-card__img,
@@ -217,34 +399,41 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: var(--site-radius-lg);
+  border-radius: 10px;
   background: var(--sheet);
   display: block;
-  transition: transform 0.25s ease;
-}
-.product-card:hover .product-card__img {
-  transform: translateY(-3px);
 }
 .product-card__tag {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  padding: 5px 11px;
-  border-radius: var(--radius-pill);
-  background: var(--lemon);
-  color: var(--ink);
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  background: var(--promo-navy);
+  color: #ffffff;
   font-size: var(--t-xs);
   font-weight: 700;
 }
+.product-card__tag::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--arc-cyan);
+  box-shadow: 0 0 6px var(--arc-cyan);
+}
 .product-card__media .sticker-price {
   position: absolute;
-  left: 12px;
+  left: 10px;
   bottom: -14px;
 }
 .product-card__body {
   display: grid;
-  gap: 2px;
-  padding: 16px 4px 0;
+  gap: 3px;
+  padding: 24px 6px 0;
 }
 .product-card__cat {
   font-size: var(--t-xs);
@@ -256,27 +445,48 @@ body {
   line-height: 1.3;
 }
 .product-card:hover .product-card__name {
-  color: var(--cobalt);
+  color: var(--stark-red);
+}
+.product-card__price {
+  display: none; /* цена — на ценнике */
+}
+.product-card__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--stark-red);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  transition: gap 0.2s ease;
+}
+.product-card:hover .product-card__go {
+  gap: 10px;
 }
 .product-card:focus-visible {
   outline: none;
-}
-.product-card:focus-visible .product-card__img {
   box-shadow: var(--focus);
-}
-.product-card__price {
-  display: none; /* цена теперь на стикере */
 }
 
 /* ─── Подвал (единственный источник стилей подвала) ─── */
 .shop-footer {
-  margin-top: 40px;
+  margin-top: 48px;
   padding: 48px 0 32px;
-  background: var(--ink);
+  background: var(--graphite);
   color: var(--ink-muted-on-dark);
 }
-.shop-footer .logo {
-  color: var(--paper);
+.shop-footer .logo,
+.shop-footer .logo__stark,
+.shop-footer .logo__tech {
+  color: #ffffff;
+}
+.shop-footer .logo__tech {
+  color: var(--silver);
+}
+/* Чёрная половина кольца значка не теряется на графите */
+.shop-footer .logo__mark {
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--silver);
 }
 .shop-footer__row {
   display: grid;
@@ -306,12 +516,32 @@ body {
 }
 .shop-footer__nav a,
 .shop-footer__contacts a {
-  color: var(--paper);
+  color: #ffffff;
   text-decoration: none;
+  text-underline-offset: 4px;
+  transition: color 0.15s;
 }
 .shop-footer__nav a:hover,
 .shop-footer__contacts a:hover {
+  color: var(--arc-cyan);
   text-decoration: underline;
+  text-decoration-color: var(--arc-cyan);
+}
+.shop-footer a:focus-visible {
+  box-shadow: 0 0 0 2px var(--graphite), 0 0 0 4px var(--arc-cyan);
+}
+/* Телефон: ссылки подвала — удобная для пальца высота (44px) */
+@media (max-width: 719.98px) {
+  .shop-footer__nav,
+  .shop-footer__contacts {
+    gap: 0;
+  }
+  .shop-footer__nav a,
+  .shop-footer__contacts a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 .shop-footer__copy {
   grid-column: 1 / -1;
@@ -323,7 +553,7 @@ body {
 .shop-footer__requisites {
   display: block;
   margin-top: 4px;
-  opacity: 0.8;
+  opacity: 0.85;
   overflow-wrap: anywhere;
 }
 
@@ -357,61 +587,15 @@ body {
   .shop-footer__row {
     grid-template-columns: 1fr;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .product-card__media .product-card__img {
-    transition: none;
+  .logo {
+    font-size: 1.25rem;
   }
-  .sticker-price {
-    transform: none;
+  .logo__mark {
+    width: 36px;
+    height: 36px;
   }
 }
 
-/* ─── Карточка товара — белая карточка, как в остальных разделах (каталог и главная) ─── */
-.product-card {
-  gap: 0;
-  padding: 10px 10px 16px;
-  border-radius: var(--site-radius-lg);
-  background: var(--site-surface);
-  box-shadow: var(--site-shadow);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 2px 4px rgba(20, 22, 58, 0.06), 0 22px 40px -22px rgba(20, 22, 58, 0.5);
-}
-.product-card:hover .product-card__img {
-  transform: none;
-}
-.product-card__media,
-.product-card__media .product-card__img,
-.product-card__media .img-fallback {
-  border-radius: var(--radius-md);
-}
-.product-card__body {
-  gap: 3px;
-  padding: 22px 6px 0;
-}
-.product-card__go {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  color: var(--cobalt);
-  font-size: var(--t-sm);
-  font-weight: 700;
-  transition: gap 0.2s ease;
-}
-.product-card:hover .product-card__go {
-  gap: 10px;
-}
-.product-card:focus-visible {
-  box-shadow: var(--focus);
-}
-.product-card:focus-visible .product-card__img {
-  box-shadow: none;
-}
 @media (prefers-reduced-motion: reduce) {
   .product-card,
   .product-card__go {

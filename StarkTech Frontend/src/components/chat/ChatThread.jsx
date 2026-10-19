@@ -431,7 +431,7 @@ export default function ChatThread({
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError('Фото больше 5 МБ — уменьшите его и попробуйте снова.');
+      setError(staffSide ? 'Фото больше 5 МБ — уменьшите его и попробуйте снова.' : 'Фото больше 5 МБ — уменьши его и попробуй снова.');
       return;
     }
     setBusy(true);
@@ -666,7 +666,7 @@ export default function ChatThread({
         {showName && (
           <span className="cht-msg__name" aria-hidden="true">
             {m.senderName}
-            {m.isFromStaff && !staffSide && <em> · StarkTech</em>}
+            {m.isFromStaff && !staffSide && <em> · Stark Tech</em>}
           </span>
         )}
         <div className="cht-msg__row">
@@ -844,11 +844,11 @@ export default function ChatThread({
             )}
           </button>
         )}
-        {dragging && <div className="cht-drop">Отпустите, чтобы отправить фото</div>}
+        {dragging && <div className="cht-drop">{staffSide ? 'Отпустите, чтобы отправить фото' : 'Отпусти, чтобы отправить фото'}</div>}
       </div>
 
       {conversation?.isClosed && (
-        <p className="cht-closed">{staffSide ? 'Диалог закрыт. Новое сообщение откроет его снова.' : 'Диалог завершён. Напишите — и мы продолжим.'}</p>
+        <p className="cht-closed">{staffSide ? 'Диалог закрыт. Новое сообщение откроет его снова.' : 'Диалог завершён. Напиши — и мы продолжим.'}</p>
       )}
 
       {barTarget && (

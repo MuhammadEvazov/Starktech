@@ -6,16 +6,23 @@ import { authApi } from '../../api/endpoints.js';
 import { ErrorBox, Input } from '../../components/ui.jsx';
 import { contactErrors } from '../../lib/validate.js';
 
-/* Небольшая витрина стикеров справа от формы (только на широких экранах) */
+/* Промо-панель бренда справа от формы (только на широких экранах): тёмно-синий фон,
+   неоновая «вырубка» 3×3 см — как на промо-постах Stark Tech. Декоративная — скрыта от скринридеров. */
 function AuthAside() {
   return (
     <aside className="auth-aside" aria-hidden="true">
-      <div className="auth-aside__stickers">
-        <span className="auth-sticker auth-sticker--lemon">Стикер</span>
-        <span className="auth-sticker auth-sticker--cobalt">Брелок</span>
-        <span className="auth-sticker auth-sticker--cherry">Чехол</span>
+      <p className="auth-aside__slogan">Порадуй себя и&nbsp;близких</p>
+      <div className="auth-aside__art">
+        <span className="auth-aside__cut">
+          <span className="auth-aside__size">3×3 см</span>
+        </span>
+        <ul className="auth-aside__list">
+          <li>3D-стикеры с твоих фото</li>
+          <li>Брелоки с фото</li>
+          <li>Чехлы для телефона</li>
+        </ul>
       </div>
-      <p className="auth-aside__text">Ваши фото на стикерах, брелоках и чехлах. Печатаем в Душанбе.</p>
+      <p className="auth-aside__text">Печатаем в Душанбе. Заказы, фото и монеты — в одном кабинете.</p>
     </aside>
   );
 }
@@ -103,7 +110,7 @@ function AuthError({ error, withReset = false }) {
   if (!isTooMany(error)) return <ErrorBox error={error} />;
   return (
     <div className="error-box auth-limit" role="alert">
-      {(error.messages ?? ['Слишком много попыток. Подождите немного и попробуйте снова.']).map((m, i) => (
+      {(error.messages ?? ['Слишком много попыток. Подожди немного и попробуй снова.']).map((m, i) => (
         <p key={i}>{m}</p>
       ))}
       <p className="auth-limit__hint">
@@ -148,7 +155,7 @@ export function Login() {
   return (
     <AuthShell
       title="Вход"
-      lead="Рады снова видеть! Войдите, чтобы следить за заказами и загружать фото."
+      lead="Рады снова тебя видеть! Войди, чтобы следить за заказами и загружать фото."
       footer={
         <>
           <span>Нет аккаунта?</span>
@@ -170,7 +177,7 @@ export function Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
           <Link to="/forgot-password" state={state} className="auth-forgot">
-            Забыли пароль?
+            Не помнишь пароль?
           </Link>
         </div>
         <AuthError error={error} withReset />
@@ -203,7 +210,7 @@ export function Register() {
     e.preventDefault();
     if (cooldown > 0) return;
     if (!agree) {
-      setAgreeError('Чтобы создать аккаунт, примите условия оферты и политики конфиденциальности.');
+      setAgreeError('Чтобы создать аккаунт, прими условия оферты и политики конфиденциальности.');
       document.getElementById('reg-consent')?.focus();
       return;
     }
@@ -233,7 +240,7 @@ export function Register() {
 
   if (created) {
     return (
-      <AuthShell title="Аккаунт создан" lead="Аккаунт создан, но войти автоматически не получилось. Войдите с вашим email и паролем.">
+      <AuthShell title="Аккаунт создан" lead="Аккаунт создан, но войти автоматически не получилось. Войди со своим email и паролем.">
         <Link to="/login" state={state} className="btn btn--primary btn--block auth-submit">
           Войти
         </Link>
@@ -244,7 +251,7 @@ export function Register() {
   return (
     <AuthShell
       title="Регистрация"
-      lead="Минута — и можно загружать фото к заказам и следить за их статусом."
+      lead="Минута — и сможешь загружать фото к заказам и следить за их статусом."
       footer={
         <>
           <span>Уже есть аккаунт?</span>
@@ -282,7 +289,7 @@ export function Register() {
           <PasswordRules password={form.password} id="reg-pw-rules" />
         </div>
         <Input
-          label="Повторите пароль"
+          label="Повтори пароль"
           type="password"
           required
           autoComplete="new-password"
@@ -304,7 +311,7 @@ export function Register() {
               aria-describedby={agreeError ? 'reg-consent-error' : undefined}
             />
             <span>
-              Я принимаю условия{' '}
+              Принимаю условия{' '}
               <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-link">
                 Публичной оферты<span className="sr-only"> (откроется в новой вкладке)</span>
               </Link>{' '}
@@ -401,9 +408,9 @@ export function ForgotPassword() {
   }
 
   const leads = {
-    email: 'Введите email аккаунта — пришлём код для сброса пароля.',
-    code: `Мы отправили код на ${email}. Проверьте почту и папку «Спам».`,
-    password: 'Придумайте новый пароль.',
+    email: 'Введи email аккаунта — пришлём код для сброса пароля.',
+    code: `Отправили код на ${email}. Проверь почту и папку «Спам».`,
+    password: 'Придумай новый пароль.',
   };
 
   return (
@@ -500,7 +507,7 @@ export function ForgotPassword() {
             <PasswordRules password={pw.newPassword} id="reset-pw-rules" />
           </div>
           <Input
-            label="Повторите пароль"
+            label="Повтори пароль"
             type="password"
             required
             autoComplete="new-password"

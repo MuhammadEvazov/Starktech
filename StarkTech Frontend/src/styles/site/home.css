@@ -1,7 +1,7 @@
 /* ───────── Главная, «Наши работы», «Цены» ─────────
-   Классы с префиксами home-, pf-, pr-. Токены — из base.css и site/foundation.css.
-   Фирменная «вырубка» (белая кромка + тень + наклон) только у ценников
-   и у иллюстрации в первом экране. */
+   Классы с префиксами home-, pf-, pr-. Токены — из base.css, утилиты — из site/foundation.css.
+   Вся «громкость» бренда — в первом экране главной (тёмно-синее промо с неоновой рамкой).
+   Остальные блоки спокойные: светлые плашки, Oswald в заголовках, красные кнопки. */
 
 /* ───────── Общие кусочки страниц ───────── */
 .home-section {
@@ -17,89 +17,128 @@
 }
 .home-h2 {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(1.3rem, 1.05rem + 1vw, 1.85rem);
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  font-size: var(--t-h2);
+  line-height: 1.21;
+  letter-spacing: 0.005em;
+  margin: 0;
+}
+.home-h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
+  line-height: 1.25;
+  letter-spacing: 0.01em;
   margin: 0;
 }
 .home-more {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  font-weight: 600;
-  color: var(--cobalt);
+  font-weight: 700;
+  color: var(--arc-teal);
   text-decoration: underline;
   text-decoration-thickness: 1.5px;
   text-underline-offset: 4px;
 }
 .home-more:hover {
-  color: var(--cobalt-deep);
+  color: var(--arc-teal-deep);
 }
 
-/* ───────── Первый экран ───────── */
+/* ───────── Первый экран: промо-баннер ───────── */
 .home-hero {
-  padding-top: clamp(28px, 5vw, 64px);
+  padding-top: clamp(16px, 3vw, 32px);
 }
-.home-hero__row {
+.home-hero__panel {
   display: grid;
-  gap: 32px;
+  gap: 8px;
   align-items: center;
+  padding: 28px 20px 8px;
+  background:
+    radial-gradient(60% 55% at 78% 48%, rgba(17, 242, 244, 0.16), transparent 70%),
+    radial-gradient(50% 60% at 0% 100%, rgba(143, 58, 54, 0.28), transparent 70%),
+    var(--promo-navy);
+}
+.home-hero__copy {
+  min-width: 0;
 }
 .home-hero__title {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: clamp(1.85rem, 1.2rem + 3vw, 3.4rem);
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  max-width: 16ch;
   margin: 0;
+  max-width: 14ch;
+  font-size: clamp(2.1rem, 1.3rem + 3.6vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  color: #ffffff;
 }
-.home-hero__title em {
-  font-style: normal;
-  color: var(--cobalt);
+/* Неоновая рамка вокруг ключевой фразы — как «3×3 см» в постах */
+.home-hero__badge {
+  display: inline-grid;
+  gap: 2px;
+  margin: 22px 0 0;
+  padding: 10px 20px 12px;
+  background: rgba(6, 13, 42, 0.6);
+}
+.home-hero__badge-big {
+  font-size: clamp(1.9rem, 1.4rem + 2vw, 2.9rem);
+  line-height: 1;
+  color: #ffffff;
+}
+.home-hero__badge-small {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--text-muted-on-dark);
 }
 .home-hero__lead {
-  margin-top: 16px;
-  max-width: 44ch;
-  color: var(--ink-soft);
-  font-size: clamp(1rem, 0.95rem + 0.3vw, 1.125rem);
-  line-height: 1.55;
+  margin: 20px 0 0;
+  max-width: 42ch;
+  font-size: var(--t-lead);
+  line-height: 1.556;
+  color: var(--text-muted-on-dark);
+}
+.home-hero__lead strong {
+  display: block;
+  color: #ffffff;
+  font-weight: 700;
 }
 .home-hero__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 28px;
+  margin-top: 26px;
 }
-.home-hero__facts {
+.home-hero .btn--primary:focus-visible {
+  box-shadow: 0 0 0 2px var(--promo-navy), 0 0 0 4px var(--arc-cyan);
+}
+/* Телефон: обе кнопки на всю ширину, одна под другой */
+@media (max-width: 559px) {
+  .home-hero__actions > .btn {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+.home-hero__perks {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 20px;
-  margin: 24px 0 0;
+  margin: 22px 0 0;
   padding: 0;
   list-style: none;
   font-size: var(--t-sm);
-  color: var(--ink-soft);
+  font-weight: 600;
+  color: var(--text-on-dark);
 }
-.home-hero__facts li {
+.home-hero__perks li {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
-.home-hero__facts svg {
-  flex: none;
-  color: var(--green);
-}
 
-/* Иллюстрация «ваше фото → стикер, брелок, чехол» */
+/* Иллюстрация: телефон с фото-стикерами и брелок */
 .home-hero__art {
-  position: relative;
   margin: 0;
-  padding: 20px 8px 8px;
-  background: var(--site-surface);
-  border-radius: var(--site-radius-lg);
-  box-shadow: var(--site-shadow);
+  max-width: 460px;
+  justify-self: center;
+  width: 100%;
 }
 .home-hero__art svg {
   display: block;
@@ -107,179 +146,146 @@
   height: auto;
   overflow: visible;
 }
-.home-art__item {
-  filter: drop-shadow(0 10px 14px rgba(20, 22, 58, 0.22));
+.home-art__phone {
+  filter: drop-shadow(0 0 22px rgba(17, 242, 244, 0.28)) drop-shadow(0 24px 30px rgba(0, 0, 0, 0.55));
 }
-.home-art__edge {
-  fill: var(--paper);
-  stroke: var(--paper);
-  stroke-width: 9;
-  stroke-linejoin: round;
+.home-art__keychain {
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.5));
 }
-.home-art__label {
-  font-family: var(--font-body);
-  font-size: 15px;
+.home-art__note {
+  font-family: var(--font-display);
   font-weight: 600;
-  fill: var(--ink-soft);
-}
-/* Шрифт подписей — в единицах viewBox (440): на телефоне картинка сжимается
-   и 15px превращались в ~10px. Под узкий экран подписи крупнее. */
-@media (max-width: 640px) {
-  .home-art__label {
-    font-size: 21px;
-  }
+  font-size: 26px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  fill: #ffffff;
 }
 .home-art__arrow {
   fill: none;
-  stroke: var(--ink-soft);
-  stroke-width: 2;
+  stroke: #ffffff;
+  stroke-width: 3;
   stroke-linecap: round;
-  stroke-dasharray: 2 6;
-}
-.home-hero__art figcaption {
-  padding: 4px 16px 10px;
-  font-size: var(--t-sm);
-  color: var(--ink-soft);
+  stroke-linejoin: round;
 }
 
-/* Единственный «момент»: стикер слегка покачивается при загрузке */
+/* Единственный «момент» страницы: неоновая рамка «включается» при загрузке */
 @media (prefers-reduced-motion: no-preference) {
-  .home-art__peel {
-    transform-box: fill-box;
-    transform-origin: 50% 50%;
-    animation: home-peel 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms both;
+  .home-hero__badge {
+    animation: home-neon-on 1.1s steps(1, end) 0.35s both;
   }
 }
-@keyframes home-peel {
-  from {
-    transform: translateY(-14px) rotate(-14deg);
-    opacity: 0;
-  }
-  to {
-    transform: none;
-    opacity: 1;
-  }
-}
-
-@media (min-width: 860px) {
-  .home-hero__row {
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    gap: 56px;
+@keyframes home-neon-on {
+  0% { border-color: rgba(17, 242, 244, 0.2); box-shadow: none; }
+  12% { border-color: var(--arc-cyan); box-shadow: 0 0 10px rgba(17, 242, 244, 0.55); }
+  20% { border-color: rgba(17, 242, 244, 0.2); box-shadow: none; }
+  34% { border-color: var(--arc-cyan); box-shadow: 0 0 10px rgba(17, 242, 244, 0.55); }
+  42% { border-color: rgba(17, 242, 244, 0.35); box-shadow: none; }
+  56%, 100% {
+    border-color: var(--arc-cyan);
+    box-shadow:
+      0 0 10px rgba(17, 242, 244, 0.55),
+      0 0 26px -4px rgba(17, 242, 244, 0.45),
+      inset 0 0 10px rgba(17, 242, 244, 0.25);
   }
 }
 
-/* ───────── Категории ───────── */
+@media (min-width: 900px) {
+  .home-hero__panel {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 24px;
+    padding: 56px 40px 40px 56px;
+  }
+}
+@media (max-width: 899.98px) {
+  .home-hero__art {
+    max-width: 380px;
+  }
+}
+
+/* ───────── Категории: круглые обложки, как хайлайты Instagram ───────── */
 .home-cats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
+  display: flex;
+  gap: 20px;
+  margin: 0 -16px;
+  padding: 8px 16px 6px;
   list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
 }
-.home-cats > li:first-child {
-  grid-column: 1 / -1;
+.home-cats::-webkit-scrollbar {
+  display: none;
+}
+.home-cats > li {
+  flex: none;
+  width: 112px;
+  scroll-snap-align: start;
 }
 .home-cat {
   display: grid;
-  grid-template-rows: auto 1fr;
-  height: 100%;
-  background: var(--site-surface);
-  border-radius: var(--site-radius-lg);
-  overflow: hidden;
-  text-decoration: none;
+  justify-items: center;
+  gap: 12px;
+  padding: 6px 0;
+  border-radius: var(--r-lg);
   color: var(--ink);
-  border: 1px solid var(--site-line);
-  transition: border-color 0.15s, transform 0.2s ease;
-}
-.home-cat:hover {
-  border-color: var(--cobalt);
-}
-.home-cat:hover .home-cat__name {
-  color: var(--cobalt);
+  text-decoration: none;
+  text-align: center;
 }
 .home-cat__media {
-  position: relative;
-  aspect-ratio: 4 / 3;
-  background: var(--sheet);
-}
-.home-cats > li:first-child .home-cat__media {
-  aspect-ratio: 16 / 9;
-}
-.home-cat__media img,
-.home-cat__media .img-fallback {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
   display: block;
+  width: 96px;
 }
-.home-cat__shape {
-  position: absolute;
-  inset: 0;
+.home-cat__media .round-cover {
+  transition: box-shadow 0.15s;
+}
+.home-cat__placeholder {
   display: grid;
   place-items: center;
-}
-.home-cat__shape svg {
-  width: min(52%, 140px);
-  height: auto;
-  filter: drop-shadow(0 6px 10px rgba(20, 22, 58, 0.18));
-}
-.home-cat__shape .home-cat__cut {
-  fill: var(--paper);
-}
-.home-cat--t0 .home-cat__media { background: var(--cobalt-tint); }
-.home-cat--t1 .home-cat__media { background: var(--lemon-tint); }
-.home-cat--t2 .home-cat__media { background: var(--cherry-tint); }
-.home-cat--t3 .home-cat__media { background: var(--lilac-tint); }
-.home-cat--t4 .home-cat__media { background: var(--sheet); }
-.home-cat--t0 .home-cat__fill { fill: var(--cobalt); }
-.home-cat--t1 .home-cat__fill { fill: var(--lemon); }
-.home-cat--t2 .home-cat__fill { fill: var(--cherry); }
-.home-cat--t3 .home-cat__fill { fill: var(--lilac); }
-.home-cat--t4 .home-cat__fill { fill: var(--ink-soft); }
-.home-cat__body {
-  display: grid;
-  align-content: start;
-  gap: 4px;
-  padding: 14px 16px 16px;
-  min-height: 56px;
+  background:
+    radial-gradient(70% 70% at 30% 25%, rgba(17, 242, 244, 0.16), transparent 70%),
+    var(--graphite);
+  color: var(--arc-cyan);
 }
 .home-cat__name {
   font-weight: 700;
-  font-size: var(--t-md);
+  font-size: var(--t-sm);
   line-height: 1.3;
 }
-.home-cat__desc {
-  font-size: var(--t-sm);
-  color: var(--ink-soft);
-  line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.home-cat:hover .home-cat__name {
+  color: var(--stark-red);
 }
-
+.home-cat:hover .round-cover {
+  box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--stark-red);
+}
+.home-cat:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
 @media (min-width: 720px) {
   .home-cats {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 28px 40px;
+    margin: 0;
+    padding: 8px 0 0;
+    overflow: visible;
   }
   .home-cats > li {
-    grid-column: span 2;
+    width: 148px;
   }
-  .home-cats > li:first-child,
-  .home-cats > li:nth-child(2) {
-    grid-column: span 3;
+  .home-cat__media {
+    width: 136px;
   }
-  .home-cats > li:first-child .home-cat__media,
-  .home-cats > li:nth-child(2) .home-cat__media {
-    aspect-ratio: 16 / 9;
+  .home-cat__name {
+    font-size: var(--t-md);
   }
 }
 
-/* ───────── Как заказать ───────── */
+/* ───────── Как заказать (это последовательность — поэтому номера) ───────── */
 .home-steps {
   padding: clamp(24px, 4vw, 40px);
+  border-radius: var(--r-lg);
+  background: var(--site-surface);
+  box-shadow: var(--site-shadow);
 }
 .home-steps__list {
   display: grid;
@@ -303,24 +309,24 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--cobalt-tint);
-  color: var(--cobalt-deep);
-  font-family: var(--font-body);
-  font-weight: 700;
+  background: var(--stark-red);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: var(--t-lg);
 }
 .home-steps__list strong {
-  font-size: var(--t-md);
-  line-height: 1.3;
-  padding-top: 10px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  padding-top: 8px;
 }
 .home-steps__list span {
   color: var(--ink-soft);
   font-size: var(--t-sm);
-  line-height: 1.5;
-}
-.home-steps__cta {
-  margin-top: 28px;
+  line-height: 1.55;
 }
 .home-steps__foot {
   display: flex;
@@ -328,6 +334,11 @@
   align-items: center;
   gap: 14px 24px;
   margin-top: 28px;
+}
+@media (max-width: 559px) {
+  .home-steps__foot > .btn {
+    flex: 1 1 100%;
+  }
 }
 /* Ссылка-тизер на «Вопросы и ответы» */
 .home-faq {
@@ -339,8 +350,8 @@
   line-height: 1.5;
 }
 .home-faq a {
-  color: var(--cobalt);
-  font-weight: 600;
+  color: var(--arc-teal);
+  font-weight: 700;
 }
 @media (min-width: 640px) {
   .home-steps__list {
@@ -351,7 +362,6 @@
 @media (min-width: 1040px) {
   .home-steps__list {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 28px;
   }
 }
 
@@ -398,8 +408,8 @@
   width: 100%;
   aspect-ratio: 4 / 5;
   object-fit: cover;
-  border-radius: var(--site-radius);
-  background: var(--sheet);
+  border-radius: var(--r-lg);
+  background: var(--mist);
 }
 .home-works figcaption {
   margin-top: 8px;
@@ -414,85 +424,23 @@
   }
 }
 
-/* ───────── Доверие и контакты ───────── */
+/* ───────── Доставка и контакты ───────── */
 .home-trust {
   display: grid;
   gap: 16px;
 }
-.home-trust__facts {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.home-trust__fact {
-  display: grid;
-  gap: 4px;
-  padding: 20px;
+.home-delivery {
+  padding: clamp(20px, 3vw, 28px);
+  border-radius: var(--r-lg);
   background: var(--site-surface);
-  border-radius: var(--site-radius);
-  border: 1px solid var(--site-line);
+  box-shadow: var(--site-shadow);
 }
-.home-trust__fact strong {
-  font-size: var(--t-lg);
-  line-height: 1.25;
-}
-.home-trust__fact span {
+.home-delivery__note {
+  margin: 6px 0 12px;
   color: var(--ink-soft);
   font-size: var(--t-sm);
-}
-.home-trust__contact {
-  display: grid;
-  gap: 16px;
-  padding: clamp(24px, 4vw, 36px);
-  border-radius: var(--site-radius-lg);
-  background: var(--ink);
-  color: var(--paper);
-}
-.home-trust__contact .home-h2 {
-  color: var(--paper);
-}
-.home-trust__contact p {
-  color: #c9cce6;
-  max-width: 46ch;
-}
-.home-trust__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.home-btn-wa {
-  background: #25d366;
-  color: var(--ink);
-}
-.home-btn-wa:hover {
-  background: #1fb857;
-}
-.home-btn-light {
-  background: transparent;
-  color: var(--paper);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-.home-btn-light:hover {
-  border-color: var(--paper);
-}
-.home-trust__contact :focus-visible {
-  box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--lemon);
-  outline: none;
-}
-
-.home-delivery {
-  margin-top: 16px;
-  padding: 20px;
-  background: var(--site-surface);
-  border-radius: var(--site-radius);
-  border: 1px solid var(--site-line);
-}
-.home-delivery h3 {
-  font-size: var(--t-md);
-  font-weight: 700;
-  margin: 0 0 8px;
+  line-height: 1.5;
+  max-width: 52ch;
 }
 .home-delivery ul {
   display: grid;
@@ -504,16 +452,21 @@
 .home-delivery li {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 16px;
-  padding: 10px 0;
+  padding: 11px 0;
   border-bottom: 1px solid var(--site-line);
   font-size: var(--t-sm);
+  font-weight: 600;
 }
 .home-delivery li:last-child {
   border-bottom: 0;
 }
 .home-delivery__cost {
+  font-family: var(--font-display);
   font-weight: 600;
+  font-size: var(--t-md);
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -521,10 +474,39 @@
   color: var(--green);
 }
 
-@media (min-width: 720px) {
-  .home-trust__facts {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+.home-contact {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  padding: clamp(24px, 4vw, 36px);
+  border-radius: var(--r-lg);
+}
+.home-contact .home-h2 {
+  color: #ffffff;
+}
+.home-contact p {
+  margin: 0;
+  color: var(--text-muted-on-dark);
+  max-width: 46ch;
+  line-height: 1.55;
+}
+.home-contact__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+.home-contact .btn--neon:focus-visible,
+.home-contact .btn--on-dark:focus-visible {
+  box-shadow: 0 0 0 2px var(--graphite), 0 0 0 4px var(--arc-cyan);
+}
+@media (max-width: 559px) {
+  .home-contact__buttons > .btn {
+    flex: 1 1 100%;
   }
+}
+
+@media (min-width: 720px) {
   .home-delivery ul {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -534,19 +516,36 @@
 }
 @media (min-width: 1040px) {
   .home-trust {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     align-items: stretch;
-  }
-  .home-trust__contact {
-    align-content: center;
   }
 }
 
-/* ───────── «Наши работы» ───────── */
+/* ───────── Заголовок внутренних страниц («Цены», «Наши работы») ───────── */
 .pf-page,
 .pr-page {
   padding-top: clamp(28px, 5vw, 56px);
 }
+.page-head {
+  display: grid;
+  gap: 4px;
+}
+.page-head .site-title {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+/* Короткая красная черта под заголовком — фирменный знак светлых страниц */
+.page-head .site-title::after {
+  content: '';
+  display: block;
+  width: 56px;
+  height: 4px;
+  margin-top: 12px;
+  border-radius: 2px;
+  background: var(--stark-red);
+}
+
+/* ───────── «Наши работы» ───────── */
 .pf-filter {
   display: flex;
   gap: 8px;
@@ -586,8 +585,9 @@
 .pf-item {
   margin: 0;
   background: var(--site-surface);
-  border-radius: var(--site-radius);
+  border-radius: var(--r-lg);
   overflow: hidden;
+  box-shadow: var(--site-shadow);
 }
 /* Размеров фото API не отдаёт, поэтому задаём постоянную пропорцию —
    сетка не «прыгает», пока картинки догружаются. */
@@ -597,24 +597,21 @@
   aspect-ratio: 4 / 5;
   object-fit: cover;
   display: block;
-  background: var(--sheet);
+  background: var(--mist);
 }
 .pf-item .img-fallback {
   width: 100%;
   aspect-ratio: 4 / 5;
-  background: var(--sheet);
+  background: var(--mist);
 }
 .pf-item figcaption {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
   padding: 10px 12px 12px;
   font-size: var(--t-sm);
   line-height: 1.45;
   color: var(--ink);
-}
-.pf-item__cat {
-  display: block;
-  font-size: var(--t-xs);
-  color: var(--ink-soft);
-  margin-bottom: 2px;
 }
 @media (min-width: 720px) {
   .pf-grid {
@@ -630,20 +627,41 @@
     columns: 4;
   }
 }
-.pf-cta {
+
+/* Призыв внизу — тёмно-синее промо */
+.pf-cta,
+.pr-cta {
   margin-top: 40px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 16px;
-  padding: 24px;
 }
-.pf-cta p {
-  font-weight: 700;
-  font-size: var(--t-lg);
-  line-height: 1.3;
-  max-width: 30ch;
+.pf-cta__title,
+.pr-cta__title {
+  margin: 0;
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+  color: #ffffff;
+}
+.pf-cta p,
+.pr-cta p {
+  margin: 6px 0 0;
+  color: var(--text-muted-on-dark);
+  max-width: 46ch;
+}
+.pf-cta .btn--primary:focus-visible {
+  box-shadow: 0 0 0 2px var(--promo-navy), 0 0 0 4px var(--arc-cyan);
+}
+@media (min-width: 720px) {
+  .pf-cta,
+  .pr-cta {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+}
+@media (max-width: 559px) {
+  .pf-cta > .btn,
+  .pr-cta > .btn {
+    width: 100%;
+  }
 }
 
 /* ───────── «Цены» ───────── */
@@ -661,8 +679,11 @@
 /* Ссылки-якоря — общий .site-pill (foundation.css) */
 
 .pr-group {
-  margin-top: 32px;
+  margin-top: 24px;
   padding: clamp(20px, 4vw, 32px);
+  border-radius: var(--r-lg);
+  background: var(--site-surface);
+  box-shadow: var(--site-shadow);
   scroll-margin-top: 88px;
 }
 .pr-group__head {
@@ -671,6 +692,7 @@
   margin-bottom: 12px;
 }
 .pr-group__desc {
+  margin: 0;
   color: var(--ink-soft);
   font-size: var(--t-sm);
   max-width: 60ch;
@@ -688,64 +710,70 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 56px;
+  min-height: 60px;
   padding: 10px 0;
   text-decoration: none;
   color: var(--ink);
+  border-radius: var(--r-sm);
+}
+.pr-row a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
 }
 .pr-row__name {
-  font-weight: 600;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  font-weight: 700;
   line-height: 1.35;
 }
 .pr-row a:hover .pr-row__name {
-  color: var(--cobalt);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  color: var(--stark-red);
 }
 .pr-row__price {
   flex: none;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .pr-row__price small {
+  font-family: var(--font-body);
   font-size: var(--t-xs);
-  font-weight: 500;
-  color: var(--ink-soft);
-}
-.pr-row__photo {
-  display: block;
-  font-size: var(--t-xs);
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--ink-soft);
 }
 
-/* Комбо-наборы: тёплый блок с ценником-стикером скидки */
+/* Комбо-наборы: промо-панель, скидка — в неоновой рамке */
 .pr-combos {
-  margin-top: 32px;
-  padding: clamp(20px, 4vw, 32px);
-  border-radius: var(--site-radius-lg);
-  background: var(--lemon-tint);
-  border: 1px solid #f1e3a1;
+  margin-top: 24px;
+  scroll-margin-top: 88px;
+}
+.pr-combos .home-h2 {
+  color: #ffffff;
 }
 .pr-combos > p {
-  margin-top: 6px;
-  color: var(--ink-soft);
+  margin: 6px 0 0;
+  color: var(--text-muted-on-dark);
   font-size: var(--t-sm);
   max-width: 56ch;
 }
 .pr-combo-list {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   margin: 20px 0 0;
   padding: 0;
   list-style: none;
 }
 .pr-combo {
-  position: relative;
   padding: 18px 18px 16px;
-  background: var(--site-surface);
-  border-radius: var(--site-radius);
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 .pr-combo__head {
   display: flex;
@@ -757,12 +785,17 @@
   font-weight: 700;
   font-size: var(--t-md);
   line-height: 1.3;
+  color: #ffffff;
 }
 .pr-combo__badge {
   flex: none;
-  font-size: var(--t-md);
-  color: var(--cherry-strong);
-  transform: rotate(4deg);
+  padding: 4px 10px 5px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
+  line-height: 1.1;
+  color: #ffffff;
+  white-space: nowrap;
 }
 .pr-combo__items {
   display: flex;
@@ -772,25 +805,30 @@
   padding: 0;
   list-style: none;
 }
-.pr-combo__items a {
+.pr-combos .pr-combo__items a {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
   padding: 0 14px;
-  border-radius: var(--radius-pill);
-  background: var(--sheet);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   font-size: var(--t-sm);
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
 }
-.pr-combo__items a:hover {
-  background: var(--cobalt-tint);
-  color: var(--cobalt-deep);
+.pr-combos .pr-combo__items a:hover {
+  background: var(--arc-cyan);
+  color: var(--ink-pure);
+}
+.pr-combos .pr-combo__items a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--promo-navy), 0 0 0 4px var(--arc-cyan);
 }
 .pr-combo__until {
-  margin-top: 10px;
+  margin: 10px 0 0;
   font-size: var(--t-xs);
-  color: var(--ink-soft);
+  color: var(--text-muted-on-dark);
 }
 @media (min-width: 720px) {
   .pr-combo-list {
@@ -798,46 +836,9 @@
   }
 }
 
-.pr-cta {
-  margin-top: 40px;
-  display: grid;
-  gap: 16px;
-  padding: clamp(24px, 4vw, 32px);
-  border-radius: var(--site-radius-lg);
-  background: var(--ink);
-  color: var(--paper);
-}
-.pr-cta strong {
-  font-size: var(--t-lg);
-  line-height: 1.3;
-}
-.pr-cta p {
-  margin-top: 4px;
-  color: #c9cce6;
-}
-.pr-cta :focus-visible {
-  box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--lemon);
-  outline: none;
-}
-@media (min-width: 720px) {
-  .pr-cta {
-    grid-template-columns: 1fr auto;
-    align-items: center;
-  }
-}
-
 /* Пустые/ошибочные состояния не должны прилипать к заголовку */
 .home-state {
   margin-top: 24px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-cat {
-    transition: none;
-  }
-  .pr-combo__badge {
-    transform: none;
-  }
 }
 
 /* Ссылка на «Вопросы и ответы» под вводным текстом прайса */
@@ -849,6 +850,12 @@
   line-height: 1.5;
 }
 .pr-note a {
-  color: var(--cobalt);
-  font-weight: 600;
+  color: var(--arc-teal);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-cat__media .round-cover {
+    transition: none;
+  }
 }

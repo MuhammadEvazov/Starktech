@@ -204,7 +204,7 @@ function ProductView({ product }) {
     setPendingAction(null);
     if (misfit.length) {
       // Окно закрыли, не применив кадр — подсказываем, что осталось.
-      toast(`Подгоните под форму ещё ${misfit.length} фото — тогда товар добавится`);
+      toast(`Подгони под форму ещё ${misfit.length} фото — тогда товар добавится`);
       return;
     }
     if (action === 'buy') doBuyNow();
@@ -264,7 +264,7 @@ function ProductView({ product }) {
                 {num(variant ? variant.price : product.basePrice)}
                 <span className="sticker-price__unit">смн</span>
               </span>
-              {product.requiresPhotoUpload && <span className="pdp-badge">С вашим фото</span>}
+              {product.requiresPhotoUpload && <span className="pdp-badge">С твоим фото</span>}
             </p>
             <ul className="pdp-ship" aria-label="Сроки и доставка">
               <li>Готово за {CONTACTS.leadTime}</li>
@@ -355,13 +355,13 @@ function ProductView({ product }) {
                     ))}
                   {upcoming && !split && (
                     <p className="pdp-tiers__next">
-                      {photos.length ? 'Добавьте ещё' : 'Возьмите ещё'} {upcoming.need}{' '}
+                      {photos.length ? 'Добавь ещё' : 'Возьми ещё'} {upcoming.need}{' '}
                       {photos.length ? stickerWord(upcoming.need) : 'шт.'} — скидка {percentLabel(upcoming.discountPercent)}%
                     </p>
                   )}
                   {photos.length > 0 && (
                     <p className="pdp-qty-hint">
-                      Количество задаётся у каждого фото: сколько стикеров напечатать с этого снимка.
+                      Количество задаёшь у каждого фото: сколько стикеров напечатать с этого снимка.
                     </p>
                   )}
                 </div>
@@ -371,7 +371,7 @@ function ProductView({ product }) {
               {!isAuthenticated ? (
                 <section className="pdp-login" aria-labelledby="pdp-login-title">
                   <h2 className="pdp-login__title" id="pdp-login-title">
-                    Войдите, чтобы заказать
+                    Войди, чтобы заказать
                   </h2>
                   <p className="pdp-login__text">
                     {product.requiresPhotoUpload
@@ -396,7 +396,7 @@ function ProductView({ product }) {
                 >
                   <div className="pdp-photos__head">
                     <h2 className="pdp-photos__title" id="pdp-photos-title">
-                      Ваши фото
+                      Твои фото
                     </h2>
                     {photos.length > 0 && (
                       <span className="pdp-photos__count">
@@ -408,11 +408,11 @@ function ProductView({ product }) {
                     )}
                   </div>
                   <p className="pdp-photos__text">
-                    Добавьте снимки, которые напечатаем на товаре. Можно несколько, если хотите разные варианты.
+                    Добавь снимки, которые напечатаем на товаре. Можно несколько, если хочешь разные варианты.
                   </p>
                   {misfit.length > 0 && (
                     <p className="pdp-photos__need" id="pdp-photo-misfit">
-                      Подгоните фото под форму ({misfit.length} шт.) — форму можно выбрать прямо в окне подгонки.{' '}
+                      Подгони фото под форму ({misfit.length} шт.) — форму можно выбрать прямо в окне подгонки.{' '}
                       <button type="button" className="text-link pdp-shape-fix" onClick={fitPhotos}>
                         Подогнать
                       </button>
@@ -420,7 +420,7 @@ function ProductView({ product }) {
                   )}
                   {needsPhoto && (
                     <p className="pdp-photos__need" id="pdp-photo-required">
-                      Добавьте хотя бы одно фото — без него заказать этот товар нельзя.
+                      Добавь хотя бы одно фото — без него заказать этот товар нельзя.
                     </p>
                   )}
                   <PhotoPicker
@@ -448,7 +448,7 @@ function ProductView({ product }) {
                       aria-describedby="pdp-photo-required"
                       onClick={goToPhotos}
                     >
-                      Сначала добавьте фото
+                      Сначала добавь фото
                     </button>
                   ) : (
                     <button
@@ -576,7 +576,7 @@ function Reviews({ productId }) {
           empty={
             <div className="pdp-reviews__empty">
               <p className="pdp-reviews__empty-title">Отзывов пока нет</p>
-              <p>Станьте первым, кто расскажет об этом товаре.</p>
+              <p>Будь первым, кто расскажет об этом товаре.</p>
             </div>
           }
         >
@@ -605,11 +605,11 @@ function Reviews({ productId }) {
         </Async>
 
         <div className="pdp-review-form">
-          <h3 className="pdp-review-form__title">Поделитесь впечатлением</h3>
+          <h3 className="pdp-review-form__title">Поделись впечатлением</h3>
           {!isAuthenticated ? (
             <p className="pdp-review-form__text">
               <Link to="/login" className="text-link">
-                Войдите
+                Войди
               </Link>
               , чтобы оставить отзыв.
             </p>
@@ -617,7 +617,7 @@ function Reviews({ productId }) {
             <p className="notice notice--ok">Спасибо! Отзыв появится после проверки модератором.</p>
           ) : (
             <form onSubmit={submit} className="pdp-review-form__form">
-              <span className="pdp-group__label">Ваша оценка</span>
+              <span className="pdp-group__label">Твоя оценка</span>
               <Stars value={rating} onChange={setRating} size="lg" />
               <textarea
                 className="input input--area"

@@ -305,7 +305,7 @@ export default function Checkout() {
         <p className="site-lead">
           {buyNowItem
             ? 'Покупка в один клик: оформляем только этот товар, корзина остаётся как была.'
-            : 'Три коротких шага. После заказа менеджер позвонит и подтвердит детали.'}
+            : 'Три коротких шага. После заказа менеджер позвонит тебе и подтвердит детали.'}
         </p>
       </header>
 
@@ -379,7 +379,7 @@ export default function Checkout() {
             {!pickup && cities.error && (
               <div className="chk-fields">
                 <ErrorBox error={cities.error} onRetry={cities.reload} />
-                <p className="chk-fine">Не удалось загрузить города доставки. Повторите или выберите самовывоз.</p>
+                <p className="chk-fine">Не удалось загрузить города доставки. Повтори или выбери самовывоз.</p>
               </div>
             )}
             {!pickup && !cities.error && (
@@ -387,7 +387,7 @@ export default function Checkout() {
                 <Select
                   label="Город"
                   required
-                  placeholder={cities.loading && !cities.data ? 'Загружаем города…' : 'Выберите город'}
+                  placeholder={cities.loading && !cities.data ? 'Загружаем города…' : 'Выбери город'}
                   value={form.deliveryCityId}
                   onChange={set('deliveryCityId')}
                   options={(cities.data?.items ?? []).map((c) => ({
@@ -410,7 +410,7 @@ export default function Checkout() {
                 <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
                 <span>
                   {pickup ? 'Запомнить телефон для следующих заказов' : 'Запомнить телефон и адрес для следующих заказов'}
-                  <small>Сохранятся в профиле — их можно изменить в личном кабинете</small>
+                  <small>Сохранятся в профиле — изменить их можно в личном кабинете</small>
                 </span>
               </label>
             )}
@@ -445,7 +445,7 @@ export default function Checkout() {
         </div>
 
         <aside className="site-surface chk-summary" aria-labelledby="chk-summary-title">
-          <h2 id="chk-summary-title">Ваш заказ</h2>
+          <h2 id="chk-summary-title">Твой заказ</h2>
           <ul className="chk-items">
             {items.map((i) => {
               const pct = tierPercent(i.tiers, i.quantity);
@@ -579,7 +579,7 @@ export default function Checkout() {
             <div className="chk-row">
               <span>Доставка</span>
               <span className="chk-money">
-                {pickup ? 'самовывоз' : city ? (delivery === 0 ? 'бесплатно' : money(delivery)) : 'выберите город'}
+                {pickup ? 'самовывоз' : city ? (delivery === 0 ? 'бесплатно' : money(delivery)) : 'выбери город'}
               </span>
             </div>
             <div className="chk-row chk-row--total">
@@ -598,8 +598,8 @@ export default function Checkout() {
               ? 'К оплате 0 смн — менеджер позвонит, чтобы подтвердить заказ.'
               : prepay > 0
                 ? prepayPct === 100
-                  ? 'После оформления покажем реквизиты — переведите сумму и загрузите чек.'
-                  : `После оформления покажем реквизиты: переведите предоплату и загрузите чек. Остаток ${money(total - prepay)} — до получения заказа.`
+                  ? 'После оформления покажем реквизиты — переведи сумму и загрузи чек.'
+                  : `После оформления покажем реквизиты: переведи предоплату и загрузи чек. Остаток ${money(total - prepay)} — до получения заказа.`
                 : 'Итоговую сумму подтвердит менеджер, когда позвонит уточнить заказ.'}
           </p>
 
@@ -614,8 +614,8 @@ export default function Checkout() {
           {photosLoading && <p className="chk-note">Загружаем сохранённые фото…</p>}
           {!buyNowItem && cart.photosState === 'failed' && (
             <p className="chk-note chk-note--warn" role="alert">
-              Не удалось прочитать сохранённые фото из браузера — без них они не прикрепятся к заказу. Обновите страницу
-              или добавьте фото в корзине заново.
+              Не удалось прочитать сохранённые фото из браузера — без них они не прикрепятся к заказу. Обнови страницу
+              или добавь фото в корзине заново.
             </p>
           )}
 
@@ -626,7 +626,7 @@ export default function Checkout() {
             {busyLabel || 'Подтвердить заказ'}
           </button>
           <p className="chk-fine chk-legal">
-            Оформляя заказ, вы соглашаетесь с{' '}
+            Оформляя заказ, ты соглашаешься с{' '}
             <Link to="/terms" className="text-link">
               условиями оферты
             </Link>

@@ -9,15 +9,12 @@ import { chatApi } from '../../api/endpoints.js';
 import { CONTACTS } from '../../lib/contacts.js';
 import { useChatHub, useHubEvent } from '../../lib/chatHub.js';
 import ChatThread from './ChatThread.jsx';
+import BrandLogo from '../Logo.jsx';
 
 const QUICK = ['Сколько стоит стикер?', 'Сколько делается заказ?', 'Есть доставка в мой город?', 'Хочу узнать про свой заказ'];
 
 function BrandAvatar() {
-  return (
-    <svg viewBox="0 0 64 64" aria-hidden="true" className="chatw-brand">
-      <path d="M32 56 C10 42 4 30 8 20 C12 10 26 8 32 20 C38 8 52 10 56 20 C60 30 54 42 32 56Z" fill="#fff" />
-    </svg>
-  );
+  return <BrandLogo variant="badge" className="chatw-brand" />;
 }
 
 function Messengers() {
@@ -170,7 +167,7 @@ export default function ChatWidget() {
 
       {/* Панель идёт после кнопки в DOM (порядок Tab), а над ней визуально — через order в chat.css */}
       {open && (
-        <div className="chatw-panel" id="chatw-panel" role="dialog" aria-label="Чат с StarkTech" tabIndex={-1} ref={panelRef}>
+        <div className="chatw-panel" id="chatw-panel" role="dialog" aria-label="Чат со Stark Tech" tabIndex={-1} ref={panelRef}>
           {!isAuthenticated ? (
             <div className="chatw-guest">
               <button type="button" className="chatw-guest__close" onClick={close} aria-label="Закрыть">
@@ -180,14 +177,14 @@ export default function ChatWidget() {
                 <BrandAvatar />
               </div>
               <h3>Чат с менеджером</h3>
-              <p>Войдите, чтобы задать вопрос — ответим прямо здесь, а переписка сохранится в вашем аккаунте.</p>
+              <p>Войди, чтобы задать вопрос — ответим прямо здесь, а переписка сохранится в твоём аккаунте.</p>
               <Link to="/login" state={{ from: pathname }} className="btn btn--primary btn--block" onClick={() => setOpen(false)}>
                 Войти
               </Link>
               <Link to="/register" state={{ from: pathname }} className="btn btn--ghost btn--block" onClick={() => setOpen(false)}>
                 Регистрация
               </Link>
-              <p className="chatw-guest__or">или напишите нам в мессенджер</p>
+              <p className="chatw-guest__or">или напиши нам в мессенджер</p>
               <Messengers />
             </div>
           ) : conversation ? (
@@ -196,7 +193,7 @@ export default function ChatWidget() {
               role="Customer"
               hub={hub}
               myId={profile?.id ?? userId}
-              title="StarkTech"
+              title="Stark Tech"
               avatar={<BrandAvatar />}
               onlineLabel="Менеджер в сети"
               offlineLabel="Обычно отвечаем в течение часа"
@@ -204,8 +201,8 @@ export default function ChatWidget() {
               quickReplies={QUICK}
               empty={
                 <>
-                  <strong>Здравствуйте! 👋</strong>
-                  <p>Спросите о стикерах, брелках, сроках или своём заказе — менеджер ответит здесь. Можно прислать фото.</p>
+                  <strong>Привет!</strong>
+                  <p>Спроси о стикерах, брелоках, сроках или своём заказе — менеджер ответит здесь. Можно прислать фото.</p>
                   <p className="chatw-alt">Удобнее в мессенджере?</p>
                   <Messengers />
                 </>

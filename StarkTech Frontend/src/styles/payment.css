@@ -7,20 +7,21 @@
   display: grid;
   gap: 16px;
   padding: 20px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-lg);
   background: var(--paper);
-  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.05), 0 12px 28px -18px rgba(20, 22, 58, 0.35);
-  border-top: 4px solid var(--lilac);
+  border: 1px solid var(--line-soft);
+  box-shadow: 0 1px 2px rgba(18, 19, 20, 0.05), 0 12px 28px -18px rgba(18, 19, 20, 0.35);
 }
+/* Ждём предоплату — тонкая красная рамка бренда: блок требует действия */
 .pay-box--due {
-  border-top-color: var(--lemon);
-  background: linear-gradient(180deg, var(--lemon-tint) 0%, var(--paper) 140px);
+  border: 1.5px solid var(--stark-red);
 }
 .pay-box--done {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  border-top-color: var(--st-delivered);
-  background: linear-gradient(180deg, var(--green-tint) 0%, var(--paper) 120px);
+  border-color: transparent;
+  background: var(--green-tint);
+  box-shadow: none;
 }
 .pay-box--done p {
   margin: 2px 0 0;
@@ -47,6 +48,14 @@
 .pay-box__head h3 {
   margin: 0;
   font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-xl);
+  line-height: 1.2;
+  letter-spacing: 0.005em;
+}
+.pay-box--done strong {
+  font-family: var(--font-display);
+  font-weight: 600;
   font-size: var(--t-lg);
 }
 .pay-box__head p {
@@ -71,8 +80,8 @@
   display: grid;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
 }
 .pay-sums dt {
   font-size: var(--t-xs);
@@ -80,19 +89,21 @@
 }
 .pay-sums dd {
   margin: 0;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 .pay-sums .is-main {
-  background: var(--ink);
+  background: var(--graphite);
   color: var(--paper);
 }
 .pay-sums .is-main dt {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-muted-on-dark);
 }
 .pay-sums .is-main dd {
-  font-family: var(--font-display);
-  font-size: var(--t-lg);
+  font-size: var(--t-xl);
 }
 .pay-sums--compact .is-main dd {
   font-size: var(--t-md);
@@ -101,14 +112,15 @@
 .pay-note {
   margin: 0;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
   color: var(--ink-soft);
   font-size: var(--t-sm);
   line-height: 1.45;
 }
 .pay-note--wait {
-  background: var(--lemon-tint);
+  border-left: 4px solid var(--arc-teal);
+  background: var(--arc-teal-tint);
   color: var(--ink);
 }
 
@@ -118,14 +130,16 @@
   gap: 8px;
 }
 
-/* Реквизиты */
+/* Реквизиты — тёмная «банковская карта»: графит, номер крупно Oswald, кнопки копирования — неон */
 .pay-details {
   display: grid;
   gap: 2px;
-  padding: 6px 14px;
-  border: 1px dashed var(--cobalt);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--cobalt-tint) 35%, var(--paper));
+  padding: 8px 18px;
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(circle at 100% 0, transparent 0 64px, rgba(17, 242, 244, 0.28) 65px 66px, transparent 67px),
+    var(--graphite);
+  color: var(--text-on-dark);
 }
 .pay-details__row {
   display: grid;
@@ -138,17 +152,19 @@
   padding: 8px 0;
 }
 .pay-details__row + .pay-details__row {
-  border-top: 1px solid rgba(42, 59, 224, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 .pay-details__label {
   grid-area: label;
   font-size: var(--t-xs);
-  color: var(--ink-soft);
+  color: var(--text-muted-on-dark);
 }
 .pay-details__value {
   grid-area: value;
   font-family: var(--font-display);
-  font-size: clamp(1.05rem, 0.95rem + 0.6vw, 1.35rem);
+  font-weight: 600;
+  font-size: clamp(1.15rem, 1rem + 0.7vw, 1.5rem);
+  color: var(--paper);
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
@@ -156,37 +172,36 @@
 .pay-details__text {
   grid-area: value;
   font-weight: 600;
+  color: var(--paper);
 }
 .pay-details__hint {
   margin: 4px 0 8px;
-  color: var(--ink-soft);
+  color: var(--text-muted-on-dark);
   font-size: var(--t-sm);
   line-height: 1.45;
 }
 .pay-copy {
   grid-area: copy;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--cobalt);
-  border-radius: var(--radius-pill);
-  background: var(--paper);
-  color: var(--cobalt-deep);
-  font: 600 var(--t-xs) var(--font-body);
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-round);
+  background: var(--arc-cyan);
+  color: var(--ink-pure);
+  font: 700 var(--t-xs) var(--font-body);
   cursor: pointer;
   white-space: nowrap;
 }
 .pay-copy:hover {
-  background: var(--cobalt);
-  color: var(--paper);
+  background: var(--paper);
 }
 .pay-copy.is-done {
-  border-color: var(--st-delivered);
-  background: var(--st-delivered);
-  color: var(--paper);
+  background: var(--paper);
+  color: var(--ink);
 }
 .pay-copy:focus-visible {
   outline: none;
-  box-shadow: var(--focus);
+  box-shadow: 0 0 0 2px var(--graphite), 0 0 0 4px var(--arc-cyan);
 }
 
 /* Загрузка чека */
@@ -212,25 +227,25 @@
   display: grid;
   gap: 4px;
   padding: 16px;
-  border: 2px dashed var(--line);
-  border-radius: var(--radius-md);
-  background: var(--paper);
+  border: 2px dashed var(--silver);
+  border-radius: var(--r-lg);
+  background: var(--surface-raised);
   text-align: center;
   transition: border-color 0.15s, background-color 0.15s;
 }
 .pay-upload__drop strong {
-  color: var(--cobalt-deep);
+  color: var(--stark-red);
 }
 .pay-upload__drop small {
   color: var(--ink-soft);
   font-size: var(--t-xs);
 }
 .pay-upload__file:hover .pay-upload__drop {
-  border-color: var(--cobalt);
-  background: color-mix(in srgb, var(--cobalt-tint) 30%, var(--paper));
+  border-color: var(--stark-red);
+  background: var(--stark-red-tint);
 }
 .pay-upload__file:focus-within .pay-upload__drop {
-  border-color: var(--cobalt);
+  border-color: var(--stark-red);
   box-shadow: var(--focus);
 }
 .pay-upload__submit {
@@ -261,7 +276,9 @@
 /* Отправленные чеки (клиент) и чеки на проверке (админка) */
 .pay-proofs h4 {
   margin: 0 0 8px;
-  font-size: var(--t-sm);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
 }
 .pay-proofs ul,
 .pay-proofs__list {
@@ -277,7 +294,7 @@
   align-items: start;
   gap: 12px;
   padding: 10px;
-  border-radius: var(--radius-md);
+  border-radius: var(--r-lg);
   background: var(--paper);
   box-shadow: inset 0 0 0 1px var(--line);
   border-left: 4px solid var(--st-production);
@@ -383,14 +400,13 @@
   display: grid;
   gap: 14px;
   padding: 20px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--r-lg);
   background: var(--paper);
-  box-shadow: 0 1px 2px rgba(20, 22, 58, 0.05), 0 12px 28px -18px rgba(20, 22, 58, 0.35);
-  border-top: 4px solid var(--lilac);
+  border: 1px solid var(--line-soft);
+  box-shadow: 0 1px 2px rgba(18, 19, 20, 0.05), 0 12px 28px -18px rgba(18, 19, 20, 0.35);
 }
 .pset-card--accent {
-  border-top-color: var(--lemon);
-  background: linear-gradient(180deg, var(--lemon-tint) 0%, var(--paper) 120px);
+  border-color: var(--stark-red);
 }
 .pset-card h2 {
   margin: 0;
@@ -467,7 +483,7 @@
   height: 20px;
   border-radius: 50%;
   background: var(--paper);
-  box-shadow: 0 1px 3px rgba(20, 22, 58, 0.3);
+  box-shadow: 0 1px 3px rgba(18, 19, 20, 0.3);
   transition: transform 0.15s;
 }
 .pset-toggle input:checked + .pset-toggle__track {
@@ -515,8 +531,7 @@
 
 /* Возврат по отменённому заказу / переплата */
 .pay-box--refund {
-  border-top-color: var(--cherry-strong);
-  background: linear-gradient(180deg, var(--cherry-tint, var(--line-soft)) 0%, var(--paper) 120px);
+  background: var(--cherry-tint, var(--line-soft));
 }
 .pay-box--refund .pay-box__icon {
   background: var(--cherry-strong);

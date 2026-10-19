@@ -32,11 +32,13 @@ export default function Prices() {
   return (
     <div className="site-container pr-page">
       <div className="pr-layout">
-        <h1 className="site-title">Цены</h1>
-        <p className="site-lead">
-          Цена указана за изделие с вашим фото. Чем больше штук, тем ниже цена за каждую — пороги скидки видны на
-          странице товара. Изготовление {CONTACTS.leadTime}, доставка по всему Таджикистану.
-        </p>
+        <header className="page-head">
+          <h1 className="site-title">Цены</h1>
+          <p className="site-lead">
+            Цена указана за изделие с твоим фото. Чем больше штук, тем ниже цена за каждую — пороги скидки видны на
+            странице товара. Изготовление {CONTACTS.leadTime}, доставка по всему Таджикистану.
+          </p>
+        </header>
         <p className="pr-note">
           Как оплатить, нужна ли предоплата и суммируются ли скидки — в разделе{' '}
           <Link to="/faq#payment">«Оплата» в вопросах и ответах</Link>.
@@ -59,7 +61,11 @@ export default function Prices() {
         ) : groups.length === 0 ? (
           <div className="home-state">
             <Empty title="Прайс скоро появится">
-              Пока уточните цену в <a href={CONTACTS.whatsapp}>WhatsApp</a>.
+              Пока уточни цену в{' '}
+              <a href={CONTACTS.whatsapp} target="_blank" rel="noopener noreferrer" className="text-link">
+                WhatsApp
+              </a>
+              .
             </Empty>
           </div>
         ) : (
@@ -82,17 +88,17 @@ export default function Prices() {
             )}
 
             {liveCombos.length > 0 && (
-              <section id="pr-combos" className="pr-combos" aria-labelledby="pr-combos-title">
+              <section id="pr-combos" className="pr-combos promo-panel" aria-labelledby="pr-combos-title">
                 <h2 id="pr-combos-title" className="home-h2">
                   Комбо-наборы
                 </h2>
-                <p>Положите в корзину все товары набора — скидка применится при оформлении.</p>
+                <p>Положи в корзину все товары набора — скидка применится при оформлении.</p>
                 <ul className="pr-combo-list">
                   {liveCombos.map((c) => (
                     <li key={c.id} className="pr-combo">
                       <div className="pr-combo__head">
                         <span className="pr-combo__name">{nameOf(c)}</span>
-                        <span className="sticker-price pr-combo__badge">{discountLabel(c)}</span>
+                        <span className="pr-combo__badge neon-outline neon-outline--sm">{discountLabel(c)}</span>
                       </div>
                       <ul className="pr-combo__items" aria-label="Товары набора">
                         {comboProductIds(c).map((id) => (
@@ -112,7 +118,7 @@ export default function Prices() {
               <section
                 key={cat.id}
                 id={`pr-cat-${cat.id}`}
-                className="site-surface pr-group"
+                className="pr-group"
                 aria-labelledby={`pr-cat-title-${cat.id}`}
               >
                 <div className="pr-group__head">
@@ -129,7 +135,7 @@ export default function Prices() {
                         <Link to={`/product/${p.id}`}>
                           <span className="pr-row__name">
                             {nameOf(p)}
-                            {p.requiresPhotoUpload && <span className="pr-row__photo">С вашим фото</span>}
+                            {p.requiresPhotoUpload && <span className="brand-chip">С твоим фото</span>}
                           </span>
                           <span className="pr-row__price">
                             <small>от </small>
@@ -145,13 +151,13 @@ export default function Prices() {
           </>
         )}
 
-        <div className="pr-cta">
+        <div className="pr-cta promo-panel">
           <div>
-            <strong>Нужен свой размер или опт?</strong>
-            <p>Напишите — посчитаем стоимость за пару минут.</p>
+            <h2 className="pr-cta__title display-upper">Нужен свой размер или опт?</h2>
+            <p>Напиши — посчитаем стоимость за пару минут.</p>
           </div>
           <a
-            className="btn btn--large home-btn-wa"
+            className="btn btn--neon btn--large"
             href={whatsappWith('Здравствуйте! Хочу узнать цену на заказ.')}
             target="_blank"
             rel="noopener noreferrer"

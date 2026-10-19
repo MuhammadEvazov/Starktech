@@ -79,8 +79,8 @@ export default function Cart() {
         <CartCheckNotice check={{ ...check, changed: [], checking: false }} />
         {pendingBlock}
         <div className="site-surface cart-x-empty">
-          <h2>Здесь пока пусто</h2>
-          <p>Выберите стикер, брелок или чехол — он появится здесь.</p>
+          <h2>Корзина пока пустая</h2>
+          <p>Выбери стикер, брелок или чехол с твоим фото — он появится здесь.</p>
           <Link to="/catalog" className="btn btn--primary btn--large">
             Перейти в каталог
           </Link>
@@ -122,8 +122,8 @@ export default function Cart() {
         <CartCheckNotice check={check} />
         {cart.photosState === 'failed' && (
           <p className="cart-x-note cart-x-note--warn" role="alert">
-            Не удалось восстановить сохранённые фото из браузера. Сохранённые копии не тронуты — обновите страницу или
-            добавьте фото заново.
+            Не удалось восстановить сохранённые фото из браузера. Сохранённые копии не тронуты — обнови страницу или
+            добавь фото заново.
           </p>
         )}
       </div>
@@ -167,7 +167,7 @@ export default function Cart() {
                   )}
                   {upcoming && (
                     <span className="cart-x-tier">
-                      {byPhotos ? 'Добавьте ещё' : 'Возьмите ещё'} {upcoming.need}{' '}
+                      {byPhotos ? 'Добавь ещё' : 'Возьми ещё'} {upcoming.need}{' '}
                       {byPhotos ? stickerWord(upcoming.need) : 'шт.'} — скидка {percentLabel(upcoming.discountPercent)}%
                     </span>
                   )}
@@ -195,7 +195,7 @@ export default function Cart() {
                 {item.requiresPhoto && (
                   <div className={`cart-x-photos ${missing || misfit.length ? 'is-missing' : ''}`}>
                     <div className="cart-x-photos__head">
-                      <span className="cart-x-photos__title">Ваши фото для печати</span>
+                      <span className="cart-x-photos__title">Твои фото для печати</span>
                       <span className="cart-x-photos__state">
                         {missing
                           ? 'Фото пока не выбрано'
@@ -215,7 +215,7 @@ export default function Cart() {
                     />
                     {misfit.length > 0 && (
                       <p className="cart-x-tier cart-x-tier--warn">
-                        Подгоните фото под форму «{SHAPE_LABEL[shape]}» ({misfit.length} шт.) — без этого заказ не оформить.{' '}
+                        Подгони фото под форму «{SHAPE_LABEL[shape]}» ({misfit.length} шт.) — без этого заказ не оформить.{' '}
                         <button
                           type="button"
                           className="text-link"
@@ -246,7 +246,7 @@ export default function Cart() {
           )}
           {misfitItems.length > 0 && (
             <p className="cart-x-note cart-x-note--warn" role="alert">
-              Некоторые фото не подогнаны под форму стикера. Подгоните их, чтобы оформить заказ.
+              Некоторые фото не подогнаны под форму стикера. Подгони их, чтобы оформить заказ.
             </p>
           )}
           {cart.photosState === 'loading' && <p className="cart-x-note">Загружаем сохранённые фото…</p>}
@@ -333,7 +333,7 @@ function PendingPhotos() {
               </Link>
               : фото {p.photos.length} ({sumCopies(p.photos)} {stickerWord(sumCopies(p.photos))})
               {p.photos.some((f) => f.stUploadedId) && ' (часть уже загружена, не сохранился кадр)'}
-              {result[p.key] > 0 && ' — снова не получилось, попробуйте позже'}
+              {result[p.key] > 0 && ' — снова не получилось, попробуй позже'}
             </span>
             <span className="cart-x-pending__actions">
               <button type="button" className="btn btn--primary" disabled={busy === p.key} onClick={() => retry(p)}>

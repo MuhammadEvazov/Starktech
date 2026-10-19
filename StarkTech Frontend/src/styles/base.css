@@ -1,23 +1,69 @@
-/* StarkTech — токены и базовые элементы.
-   Палитра «лист стикеров»: кобальтовая краска, подложка, белая кромка вырубки,
-   лимонный и вишнёвый как цвета самих стикеров. */
-:root {
-  --ink: #14163a;
-  --ink-soft: #4d5175;
-  --cobalt: #2a3be0;
-  --cobalt-deep: #1d2bb0;
-  --cobalt-tint: #dfe2ff;
-  --sheet: #e8eaf2;
-  --sheet-deep: #d5d9e7;
-  --paper: #ffffff;
-  --lemon: #ffd84a;
-  --cherry: #e8355f;
-  --lilac: #b9b3ff;
-  --green: #1e8a57;
-  --line: #d3d6e4;
+/* Stark Tech — токены и базовые элементы.
+   Бренд: кирпично-красный Stark (кнопки, акценты), неоновый циан «дугового реактора»
+   (только заливки, свечение, иконки и подчёркивания на тёмном; текст на нём — только ink;
+   никогда не цвет текста на белом), бирюзовый arc-teal для ссылок и фокуса на светлом,
+   графит и серебро для нейтралей. Заголовки — Oswald (узкий), текст — Manrope.
 
-  --font-display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
-  --font-body: 'Onest', system-ui, -apple-system, 'Segoe UI', sans-serif;
+   Старые имена переменных (--cobalt, --lemon, --cherry, --lilac, --sheet…) сохранены и
+   переназначены на бренд — страницы продолжают их использовать. Новые имена — ниже, блок «Бренд». */
+:root {
+  /* ─── Бренд Stark Tech (новые токены) ─── */
+  --stark-red: #8f3a36; /* акцент: кнопки; белый текст 7.4:1 */
+  --stark-red-deep: #6e2b28; /* hover/pressed */
+  --stark-red-tint: #f4e6e5; /* светлая подложка; красный текст на ней 6.1:1 */
+  --arc-cyan: #11f2f4; /* неон: заливки/свечение/иконки на тёмном; текст на нём — --ink-pure */
+  --arc-cyan-tint: #ddfbfb;
+  --arc-teal: #0b6b6d; /* ссылки и вторичные акценты на светлом (6.4:1), кольцо фокуса */
+  --arc-teal-deep: #08494a;
+  --arc-teal-tint: #e0f1f1;
+  --ink-pure: #010101;
+  --graphite: #181919; /* тёмные секции, подвал */
+  --graphite-soft: #232525; /* поверхности на графите */
+  --silver: #b7bbc3;
+  --silver-light: #d6d7db;
+  --mist: #e6e6ea;
+  --promo-navy: #060d2a; /* промо-баннеры, герой с неоном */
+  --surface: #fdfdfd; /* страница */
+  --surface-raised: #f1f1f4; /* карточки-формы, подложки */
+  --panel: #010101; /* инверсные блоки */
+  --text: #121314;
+  --text-muted: #5a5d63; /* 6.6:1 на белом, 6.0:1 на --surface-raised */
+  --text-on-dark: #f1f1f4;
+  --text-muted-on-dark: #b7bbc3; /* 9.3:1 на --graphite */
+  --accent: var(--stark-red);
+  --on-accent: #ffffff;
+  --border: #d6d7db;
+  --glow-cyan: 0 0 0 1.5px var(--arc-cyan), 0 0 14px 1px rgba(17, 242, 244, 0.55), inset 0 0 12px rgba(17, 242, 244, 0.25);
+
+  /* Радиусы бренда: sm — поля и чипы, lg — карточки товаров и фото («как скруглённый 3D-стикер»),
+     round — пилюли-кнопки и круглые обложки категорий */
+  --r-sm: 6px;
+  --r-lg: 16px;
+  --r-round: 9999px;
+
+  /* Отступы бренда: 8 / 16 (паддинг карточки, поля телефона) / 24 (между карточками) / 48 (между секциями) */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 48px;
+
+  /* ─── Старые имена → бренд ─── */
+  --ink: #121314;
+  --ink-soft: #5a5d63;
+  --cobalt: #8f3a36; /* = --stark-red */
+  --cobalt-deep: #6e2b28;
+  --cobalt-tint: #f4e6e5;
+  --sheet: #e6e6ea; /* = --mist */
+  --sheet-deep: #d6d7db;
+  --paper: #ffffff;
+  --lemon: #11f2f4; /* = --arc-cyan: заливка-выделение, текст на ней только --ink */
+  --cherry: #d3352b; /* ошибки — чистый красный, отличается от кирпичного бренда */
+  --lilac: #b7bbc3; /* = --silver */
+  --green: #1e7a4f;
+  --line: #d6d7db;
+
+  --font-display: 'Oswald', 'Arial Narrow', sans-serif-condensed, sans-serif;
+  --font-body: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* модульная шкала 1.25 от 16px */
   --t-xs: 0.8125rem;
@@ -28,54 +74,62 @@
   --t-2xl: 1.953rem;
   --t-3xl: 2.441rem;
   --t-4xl: 3.052rem;
+  /* Шрифтовые роли бренда (размер/интерлиньяж) */
+  --t-hero: clamp(2.375rem, 1.6rem + 3.2vw, 3.5rem); /* 56/60 */
+  --t-h1: clamp(1.875rem, 1.45rem + 1.8vw, 2.5rem); /* 40/46 */
+  --t-h2: clamp(1.5rem, 1.3rem + 0.9vw, 1.75rem); /* 28/34 */
+  --t-price: clamp(1.625rem, 1.4rem + 1vw, 2rem); /* 32/36 */
+  --t-lead: 1.125rem; /* 18/28 */
 
-  --r-sticker: 28px;
-  --r-card: 14px;
-  --r-control: 10px;
-  --shadow-lift: 0 1px 0 rgba(20, 22, 58, 0.06), 0 10px 24px -14px rgba(20, 22, 58, 0.35);
-  --focus: 0 0 0 3px var(--paper), 0 0 0 5px var(--cobalt);
+  --r-sticker: 16px;
+  --r-card: 16px;
+  --r-control: 6px;
+  --shadow-lift: 0 1px 0 rgba(18, 19, 20, 0.05), 0 10px 24px -14px rgba(18, 19, 20, 0.32);
+  /* Кольцо фокуса — arc-teal 2px с белым зазором */
+  --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--arc-teal);
 
-  /* Вишнёвый для текста и заливок под белым текстом (контраст 5.4:1; --cherry даёт только 4.1:1) */
-  --cherry-strong: #c8284f;
+  /* Ошибки: текст и заливки под белым текстом (6.6:1 на белом) */
+  --cherry-strong: #b3261e;
 
   /* Светлые оттенки палитры — фоны плашек, заметок, бейджей */
-  --lemon-tint: #fff4cc;
-  --cherry-tint: #fde3ea;
-  --green-tint: #dcf3e6;
-  --lilac-tint: #ece9ff;
-  --line-soft: #eef0f7;
-  --ink-a45: rgba(20, 22, 58, 0.45);
+  --lemon-tint: #ddfbfb;
+  --cherry-tint: #fce4e2;
+  --green-tint: #dcf1e5;
+  --lilac-tint: #eeeef1;
+  --line-soft: #eeeef1;
+  --ink-a45: rgba(18, 19, 20, 0.5);
 
   /* Статусы заказа — одна карта цветов для сайта, кабинета, админки и дашборда.
-     --st-*: заливка/полоска, --st-*-tint: светлый фон, --st-*-on: цвет текста на заливке (контраст ≥ 4.5:1). */
-  --st-new: #2a3be0;
-  --st-new-tint: #dfe2ff;
+     --st-*: заливка/полоска, --st-*-tint: светлый фон, --st-*-on: цвет текста на заливке (контраст ≥ 4.5:1).
+     «Новый» — синий (функциональный, не брендовый), чтобы не путаться с «Отменён» (красный). */
+  --st-new: #2f4fd8;
+  --st-new-tint: #e1e6fb;
   --st-new-on: #ffffff;
   --st-confirmed: #5b4bea;
   --st-confirmed-tint: #ece9ff;
   --st-confirmed-on: #ffffff;
   --st-production: #e0a200;
   --st-production-tint: #fff4cc;
-  --st-production-on: #14163a;
-  --st-ready: #0b7285;
-  --st-ready-tint: #dcf5fa;
+  --st-production-on: #121314;
+  --st-ready: #0b6b6d;
+  --st-ready-tint: #e0f1f1;
   --st-ready-on: #ffffff;
   --st-delivered: #1a7f4f;
-  --st-delivered-tint: #dcf3e6;
+  --st-delivered-tint: #dcf1e5;
   --st-delivered-on: #ffffff;
-  --st-cancelled: #c8284f;
-  --st-cancelled-tint: #fde3ea;
+  --st-cancelled: #b3261e;
+  --st-cancelled-tint: #fce4e2;
   --st-cancelled-on: #ffffff;
   --st-layout: #a3297a;
   --st-layout-tint: #fbe3f2;
   --st-layout-on: #ffffff;
 
-  /* Шкала радиусов (старые --r-card / --r-control / --site-radius* остаются как есть) */
-  --radius-xs: 8px;
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --radius-pill: 999px;
+  /* Шкала радиусов (подогнана к бренду: 6 — поля/чипы, 16 — карточки/фото, pill — пилюли) */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
 
   /* Слои: липкие панели < плавающая кнопка чата < панели/оверлеи < модалки < тосты < просмотр фото */
   --z-bar: 20;
@@ -99,13 +153,20 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Страница никогда не шире экрана: иначе телефон уменьшает весь сайт («мелкий» вид).
+   clip, а не hidden — не ломает position: sticky. */
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: var(--t-md);
-  line-height: 1.55;
+  line-height: 1.5;
   font-feature-settings: 'tnum' 0;
   -webkit-font-smoothing: antialiased;
 }
@@ -183,7 +244,9 @@ main[tabindex='-1']:focus {
   display: block;
 }
 .lead {
-  font-size: var(--t-lg);
+  font-size: var(--t-lead);
+  line-height: 1.556;
+  font-weight: 500;
   color: var(--ink-soft);
   max-width: 60ch;
   margin-bottom: 24px;
@@ -191,19 +254,20 @@ main[tabindex='-1']:focus {
 .page-title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: var(--t-2xl);
+  font-size: var(--t-h1);
   line-height: 1.15;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.005em;
   margin-bottom: 12px;
 }
 .text-link {
-  color: var(--cobalt);
-  font-weight: 500;
+  color: var(--arc-teal);
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
 }
 .text-link:hover {
+  color: var(--arc-teal-deep);
   text-decoration-thickness: 2px;
 }
 .mono-id {
@@ -220,9 +284,10 @@ main[tabindex='-1']:focus {
   gap: 8px;
   min-height: 44px;
   padding: 0 20px;
-  border-radius: 999px;
+  border-radius: var(--r-round);
   border: 1.5px solid transparent;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   font-size: var(--t-md);
   text-decoration: none;
   cursor: pointer;
@@ -237,11 +302,11 @@ main[tabindex='-1']:focus {
   cursor: not-allowed;
 }
 .btn--primary {
-  background: var(--cobalt);
-  color: var(--paper);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 .btn--primary:hover:not(:disabled) {
-  background: var(--cobalt-deep);
+  background: var(--stark-red-deep);
 }
 .btn--ghost {
   background: var(--paper);
@@ -250,6 +315,7 @@ main[tabindex='-1']:focus {
 }
 .btn--ghost:hover:not(:disabled) {
   border-color: var(--ink);
+  background: var(--surface-raised);
 }
 .btn--quiet {
   background: transparent;
@@ -267,6 +333,29 @@ main[tabindex='-1']:focus {
 .btn--danger:hover:not(:disabled) {
   background: var(--cherry-strong);
   color: var(--paper);
+}
+/* Кнопки для тёмного/промо фона (--promo-navy, --graphite) */
+.btn--neon {
+  background: var(--arc-cyan);
+  color: var(--ink-pure);
+  box-shadow: 0 0 18px -2px rgba(17, 242, 244, 0.6);
+}
+.btn--neon:hover:not(:disabled) {
+  background: #5ff7f8;
+  box-shadow: 0 0 24px 0 rgba(17, 242, 244, 0.75);
+}
+.btn--on-dark {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
+}
+.btn--on-dark:hover:not(:disabled) {
+  border-color: var(--arc-cyan);
+  color: var(--arc-cyan);
+}
+.btn--neon:focus-visible,
+.btn--on-dark:focus-visible {
+  box-shadow: 0 0 0 2px var(--promo-navy), 0 0 0 4px var(--arc-cyan);
 }
 /* Компактная на вид, но зона нажатия ≥ 44px — за счёт невидимого ::after */
 .btn--small {
@@ -344,8 +433,8 @@ main[tabindex='-1']:focus {
 }
 .input:focus {
   outline: none;
-  border-color: var(--cobalt);
-  box-shadow: 0 0 0 3px var(--cobalt-tint);
+  border-color: var(--arc-teal);
+  box-shadow: 0 0 0 3px rgba(11, 107, 109, 0.18);
 }
 .field--error .input {
   border-color: var(--cherry-strong);
@@ -356,7 +445,7 @@ main[tabindex='-1']:focus {
 }
 select.input {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2314163a' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23121314' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 38px;
@@ -422,7 +511,7 @@ select.input {
 }
 .notice {
   background: var(--lemon-tint);
-  border-left: 4px solid var(--lemon);
+  border-left: 4px solid var(--arc-teal);
   padding: 12px 16px;
   border-radius: 0 var(--r-control) var(--r-control) 0;
   font-size: var(--t-sm);
@@ -445,8 +534,10 @@ select.input {
   box-shadow: var(--shadow-lift);
 }
 .empty__title {
-  font-weight: 700;
-  font-size: var(--t-lg);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-xl);
+  line-height: 1.2;
 }
 .empty__text {
   color: var(--ink-soft);
@@ -478,7 +569,7 @@ select.input {
 }
 .badge--yellow {
   background: var(--lemon-tint);
-  color: #6b5200;
+  color: var(--arc-teal-deep);
 }
 .badge--green {
   background: var(--green-tint);
@@ -486,7 +577,7 @@ select.input {
 }
 .badge--red {
   background: var(--cherry-tint);
-  color: #a01a3c;
+  color: #8e1d16;
 }
 /* Статусы заказа (OrderStatusBadge): фон --st-*-tint, точка — сплошной цвет статуса,
    текст — цвет статуса, притемнённый к --ink (на светлом фоне ≥ 4.5:1). */
@@ -598,11 +689,11 @@ select.input {
 }
 .modal__panel {
   background: var(--paper);
-  border-radius: 18px;
+  border-radius: var(--r-lg);
   width: min(520px, 100%);
   max-height: calc(100vh - 32px);
   overflow: auto;
-  box-shadow: 0 30px 60px -20px rgba(20, 22, 58, 0.5);
+  box-shadow: 0 30px 60px -20px rgba(18, 19, 20, 0.5);
 }
 .modal__panel--wide {
   width: min(820px, 100%);
@@ -618,8 +709,10 @@ select.input {
   z-index: 1;
 }
 .modal__head h2 {
-  font-size: var(--t-lg);
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--t-xl);
+  font-weight: 600;
+  line-height: 1.2;
 }
 .modal__body {
   padding: 8px 24px 24px;

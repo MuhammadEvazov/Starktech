@@ -39,11 +39,11 @@ export default function OrderPlaced() {
   const steps = [
     {
       title: 'Звонок менеджера',
-      text: 'Позвоним по указанному номеру, уточним детали и согласуем макет.',
+      text: 'Позвоним по твоему номеру, уточним детали и согласуем макет.',
     },
     {
       title: `Изготовление — ${CONTACTS.leadTime}`,
-      text: 'Печатаем ваши фото после того, как вы одобрите макет.',
+      text: 'Печатаем твои фото, как только ты одобришь макет.',
     },
     {
       title: 'Доставка',
@@ -58,8 +58,8 @@ export default function OrderPlaced() {
           <span className="done-sticker__label">Номер заказа</span>
           <span className="done-sticker__number">{number}</span>
         </div>
-        <h1 className="site-title">Спасибо, заказ принят</h1>
-        <p className="site-lead">Менеджер позвонит, чтобы подтвердить детали и согласовать макет.</p>
+        <h1 className="done-title">Спасибо, заказ принят!</h1>
+        <p className="site-lead">Менеджер позвонит тебе, чтобы подтвердить детали и согласовать макет.</p>
       </header>
 
       {order && (
@@ -169,7 +169,7 @@ export default function OrderPlaced() {
           rel="noopener noreferrer"
           className="text-link"
         >
-          Напишите нам в WhatsApp
+          Напиши нам в WhatsApp
         </a>
       </p>
     </div>

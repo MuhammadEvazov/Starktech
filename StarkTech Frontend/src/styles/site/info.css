@@ -1,6 +1,7 @@
-/* ───────── Информационные страницы: «Вопросы и ответы» (/faq) ─────────
-   Префикс классов — faq-. Токены — из base.css и site/foundation.css.
-   Фирменный акцент один: стикер «?» в шапке. Остальное — белые карточки и аккордеон. */
+/* ───────── Информационные страницы: «Вопросы и ответы» (/faq) и юридические (/privacy, /terms, /refund) ─────────
+   Префиксы классов — faq-, legal-. Токены — из base.css, утилиты (.promo-panel, .section-dark, .neon-outline) —
+   из site/foundation.css. Шапка FAQ — тёмно-синее промо, у документов — графит; знак в неоновом кольце.
+   Ниже — белые карточки-разделы и аккордеон. */
 
 .faq-page {
   padding-top: 24px;
@@ -11,53 +12,50 @@
   position: relative;
   display: grid;
   gap: 18px;
-  padding: 26px 22px;
-  border-radius: var(--site-radius-lg);
-  background:
-    radial-gradient(circle at 8% 118%, rgba(185, 179, 255, 0.55) 0 70px, transparent 71px),
-    radial-gradient(circle at 70% -30%, rgba(232, 53, 95, 0.4) 0 90px, transparent 91px),
-    linear-gradient(135deg, var(--cobalt) 0%, var(--cobalt-deep) 100%);
-  color: var(--paper);
+  padding: 26px 20px;
+  border-radius: var(--r-lg);
   overflow: hidden;
-  box-shadow: 0 18px 36px -22px rgba(29, 43, 176, 0.75);
+}
+.legal-hero {
+  background:
+    radial-gradient(70% 90% at 100% 0%, rgba(17, 242, 244, 0.08), transparent 65%),
+    var(--graphite);
 }
 .faq-hero__text {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
-  padding-right: 72px;
+  padding-right: 76px;
 }
 .faq-hero__title {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  font-size: clamp(1.9rem, 1.3rem + 2.4vw, 3rem);
+  line-height: 1.02;
+  color: #ffffff;
 }
 .faq-hero__lead {
   margin: 0;
   max-width: 56ch;
   font-size: var(--t-md);
-  line-height: 1.5;
+  line-height: 1.55;
+  color: var(--text-muted-on-dark);
 }
-.faq-hero__sticker {
+/* Знак раздела в неоновом кольце (рамка и свечение — .neon-outline) */
+.faq-hero__mark {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 22px;
+  right: 20px;
   display: grid;
   place-items: center;
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background: var(--lemon);
-  color: var(--ink);
+  color: var(--arc-cyan);
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 2.1rem;
+  font-weight: 600;
+  font-size: 2rem;
   line-height: 1;
-  box-shadow: 0 0 0 5px var(--paper), 0 12px 22px -8px rgba(10, 14, 80, 0.6);
-  transform: rotate(-8deg);
+  text-shadow: 0 0 12px rgba(17, 242, 244, 0.7);
 }
 
 .faq-search {
@@ -75,42 +73,29 @@
 }
 .faq-search input {
   width: 100%;
-  min-height: 50px;
+  min-height: 52px;
   padding: 12px 16px 12px 44px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-sm);
   background: var(--paper);
   color: var(--ink);
   font: inherit;
-  box-shadow: 0 6px 18px -10px rgba(10, 14, 80, 0.6);
 }
 .faq-search input:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--lemon);
+  box-shadow: 0 0 0 3px var(--arc-cyan), 0 0 16px rgba(17, 242, 244, 0.5);
 }
 
 /* ─── Раскладка: оглавление + вопросы ─── */
 .faq-layout {
   display: grid;
+  /* minmax(0, …) — иначе лента разделов (nowrap) растягивает колонку и всю страницу на телефоне */
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 16px;
 }
-
-/* Цвет раздела — точка в оглавлении и в заголовке */
-.faq-tone--cobalt { --faq-tone: var(--cobalt); }
-.faq-tone--lemon { --faq-tone: #e0a200; }
-.faq-tone--layout { --faq-tone: var(--st-layout); }
-.faq-tone--green { --faq-tone: var(--green); }
-.faq-tone--lilac { --faq-tone: #6c5ce7; }
-.faq-tone--cherry { --faq-tone: var(--cherry-strong); }
-.faq-tone--ready { --faq-tone: var(--st-ready); }
-
-.faq-dot {
-  flex: none;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--faq-tone, var(--ink-soft));
+.faq-layout > * {
+  min-width: 0;
 }
 
 .faq-toc ul {
@@ -122,13 +107,16 @@
   overflow-x: auto;
   scrollbar-width: none;
 }
+.faq-toc ul::-webkit-scrollbar {
+  display: none;
+}
 .faq-toc__link {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px 14px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--r-sm);
   background: var(--site-surface);
   color: var(--ink);
   font-weight: 600;
@@ -138,7 +126,8 @@
   box-shadow: inset 0 0 0 1px var(--site-line);
 }
 .faq-toc__link:hover {
-  box-shadow: inset 0 0 0 2px var(--faq-tone);
+  color: var(--stark-red);
+  box-shadow: inset 0 0 0 1.5px var(--stark-red);
 }
 .faq-toc__link:focus-visible {
   outline: none;
@@ -153,7 +142,7 @@
 
 .faq-section {
   padding: 20px 18px 10px;
-  border-radius: var(--site-radius-lg);
+  border-radius: var(--r-lg);
   background: var(--site-surface);
   box-shadow: var(--site-shadow);
   /* Шапка сайта липкая — якорь не должен прятаться под ней */
@@ -162,12 +151,22 @@
 .faq-section__title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin: 0 0 6px;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--t-lg);
+  font-weight: 600;
+  font-size: var(--t-h2);
   line-height: 1.2;
+  letter-spacing: 0.005em;
+}
+/* Короткая красная черта перед заголовком раздела FAQ */
+.faq-page:not(.legal-page) .faq-section__title::before {
+  content: '';
+  flex: none;
+  width: 4px;
+  height: 0.9em;
+  border-radius: 2px;
+  background: var(--stark-red);
 }
 
 /* ─── Аккордеон ─── */
@@ -184,17 +183,17 @@
   gap: 12px;
   min-height: 52px;
   padding: 12px 4px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.35;
   cursor: pointer;
   list-style: none;
-  border-radius: var(--radius-xs);
+  border-radius: var(--r-sm);
 }
 .faq-item summary::-webkit-details-marker {
   display: none;
 }
 .faq-item summary:hover {
-  color: var(--cobalt);
+  color: var(--stark-red);
 }
 .faq-item summary:focus-visible {
   outline: none;
@@ -207,12 +206,12 @@
 }
 .faq-item[open] .faq-item__chev {
   transform: rotate(180deg);
-  color: var(--faq-tone, var(--cobalt));
+  color: var(--stark-red);
 }
 .faq-item__answer {
   max-width: 68ch;
   padding: 0 4px 16px 14px;
-  border-left: 3px solid var(--faq-tone, var(--cobalt));
+  border-left: 3px solid var(--stark-red);
   margin-left: 4px;
   color: var(--ink-soft);
   line-height: 1.6;
@@ -226,11 +225,14 @@
 .faq-item__links {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
+  gap: 0 16px;
 }
 .faq-item__links a {
-  color: var(--cobalt);
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--arc-teal);
+  font-weight: 700;
 }
 
 .faq-empty {
@@ -243,28 +245,28 @@
   margin: 0;
 }
 
-/* ─── Связаться ─── */
+/* ─── Связаться (графит, кнопки для тёмного фона) ─── */
 .faq-contact {
   display: grid;
   gap: 16px;
-  padding: 22px 20px;
-  border-radius: var(--site-radius-lg);
-  background: var(--ink);
-  color: var(--paper);
+  padding: 24px 20px;
+  border-radius: var(--r-lg);
 }
 .faq-contact h2 {
   margin: 0 0 6px;
   font-family: var(--font-display);
-  font-size: var(--t-lg);
+  font-weight: 600;
+  font-size: var(--t-h2);
+  line-height: 1.2;
+  color: #ffffff;
 }
 .faq-contact p {
   margin: 0;
-  color: var(--ink-muted-on-dark);
-  line-height: 1.5;
+  color: var(--text-muted-on-dark);
+  line-height: 1.55;
 }
 .faq-contact p a {
-  color: var(--paper);
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
 }
 .faq-contact__buttons {
@@ -272,20 +274,33 @@
   flex-wrap: wrap;
   gap: 10px;
 }
-.faq-contact__tg {
-  background: transparent;
-  color: var(--paper);
-  border-color: rgba(255, 255, 255, 0.4);
+.faq-contact .btn--neon:focus-visible,
+.faq-contact .btn--on-dark:focus-visible {
+  box-shadow: 0 0 0 2px var(--graphite), 0 0 0 4px var(--arc-cyan);
 }
-.faq-contact__tg:hover {
-  border-color: var(--paper);
+@media (max-width: 559px) {
+  .faq-contact__buttons > .btn {
+    flex: 1 1 100%;
+  }
 }
 
-/* ─── Юридические страницы (/privacy, /terms, /refund) — тот же каркас, что у /faq ─── */
+/* ─── Юридические страницы — тот же каркас, что у /faq ─── */
 .legal-hero__date {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-size: var(--t-sm);
-  color: var(--ink-muted-on-dark);
+  color: var(--text-muted-on-dark);
+}
+/* Номер раздела документа — Oswald, красный */
+.legal-num {
+  flex: none;
+  min-width: 1.3em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--stark-red);
+  font-variant-numeric: tabular-nums;
+}
+.faq-toc__link .legal-num {
+  min-width: 1.1em;
 }
 .legal-section {
   padding-bottom: 20px;
@@ -293,7 +308,7 @@
 .legal-prose {
   max-width: 72ch;
   color: var(--ink-soft);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 .legal-prose p,
 .legal-prose ul {
@@ -308,12 +323,15 @@
 .legal-prose li + li {
   margin-top: 4px;
 }
+.legal-prose li::marker {
+  color: var(--stark-red);
+}
 .legal-prose strong {
   color: var(--ink);
 }
 .legal-prose a {
-  color: var(--cobalt);
-  font-weight: 600;
+  color: var(--arc-teal);
+  font-weight: 700;
 }
 .legal-requisites {
   display: grid;
@@ -321,17 +339,25 @@
   gap: 6px 16px;
   margin: 12px 0 0;
   padding: 14px 16px;
-  border-radius: var(--radius-xs);
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--site-line);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
 }
 .legal-requisites dt {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink);
 }
 .legal-requisites dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+@media (max-width: 419.98px) {
+  .legal-requisites {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .legal-requisites dd {
+    margin-bottom: 8px;
+  }
 }
 
 @media (min-width: 900px) {
@@ -340,23 +366,29 @@
   }
   .faq-hero {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
-    align-items: center;
+    align-items: end;
     gap: 28px;
-    padding: 34px 36px;
+    padding: 44px 40px;
   }
   .faq-hero__text {
     padding-right: 0;
   }
-  .faq-hero__sticker {
-    top: auto;
-    bottom: calc(50% + 34px);
-    right: 52px;
+  .faq-hero__mark {
+    top: 28px;
+    right: 40px;
     width: 76px;
     height: 76px;
-    font-size: 2.5rem;
+    font-size: 2.6rem;
+  }
+  .legal-hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .legal-hero .faq-hero__mark {
+    position: static;
   }
   .faq-layout {
-    grid-template-columns: 230px minmax(0, 1fr);
+    grid-template-columns: 240px minmax(0, 1fr);
     align-items: start;
     gap: 24px;
     margin-top: 24px;
@@ -367,27 +399,29 @@
   }
   .faq-toc ul {
     flex-direction: column;
+    gap: 2px;
     margin: 0;
     padding: 0;
     overflow: visible;
   }
   .faq-toc__link {
     display: flex;
+    align-items: flex-start;
     background: transparent;
     box-shadow: none;
     white-space: normal;
   }
   .faq-toc__link:hover {
-    background: var(--site-surface);
-    box-shadow: var(--site-shadow);
+    background: var(--stark-red-tint);
+    box-shadow: none;
   }
   .faq-section {
-    padding: 24px 26px 12px;
+    padding: 26px 28px 14px;
   }
   .faq-contact {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    padding: 26px 28px;
+    padding: 28px 32px;
   }
 }
 

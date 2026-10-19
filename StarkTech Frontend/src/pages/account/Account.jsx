@@ -78,6 +78,7 @@ export default function Account() {
         </div>
         {profile && (
           <Link to="/account/coins" className="acc-coins" aria-label={`Баланс: ${coins} ${coinsWord(coins)}`}>
+            <span className="acc-coins__icon" aria-hidden="true">{ICONS.coin}</span>
             <span className="acc-coins__num">{coins}</span>
             <span className="acc-coins__unit">{coinsWord(coins)}</span>
           </Link>
@@ -144,8 +145,8 @@ const ICONS = {
   trash: svg(<><path d="M4 7h16M10 11v6M14 11v6" /><path d="M6 7l1 13h10l1-13M9 7V4h6v3" /></>),
 };
 
-/** Цветная шапка раздела кабинета: иконка (или media — например, загрузка аватара), заголовок, пояснение и (необязательно) цифры справа. */
-function AccHero({ id, title, lead, icon, media, tone = 'cobalt', side, children }) {
+/** Тёмная шапка раздела кабинета (графит или промо-синий — tone="navy"): неоновая иконка (или media — например, загрузка аватара), заголовок, пояснение и (необязательно) цифры справа. */
+function AccHero({ id, title, lead, icon, media, tone = 'graphite', side, children }) {
   return (
     <section className={`acc-prof__hero acc-hero acc-hero--${tone}`} aria-labelledby={id}>
       {media ?? <span className="acc-hero__icon">{icon}</span>}
@@ -187,7 +188,7 @@ function MyOrders() {
     <div className="acc-section">
       <AccHero
         id="acc-orders-title"
-        title="Мои заказы"
+        title="Твои заказы"
         lead="Статус каждого заказа, фото и детали. Пока заказ новый — его можно изменить."
         icon={ICONS.bag}
         side={
@@ -203,7 +204,7 @@ function MyOrders() {
         state={orders}
         empty={
           <Empty title="Заказов пока нет" action={<Link to="/catalog" className="btn btn--primary">Перейти в каталог</Link>}>
-            Оформленные заказы появятся здесь.
+            Выбери стикер, брелок или чехол — оформленные заказы появятся здесь.
           </Empty>
         }
       >
@@ -340,7 +341,7 @@ function MyOrder() {
               {canEditItems ? (
                 <p className="acc-note">
                   Пока заказ «{ORDER_STATUS[o.status]}», его можно менять: добавить товары, изменить количество,
-                  загрузить или удалить фото и нажать «Кадр». Менеджер увидит ваши изменения.
+                  загрузить или удалить фото и нажать «Кадр». Менеджер увидит твои изменения.
                 </p>
               ) : lockedByManager ? (
                 <div className="acc-note acc-note--locked">
@@ -360,7 +361,7 @@ function MyOrder() {
                 o.status !== 'Cancelled' && (
                   <div className="acc-note acc-note--locked">
                     <p>
-                      Заказ уже в работе, поэтому изменить его нельзя. Чтобы добавить фото или товары, оформите новый
+                      Заказ уже в работе, поэтому изменить его нельзя. Чтобы добавить фото или товары, оформи новый
                       заказ — он придёт к нам отдельно.
                     </p>
                     <Link to="/catalog" className="btn btn--primary btn--small">
@@ -406,7 +407,7 @@ function LayoutApproval({ order: o, state, onChanged, highlight = false }) {
   const sendChanges = async (e) => {
     e.preventDefault();
     const text = comment.trim();
-    if (!text) return setError({ messages: ['Опишите, что нужно поправить в макете.'] });
+    if (!text) return setError({ messages: ['Напиши, что нужно поправить в макете.'] });
     setBusy(true);
     setError(null);
     try {
@@ -432,8 +433,8 @@ function LayoutApproval({ order: o, state, onChanged, highlight = false }) {
       </header>
       {highlight && (
         <p className="acc-layouts__lead">
-          Менеджер подготовил макет. Посмотрите его и одобрите — или напишите, что поправить. Производство начнётся после
-          вашего одобрения.
+          Менеджер подготовил макет. Посмотри его и одобри — или напиши, что поправить. Производство начнётся после
+          твоего одобрения.
         </p>
       )}
       {state.loading && !state.data ? (
@@ -441,7 +442,7 @@ function LayoutApproval({ order: o, state, onChanged, highlight = false }) {
       ) : state.error ? (
         <ErrorBox error={state.error} onRetry={state.reload} />
       ) : !list.length ? (
-        <p className="muted">Макет ещё готовится — мы пришлём уведомление, когда он появится.</p>
+        <p className="muted">Макет ещё готовится — пришлём уведомление, когда он появится.</p>
       ) : (
         <ul className="acc-layouts__list">
           {list.map((l) => (
@@ -460,7 +461,7 @@ function LayoutApproval({ order: o, state, onChanged, highlight = false }) {
                 {l.note && <p className="acc-layout__note">{l.note}</p>}
                 {l.customerComment && (
                   <p className="acc-layout__comment">
-                    <b>Ваш комментарий:</b> {l.customerComment}
+                    <b>Твой комментарий:</b> {l.customerComment}
                   </p>
                 )}
                 {canAnswer && l.status === 'Pending' && (
@@ -587,8 +588,8 @@ function MyOrderItems({ order: o, editable, canPhotos = editable, onChanged }) {
                     </fieldset>
                     {item.quantity > 1 && item.quantity <= copiesTotal && (
                       <small className="acc-item-edit__hint">
-                        Количество не меньше суммы стикеров по фото. Чтобы уменьшить его, сначала уменьшите число стикеров у
-                        фото или удалите лишние фото.
+                        Количество не меньше суммы стикеров по фото. Чтобы уменьшить его, сначала уменьши число стикеров у
+                        фото или удали лишние фото.
                       </small>
                     )}
                     {o.items.length > 1 && (
@@ -624,7 +625,7 @@ function MyOrderItems({ order: o, editable, canPhotos = editable, onChanged }) {
           onPick={async (variantId, qty) => {
             await ordersApi.addMyItem(o.id, variantId, qty);
             setAdding(false);
-            toast('Товар добавлен в заказ. Загрузите к нему фото, если оно нужно.');
+            toast('Товар добавлен в заказ. Загрузи к нему фото, если оно нужно.');
             onChanged();
           }}
         />
@@ -688,7 +689,7 @@ function PhotoCopiesControl({ photo, max, onSaved }) {
         <Stepper value={value} min={1} max={Math.max(max, value)} onChange={change} label="Стикеров с этого фото" />
       </fieldset>
       {value >= max && (
-        <small className="acc-item-edit__hint">Чтобы добавить стикеров с этого фото, сначала увеличьте количество товара.</small>
+        <small className="acc-item-edit__hint">Чтобы добавить стикеров с этого фото, сначала увеличь количество товара.</small>
       )}
       <ErrorBox error={error} />
     </div>
@@ -968,10 +969,10 @@ function MyCoins() {
     <div className="acc-section">
       <AccHero
         id="acc-coins-title"
-        title="Мои монеты"
+        title="Твои монеты"
         lead="1 монета = 1 сомони. Списать монеты можно при оформлении заказа."
         icon={ICONS.coin}
-        tone="lemon"
+        tone="navy"
         side={<HeroStat value={balance} label={`${coinsWord(balance)} на счету`} />}
       />
 
@@ -1065,7 +1066,7 @@ function ProfileForm() {
       <AccHero
         id="acc-profile-title"
         title="Профиль"
-        lead="Заполните данные один раз — при оформлении заказа они подставятся сами."
+        lead="Заполни данные один раз — при оформлении заказа они подставятся сами."
         media={
           <div className="acc-prof__avatar">
             <ImageUpload
@@ -1180,7 +1181,7 @@ function DeleteAccount() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!password) return setError({ messages: ['Введите пароль, чтобы подтвердить удаление.'] });
+    if (!password) return setError({ messages: ['Введи пароль, чтобы подтвердить удаление.'] });
     setBusy(true);
     setError(null);
     try {
@@ -1206,7 +1207,7 @@ function DeleteAccount() {
         <h3 id="acc-danger-title">Удаление аккаунта</h3>
       </header>
       <p className="acc-danger__text">
-        Аккаунт и личные данные будут удалены без возможности восстановления. Неистраченные монеты сгорят.
+        Аккаунт и твои личные данные удалятся без возможности восстановления. Неистраченные монеты сгорят.
       </p>
       <button type="button" className="btn btn--danger acc-danger__btn" onClick={() => setOpen(true)}>
         Удалить аккаунт
@@ -1220,7 +1221,7 @@ function DeleteAccount() {
               <li>История заказов сохранится в обезличенном виде — она нужна для бухгалтерского учёта.</li>
               <li>Неистраченные StarkCoins сгорят.</li>
               <li>Действие необратимо — восстановить аккаунт будет нельзя.</li>
-              <li>Если у вас есть заказы в работе, лучше дождаться их выполнения.</li>
+              <li>Если у тебя есть заказы в работе, лучше дождаться их выполнения.</li>
             </ul>
             <Input
               label="Пароль"
@@ -1267,7 +1268,7 @@ function PasswordForm() {
       await authApi.changePassword(form);
       setForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
       // Сервер обновил security stamp — текущий токен больше не действует: выходим и просим войти заново.
-      toast('Пароль изменён — войдите заново');
+      toast('Пароль изменён — войди заново');
       logout();
       navigate('/login', { replace: true, state: { from: '/account' } });
       return;
@@ -1283,9 +1284,8 @@ function PasswordForm() {
       <AccHero
         id="acc-password-title"
         title="Смена пароля"
-        lead="Новый пароль начнёт действовать сразу: после смены войдите заново. Старый больше не подойдёт."
+        lead="Новый пароль начнёт действовать сразу: после смены войди заново. Старый больше не подойдёт."
         icon={ICONS.lock}
-        tone="cherry"
       />
       <div className="acc-prof__grid">
     <form className="acc-card acc-form" onSubmit={submit} aria-label="Смена пароля">
@@ -1311,7 +1311,7 @@ function PasswordForm() {
         <PasswordRules password={form.newPassword} id="acc-pw-rules" />
       </div>
       <Input
-        label="Повторите новый пароль"
+        label="Повтори новый пароль"
         type="password"
         required
         autoComplete="new-password"
@@ -1332,10 +1332,10 @@ function PasswordForm() {
             <h3>Как выбрать надёжный пароль</h3>
           </header>
           <ul>
-            <li>Не используйте пароль от почты или соцсетей.</li>
-            <li>Смешайте заглавные и строчные буквы, цифры и символы.</li>
+            <li>Не бери пароль от почты или соцсетей.</li>
+            <li>Смешай заглавные и строчные буквы, цифры и символы.</li>
             <li>Фраза из нескольких слов запоминается легче и надёжнее.</li>
-            <li>Никому не сообщайте пароль — менеджеры его не спрашивают.</li>
+            <li>Никому не сообщай пароль — менеджеры его не спрашивают.</li>
           </ul>
         </aside>
       </div>

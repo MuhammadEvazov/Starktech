@@ -5,20 +5,15 @@ import { useCart } from '../context/CartContext.jsx';
 import { CONTACTS } from '../lib/contacts.js';
 import { COMPANY } from '../lib/legal.js';
 import ChatWidget from './chat/ChatWidget.jsx';
+import BrandLogo from './Logo.jsx';
 
 export function Logo() {
   return (
-    <Link to="/" className="logo" aria-label="StarkTech, на главную">
-      <svg viewBox="0 0 64 64" aria-hidden="true" className="logo__mark">
-        <path
-          d="M32 56 C10 42 4 30 8 20 C12 10 26 8 32 20 C38 8 52 10 56 20 C60 30 54 42 32 56Z"
-          fill="var(--cobalt)"
-          stroke="var(--paper)"
-          strokeWidth="5"
-          paintOrder="stroke"
-        />
-      </svg>
-      <span>StarkTech</span>
+    <Link to="/" className="logo" aria-label="Stark Tech, на главную">
+      <BrandLogo size={40} className="logo__mark" />
+      <span className="logo__word" aria-hidden="true">
+        <span className="logo__stark">Stark</span> <span className="logo__tech">Tech</span>
+      </span>
     </Link>
   );
 }

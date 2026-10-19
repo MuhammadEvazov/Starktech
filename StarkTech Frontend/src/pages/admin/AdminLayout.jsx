@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Routes, useLocation } from '../../lib/router.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ROLES } from '../../lib/format.js';
+import BrandLogo from '../../components/Logo.jsx';
 import Dashboard from './Dashboard.jsx';
 import { Orders, OrderDetail } from './Orders.jsx';
 import { Products, ProductDetail } from './Products.jsx';
@@ -128,8 +129,9 @@ export default function AdminLayout() {
       </a>
       <aside className={`admin-side ${open ? 'is-open' : ''}`}>
         <div className="admin-side__top">
-          <Link to="/" className="admin-brand">
-            StarkTech <span>админка</span>
+          <Link to="/" className="admin-brand" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <BrandLogo size={28} />
+            Stark Tech <span>админка</span>
           </Link>
           <button type="button" className="admin-side__toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {open ? 'Скрыть' : 'Меню'}

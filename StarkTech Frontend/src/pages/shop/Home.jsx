@@ -8,30 +8,15 @@ import ProductCard from '../../components/ProductCard.jsx';
 import { Img, Spinner, ErrorBox, Empty } from '../../components/ui.jsx';
 import { CONTACTS, whatsappWith } from '../../lib/contacts.js';
 
-// Формы для плиток категорий (координаты 100×100), подбираются по slug.
-const SHAPES = {
-  heart: 'M50 88 C20 68 8 50 12 34 C16 18 38 14 50 32 C62 14 84 18 88 34 C92 50 80 68 50 88Z',
-  circle: 'M50 10 A40 40 0 1 1 49.9 10Z',
-  phone: 'M36 6 H64 Q76 6 76 18 V82 Q76 94 64 94 H36 Q24 94 24 82 V18 Q24 6 36 6Z',
-  flower: flowerPath(),
-};
-function flowerPath() {
-  const pts = [];
-  for (let i = 0; i <= 20; i++) {
-    const a = (Math.PI * i) / 10 - Math.PI / 2;
-    const r = i % 2 === 0 ? 42 : 33;
-    pts.push(`${(50 + r * Math.cos(a)).toFixed(1)} ${(50 + r * Math.sin(a)).toFixed(1)}`);
-  }
-  return `M${pts.join(' L')}Z`;
-}
-const SHAPE_BY_SLUG = {
-  '3d-stickers': 'heart',
-  keychains: 'circle',
+// Иконка-заглушка для круглой обложки категории (пока у категории нет своей картинки), по slug.
+const ICON_BY_SLUG = {
+  '3d-stickers': 'sticker',
+  keychains: 'keychain',
   'clear-cases': 'phone',
   'custom-cases': 'phone',
-  'gift-sets': 'flower',
+  'gift-sets': 'gift',
 };
-const SHAPE_FALLBACK = ['heart', 'circle', 'phone', 'flower'];
+const ICON_FALLBACK = ['sticker', 'keychain', 'phone', 'gift'];
 
 export default function Home() {
   const categories = useAsync(() => categoriesApi.list({ isActive: true, pageSize: 20 }), []);
@@ -46,33 +31,42 @@ export default function Home() {
 
   return (
     <>
-      <section className="home-hero">
-        <div className="site-container home-hero__row">
-          <div>
-            <h1 className="home-hero__title">
-              Ваше фото на&nbsp;<em>стикере</em>, брелке или&nbsp;чехле
+      <section className="home-hero site-container" aria-labelledby="home-hero-title">
+        <div className="home-hero__panel promo-panel">
+          <div className="home-hero__copy">
+            <h1 id="home-hero-title" className="home-hero__title display-upper">
+              Твоё фото на&nbsp;3D-стикере, брелке или&nbsp;чехле
             </h1>
+            <p className="home-hero__badge neon-outline">
+              <span className="home-hero__badge-big display-upper">за {CONTACTS.leadTime}</span>
+              <span className="home-hero__badge-small">печатаем в {CONTACTS.city}</span>
+            </p>
             <p className="home-hero__lead">
-              Выберите товар, загрузите снимок — напечатаем в {CONTACTS.city} за {CONTACTS.leadTime} и привезём по
-              всему Таджикистану.
+              <strong>Порадуй себя и близких.</strong> Выбери товар, загрузи фото — сделаем и привезём по всему
+              Таджикистану.
             </p>
             <div className="home-hero__actions">
               <Link to="/catalog" className="btn btn--primary btn--large">
                 Выбрать товар
               </Link>
-              <Link to="/portfolio" className="btn btn--ghost btn--large">
-                Посмотреть работы
-              </Link>
+              <a
+                className="btn btn--on-dark btn--large"
+                href={whatsappWith('Здравствуйте! Хочу заказать товар с фото.')}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Написать в WhatsApp
+              </a>
             </div>
-            <ul className="home-hero__facts">
+            <ul className="home-hero__perks">
               <li>
-                <Check /> Готово за {CONTACTS.leadTime}
+                <span aria-hidden="true">⚡</span> Готово за {CONTACTS.leadTime}
               </li>
               <li>
-                <Check /> Доставка до двери
+                <span aria-hidden="true">🚚</span> Доставка до двери
               </li>
               <li>
-                <Check /> Наличные или Alif Pay
+                <span aria-hidden="true">💳</span> Наличные, Alif Pay, Корти Миллӣ
               </li>
             </ul>
           </div>
@@ -92,32 +86,32 @@ export default function Home() {
         <ul className="home-cats">
           {tiles.map((c, i) => (
             <li key={c.id || c.slug}>
-              <CategoryTile category={c} index={i} />
+              <CategoryCover category={c} index={i} />
             </li>
           ))}
         </ul>
       </section>
 
       <section className="home-section site-container" aria-labelledby="home-steps-title">
-        <div className="site-surface home-steps">
+        <div className="home-steps">
           <h2 id="home-steps-title" className="home-h2">
             Как сделать заказ
           </h2>
           <ol className="home-steps__list">
             <li>
-              <strong>Выберите товар</strong>
-              <span>Стикер, брелок или чехол. Затем размер, форму или модель телефона.</span>
+              <strong>Выбери товар</strong>
+              <span>Стикер, брелок или чехол. Потом размер, форму или модель телефона.</span>
             </li>
             <li>
-              <strong>Добавьте фото</strong>
-              <span>Войдите в аккаунт и загрузите снимки прямо на странице товара — там же подгоните их под форму.</span>
+              <strong>Добавь фото</strong>
+              <span>Войди в аккаунт и загрузи снимки прямо на странице товара — там же подгонишь их под форму.</span>
             </li>
             <li>
-              <strong>Одобрите макет</strong>
-              <span>Если менеджер пришлёт макет, он появится в личном кабинете. Без вашего «да» ничего не печатаем.</span>
+              <strong>Одобри макет</strong>
+              <span>Если менеджер пришлёт макет, он появится в личном кабинете. Без твоего «да» ничего не печатаем.</span>
             </li>
             <li>
-              <strong>Получите заказ</strong>
+              <strong>Получи заказ</strong>
               <span>Привезём за {CONTACTS.leadTime}. Оплата наличными, Alif Pay, Корти Миллӣ или переводом.</span>
             </li>
           </ol>
@@ -154,7 +148,9 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <Empty title="Скоро здесь появятся товары">Пока каталог наполняется, напишите нам в WhatsApp — подскажем и посчитаем цену.</Empty>
+          <Empty title="Скоро здесь появятся товары">
+            Пока каталог наполняется, напиши нам в WhatsApp — подскажем и посчитаем цену.
+          </Empty>
         )}
       </section>
 
@@ -172,7 +168,7 @@ export default function Home() {
             {portfolio.data.items.map((p) => (
               <li key={p.id}>
                 <figure>
-                  <Img src={p.imageUrl} alt={descOf(p) || 'Готовая работа StarkTech'} />
+                  <Img src={p.imageUrl} alt={descOf(p) || 'Готовая работа Stark Tech'} />
                   {descOf(p) && <figcaption>{descOf(p)}</figcaption>}
                 </figure>
               </li>
@@ -181,69 +177,52 @@ export default function Home() {
         </section>
       )}
 
-      <section className="home-section site-container" aria-labelledby="home-trust-title">
-        <h2 id="home-trust-title" className="sr-only">
-          Сроки, доставка и контакты
-        </h2>
+      <section className="home-section site-container" aria-labelledby="home-contact-title">
         <div className="home-trust">
-          <div>
-            <ul className="home-trust__facts">
-              <li className="home-trust__fact">
-                <strong>{CONTACTS.leadTime}</strong>
-                <span>Столько занимает печать после подтверждения заказа</span>
-              </li>
-              <li className="home-trust__fact">
-                <strong>Весь Таджикистан</strong>
-                <span>Привезём до двери в {CONTACTS.city} и отправим в другие города</span>
-              </li>
-              <li className="home-trust__fact">
-                <strong>Оплата удобно</strong>
-                <span>Наличными, Alif Pay, Корти Миллӣ или переводом</span>
-              </li>
-            </ul>
+          {cities.data?.items?.length > 0 && (
+            <div className="home-delivery">
+              <h2 className="home-h3">Доставка</h2>
+              <p className="home-delivery__note">
+                Привезём до двери в {CONTACTS.city} и отправим в другие города. Самовывоз — бесплатно.
+              </p>
+              <ul>
+                {cities.data.items.map((c) => {
+                  const free = Number(c.deliveryCost) === 0;
+                  return (
+                    <li key={c.id}>
+                      <span>{nameOf(c)}</span>
+                      <span className={`home-delivery__cost ${free ? 'home-delivery__cost--free' : ''}`}>
+                        {free ? 'бесплатно' : money(c.deliveryCost)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
 
-            {cities.data?.items?.length > 0 && (
-              <div className="home-delivery">
-                <h3>Стоимость доставки</h3>
-                <ul>
-                  {cities.data.items.map((c) => {
-                    const free = Number(c.deliveryCost) === 0;
-                    return (
-                      <li key={c.id}>
-                        <span>{nameOf(c)}</span>
-                        <span className={`home-delivery__cost ${free ? 'home-delivery__cost--free' : ''}`}>
-                          {free ? 'бесплатно' : money(c.deliveryCost)}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          <div className="home-trust__contact">
-            <p className="home-h2">Есть вопрос? Напишите нам</p>
+          <div className="home-contact section-dark">
+            <h2 id="home-contact-title" className="home-h2">
+              Есть вопрос? Пиши нам
+            </h2>
             <p>
-              Ответим в WhatsApp, подскажем размер и посчитаем цену. Больше работ и отзывов — в Instagram{' '}
+              Ответим в WhatsApp или Telegram, подскажем размер и посчитаем цену. Больше работ и отзывов — в Instagram{' '}
               {CONTACTS.instagramHandle}.
             </p>
-            <div className="home-trust__buttons">
+            <div className="home-contact__buttons">
               <a
-                className="btn btn--large home-btn-wa"
+                className="btn btn--neon btn--large"
                 href={whatsappWith('Здравствуйте! Хочу заказать товар с фото.')}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Написать в WhatsApp
+                WhatsApp
               </a>
-              <a
-                className="btn btn--large home-btn-light"
-                href={CONTACTS.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Открыть Instagram
+              <a className="btn btn--on-dark btn--large" href={CONTACTS.telegram} target="_blank" rel="noopener noreferrer">
+                Telegram
+              </a>
+              <a className="btn btn--on-dark btn--large" href={CONTACTS.instagram} target="_blank" rel="noopener noreferrer">
+                Instagram
               </a>
             </div>
           </div>
@@ -253,123 +232,188 @@ export default function Home() {
   );
 }
 
-function Check() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="10" cy="10" r="9" fill="currentColor" opacity="0.14" />
-      <path d="M6 10.4 8.7 13 14 7.4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CategoryTile({ category, index }) {
+function CategoryCover({ category, index }) {
   const to = category.id ? `/catalog?category=${category.id}` : '/catalog';
-  const shape = SHAPE_BY_SLUG[category.slug] || SHAPE_FALLBACK[index % SHAPE_FALLBACK.length];
-  const tone = index % 5;
-  const desc = descOf(category);
+  const icon = ICON_BY_SLUG[category.slug] || ICON_FALLBACK[index % ICON_FALLBACK.length];
   const placeholder = (
-    <span className="home-cat__shape" aria-hidden="true">
-      <svg viewBox="-6 -6 112 112">
-        <path d={SHAPES[shape]} className="home-cat__cut" stroke="#fff" strokeWidth="10" strokeLinejoin="round" />
-        <path d={SHAPES[shape]} className="home-cat__fill" />
-      </svg>
+    <span className="round-cover home-cat__placeholder" aria-hidden="true">
+      <CoverIcon kind={icon} />
     </span>
   );
   return (
-    <Link to={to} className={`home-cat home-cat--t${tone}`}>
+    <Link to={to} className="home-cat">
       <span className="home-cat__media">
-        {category.imageUrl ? <Img src={category.imageUrl} alt="" fallback={placeholder} /> : placeholder}
+        {category.imageUrl ? <Img src={category.imageUrl} alt="" className="round-cover" fallback={placeholder} /> : placeholder}
       </span>
-      <span className="home-cat__body">
-        <span className="home-cat__name">{nameOf(category)}</span>
-        {desc && <span className="home-cat__desc">{desc}</span>}
-      </span>
+      <span className="home-cat__name">{nameOf(category)}</span>
     </Link>
   );
 }
 
-// «Ваше фото → стикер, брелок, чехол». Один и тот же снимок вырезан в три формы.
+// Линейные иконки неоном на графите — как обложки хайлайтов в профиле.
+function CoverIcon({ kind }) {
+  const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 3, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  return (
+    <svg viewBox="0 0 64 64" width="44%" height="44%">
+      {kind === 'sticker' && (
+        <>
+          <circle cx="32" cy="32" r="22" {...common} />
+          <path d="M20 26a14 14 0 0 1 10-9" {...common} />
+          <path d="M18 44 27 34l7 7 5-5 9 9" {...common} />
+        </>
+      )}
+      {kind === 'keychain' && (
+        <>
+          <circle cx="32" cy="12" r="6" {...common} />
+          <path d="M32 18v6" {...common} />
+          <circle cx="32" cy="41" r="17" {...common} />
+          <circle cx="32" cy="38" r="5" {...common} />
+          <path d="M23 52a10 10 0 0 1 18 0" {...common} />
+        </>
+      )}
+      {kind === 'phone' && (
+        <>
+          <rect x="17" y="6" width="30" height="52" rx="8" {...common} />
+          <rect x="22" y="11" width="11" height="11" rx="3" {...common} />
+          <circle cx="36" cy="40" r="7" {...common} />
+        </>
+      )}
+      {kind === 'gift' && (
+        <>
+          <rect x="11" y="24" width="42" height="30" rx="4" {...common} />
+          <path d="M8 24h48M32 24v30M32 24c-4-10-16-12-16-4 0 4 8 4 16 4 8 0 16 0 16-4 0-8-12-6-16 4" {...common} />
+        </>
+      )}
+    </svg>
+  );
+}
+
+// Задняя крышка телефона с круглыми фото-стикерами, брелок с фото и подпись «здесь твоё фото».
+// Сцены «фото» нарисованы абстрактно в цветах бренда — без лиц и чужих снимков.
 function HeroArt() {
-  const heart = SHAPES.heart;
-  const circle = 'M50 12 A38 38 0 1 1 49.9 12Z';
-  const phone = SHAPES.phone;
+  const stickers = [
+    { x: 292, y: 100, r: 34, scene: 'a' },
+    { x: 196, y: 214, r: 42, scene: 'b' },
+    { x: 296, y: 228, r: 36, scene: 'c' },
+    { x: 206, y: 330, r: 34, scene: 'd' },
+    { x: 296, y: 344, r: 38, scene: 'a' },
+  ];
   return (
     <figure className="home-hero__art">
-      <svg viewBox="0 0 440 310" role="img" aria-labelledby="home-art-cap">
+      <svg viewBox="0 0 440 460" role="img" aria-labelledby="home-art-cap">
         <defs>
-          <g id="home-portrait">
-            <rect width="100" height="100" fill="#ffe7a0" />
-            <circle cx="76" cy="22" r="10" fill="#ffd84a" />
-            <path d="M0 78 Q30 62 56 74 T100 70 V100 H0Z" fill="#b9b3ff" />
-            <circle cx="50" cy="46" r="15" fill="#14163a" />
-            <path d="M20 100 C20 76 34 66 50 66 C66 66 80 76 80 100Z" fill="#2a3be0" />
+          <linearGradient id="ha-body" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#3a3d42" />
+            <stop offset="0.5" stopColor="#232525" />
+            <stop offset="1" stopColor="#121314" />
+          </linearGradient>
+          <linearGradient id="ha-sky-a" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#f4e6e5" />
+            <stop offset="1" stopColor="#b5615a" />
+          </linearGradient>
+          <linearGradient id="ha-sky-b" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ddfbfb" />
+            <stop offset="1" stopColor="#0b6b6d" />
+          </linearGradient>
+          <linearGradient id="ha-sky-c" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#f1f1f4" />
+            <stop offset="1" stopColor="#8a8f99" />
+          </linearGradient>
+          <linearGradient id="ha-sky-d" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#1b2a5c" />
+            <stop offset="1" stopColor="#060d2a" />
+          </linearGradient>
+          {/* Сцены 100×100: пара на закате, портрет у моря, портрет на светлом, ночной город */}
+          <g id="ha-scene-a">
+            <rect width="100" height="100" fill="url(#ha-sky-a)" />
+            <circle cx="70" cy="40" r="13" fill="#fdfdfd" opacity="0.9" />
+            <path d="M0 74 Q50 62 100 74 V100 H0Z" fill="#6e2b28" />
+            <circle cx="40" cy="50" r="9" fill="#181919" />
+            <path d="M26 100 C26 74 54 74 54 100Z" fill="#181919" />
+            <circle cx="60" cy="54" r="8" fill="#181919" />
+            <path d="M48 100 C48 78 72 78 72 100Z" fill="#181919" />
           </g>
-          <clipPath id="home-clip-photo">
-            <rect x="0" y="0" width="100" height="100" rx="4" />
-          </clipPath>
-          <clipPath id="home-clip-heart">
-            <path d={heart} />
-          </clipPath>
-          <clipPath id="home-clip-circle">
-            <path d={circle} />
-          </clipPath>
-          <clipPath id="home-clip-phone">
-            <path d={phone} />
+          <g id="ha-scene-b">
+            <rect width="100" height="100" fill="url(#ha-sky-b)" />
+            <path d="M0 70 Q25 62 50 70 T100 68 V100 H0Z" fill="#08494a" />
+            <circle cx="50" cy="46" r="15" fill="#181919" />
+            <path d="M22 100 C22 72 78 72 78 100Z" fill="#181919" />
+          </g>
+          <g id="ha-scene-c">
+            <rect width="100" height="100" fill="url(#ha-sky-c)" />
+            <circle cx="50" cy="44" r="16" fill="#232525" />
+            <path d="M34 36 Q50 18 66 36 Q60 28 50 28 Q40 28 34 36Z" fill="#8f3a36" />
+            <path d="M18 100 C18 70 82 70 82 100Z" fill="#8f3a36" />
+          </g>
+          <g id="ha-scene-d">
+            <rect width="100" height="100" fill="url(#ha-sky-d)" />
+            <circle cx="28" cy="24" r="2" fill="#11f2f4" />
+            <circle cx="72" cy="18" r="1.6" fill="#11f2f4" />
+            <circle cx="82" cy="36" r="1.4" fill="#fdfdfd" />
+            <path d="M0 100 V64 H14 V52 H26 V70 H38 V44 H52 V66 H62 V56 H76 V72 H88 V60 H100 V100Z" fill="#181919" />
+            <path d="M42 50h6M42 58h6M66 62h4" stroke="#11f2f4" strokeWidth="2" />
+          </g>
+          <clipPath id="ha-clip">
+            <circle cx="50" cy="50" r="50" />
           </clipPath>
         </defs>
 
-        {/* Исходное фото — полароид */}
-        <g className="home-art__item" transform="translate(18 66) rotate(-5)">
-          <rect width="132" height="158" rx="10" fill="#fff" />
-          <g transform="translate(9 9) scale(1.14)" clipPath="url(#home-clip-photo)">
-            <use href="#home-portrait" />
-          </g>
-        </g>
-        <text className="home-art__label" x="84" y="262" textAnchor="middle">
-          Ваше фото
-        </text>
-
-        <path className="home-art__arrow" d="M164 150 C182 132 196 132 212 140" />
-        <path d="M204 133 L214 141 L202 146" fill="none" stroke="#4d5175" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-
-        {/* Стикер-сердце — единственный анимированный элемент */}
-        <g transform="translate(205 6) scale(1.25)">
-          <g className="home-art__item home-art__peel">
-            <path d={heart} className="home-art__edge" />
-            <g clipPath="url(#home-clip-heart)">
-              <use href="#home-portrait" />
+        {/* Телефон, задняя крышка */}
+        <g className="home-art__phone" transform="rotate(-7 250 230)">
+          <rect x="140" y="24" width="220" height="400" rx="40" fill="url(#ha-body)" stroke="#b7bbc3" strokeWidth="3" />
+          <rect x="146" y="30" width="208" height="388" rx="35" fill="none" stroke="#ffffff" strokeOpacity="0.08" strokeWidth="2" />
+          {/* Блок камер */}
+          <rect x="158" y="42" width="98" height="98" rx="26" fill="#2b2d30" stroke="#4a4d52" strokeWidth="2" />
+          {[
+            [184, 68],
+            [184, 114],
+            [230, 91],
+          ].map(([cx, cy]) => (
+            <g key={`${cx}-${cy}`}>
+              <circle cx={cx} cy={cy} r="17" fill="#0d0e0f" stroke="#5a5d63" strokeWidth="4" />
+              <circle cx={cx} cy={cy} r="7" fill="#1b2a5c" />
+              <circle cx={cx - 4} cy={cy - 4} r="2.4" fill="#11f2f4" opacity="0.8" />
             </g>
-          </g>
-        </g>
-        <text className="home-art__label" x="268" y="150" textAnchor="middle">
-          Стикер
-        </text>
+          ))}
 
-        {/* Брелок */}
-        <g className="home-art__item" transform="translate(334 30) rotate(6 50 50)">
-          <circle cx="50" cy="4" r="8" fill="none" stroke="#9aa0bf" strokeWidth="3" />
-          <path d={circle} className="home-art__edge" />
-          <g clipPath="url(#home-clip-circle)">
-            <use href="#home-portrait" />
-          </g>
+          {/* Фото-стикеры: круг с фото + блик «3D-заливки» */}
+          {stickers.map((s, i) => (
+            <g key={i} transform={`translate(${s.x - s.r} ${s.y - s.r}) scale(${(s.r * 2) / 100})`}>
+              <circle cx="50" cy="52" r="50" fill="#000" opacity="0.35" />
+              <g clipPath="url(#ha-clip)">
+                <use href={`#ha-scene-${s.scene}`} />
+              </g>
+              <circle cx="50" cy="50" r="49" fill="none" stroke="#d6d7db" strokeWidth="2" />
+              <path d="M22 30 A34 34 0 0 1 48 14" fill="none" stroke="#ffffff" strokeOpacity="0.75" strokeWidth="6" strokeLinecap="round" />
+            </g>
+          ))}
         </g>
-        <text className="home-art__label" x="388" y="150" textAnchor="middle">
-          Брелок
-        </text>
 
-        {/* Чехол */}
-        <g className="home-art__item" transform="translate(262 162) scale(1.45) rotate(-4 50 50)">
-          <path d={phone} className="home-art__edge" />
-          <g clipPath="url(#home-clip-phone)">
-            <use href="#home-portrait" />
+        {/* Брелок с фото */}
+        <g className="home-art__keychain">
+          <circle cx="88" cy="258" r="15" fill="none" stroke="#b7bbc3" strokeWidth="5" />
+          <path d="M88 273 v14" stroke="#b7bbc3" strokeWidth="5" strokeLinecap="round" />
+          <circle cx="88" cy="292" r="6" fill="none" stroke="#b7bbc3" strokeWidth="4" />
+          <g transform="translate(40 300) scale(0.96)">
+            <circle cx="50" cy="50" r="54" fill="#d6d7db" />
+            <g clipPath="url(#ha-clip)">
+              <use href="#ha-scene-b" />
+            </g>
+            <path d="M20 32 A36 36 0 0 1 46 13" fill="none" stroke="#ffffff" strokeOpacity="0.75" strokeWidth="6" strokeLinecap="round" />
           </g>
-          <rect x="30" y="12" width="15" height="15" rx="5" fill="#14163a" opacity="0.85" />
         </g>
-        <text className="home-art__label" x="290" y="240" textAnchor="end">
-          Чехол
+
+        {/* Подпись со стрелкой — как в постах */}
+        <text className="home-art__note" x="18" y="150">
+          <tspan x="18">Здесь</tspan>
+          <tspan x="18" dy="30">твоё фото</tspan>
         </text>
+        <path className="home-art__arrow" d="M70 196 C96 232 124 236 150 226" />
+        <path className="home-art__arrow" d="M138 216 L152 226 L138 236" />
       </svg>
-      <figcaption id="home-art-cap">Одно фото — стикер, брелок или чехол на выбор</figcaption>
+      <figcaption id="home-art-cap" className="sr-only">
+        Телефон с круглыми фото-стикерами на крышке и брелок с фото
+      </figcaption>
     </figure>
   );
 }

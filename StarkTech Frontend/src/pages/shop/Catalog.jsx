@@ -5,7 +5,32 @@ import { useSearch } from '../../lib/router.jsx';
 import { categoriesApi, productsApi } from '../../api/endpoints.js';
 import { nameOf, descOf } from '../../lib/format.js';
 import ProductCard from '../../components/ProductCard.jsx';
-import { ErrorBox, Pagination } from '../../components/ui.jsx';
+import { ErrorBox, Img, Pagination } from '../../components/ui.jsx';
+import { CONTACTS } from '../../lib/contacts.js';
+
+// Значок категории в чипе — силуэт изделия (сердце-стикер, брелок, чехол), если у категории нет обложки.
+const GLYPHS = {
+  heart: 'M12 20.5C6.2 16.6 3 13.3 3 9.6 3 7 5 5 7.5 5c1.8 0 3.4 1 4.5 2.6C13.1 6 14.7 5 16.5 5 19 5 21 7 21 9.6c0 3.7-3.2 7-9 10.9Z',
+  ring: 'M12 3a5 5 0 0 1 2.2 9.5V14h1.3v2h-1.3v5h-4.4v-5H8.5v-2h1.3v-1.5A5 5 0 0 1 12 3Zm0 2.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8Z',
+  phone: 'M8 2.5h8A2.5 2.5 0 0 1 18.5 5v14a2.5 2.5 0 0 1-2.5 2.5H8A2.5 2.5 0 0 1 5.5 19V5A2.5 2.5 0 0 1 8 2.5Zm.3 2.3v4h4v-4h-4Z',
+  gift: 'M4 9h16v4H4zM5.5 13h13v8h-13zM11 9h2v12h-2zM12 9C9 9 7 7.8 7 6.2 7 5 8 4 9.3 4 11 4 12 6 12 9Zm0 0c0-3 1-5 2.7-5C16 4 17 5 17 6.2 17 7.8 15 9 12 9Z',
+};
+const glyphFor = (slug = '') =>
+  /sticker|стикер/i.test(slug) ? GLYPHS.heart : /key|брел/i.test(slug) ? GLYPHS.ring : /case|чех/i.test(slug) ? GLYPHS.phone : GLYPHS.gift;
+
+function ChipCover({ category }) {
+  return (
+    <span className="cat-chip__cover" aria-hidden="true">
+      {category?.imageUrl ? (
+        <Img src={category.imageUrl} alt="" />
+      ) : (
+        <svg width="16" height="16" viewBox="0 0 24 24">
+          <path d={category ? glyphFor(category.slug) : 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'} fill="currentColor" />
+        </svg>
+      )}
+    </span>
+  );
+}
 
 const plural = (n, one, few, many) => {
   const m10 = n % 10;
@@ -51,27 +76,20 @@ export default function Catalog() {
 
   return (
     <div className="site-container cat-page">
-      {/* Цветной баннер на всю ширину — как шапки разделов личного кабинета */}
+      {/* Промо-баннер бренда: тёмно-синий фон, неоновая рамка — как в постах @starktech.tj */}
       <header className="cat-hero">
         <div className="cat-hero__text">
           <h1 className="cat-hero__title">{active ? nameOf(active) : 'Каталог'}</h1>
           <p className="cat-hero__lead">
             {(active && descOf(active)) ||
-              'Стикеры, брелки и чехлы с вашими фото. Выберите товар, а фото загрузите на его странице.'}
+              'Стикеры, брелки и чехлы с твоими фото. Выбери товар — фото добавишь прямо на его странице.'}
           </p>
         </div>
-        <div className="cat-hero__stats">
-          <span className="cat-hero__stat">
-            <b>{total ?? '…'}</b>
-            <small>{total == null ? 'товаров' : plural(total, 'товар', 'товара', 'товаров')}</small>
-          </span>
-          {cats.length > 0 && (
-            <span className="cat-hero__stat">
-              <b>{cats.length}</b>
-              <small>{plural(cats.length, 'категория', 'категории', 'категорий')}</small>
-            </span>
-          )}
-        </div>
+        <p className="cat-hero__frame">
+          <span className="cat-hero__frame-label">Готово за</span>
+          <span className="cat-hero__frame-value">{CONTACTS.leadTime}</span>
+          <span className="cat-hero__frame-note">печатаем в {CONTACTS.city}</span>
+        </p>
       </header>
 
       <div className="cat-bar">
@@ -83,7 +101,7 @@ export default function Catalog() {
           <input
             type="search"
             className="cat-search__input"
-            placeholder="Найти товар"
+            placeholder="Найти стикер, брелок или чехол"
             aria-label="Поиск по названию"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -100,10 +118,11 @@ export default function Catalog() {
         <nav className="cat-chips" aria-label="Категории">
           <button
             type="button"
-            className="site-pill"
+            className="site-pill cat-chip"
             aria-pressed={!categoryId}
             onClick={() => setParams({ q: params.q })}
           >
+            <ChipCover />
             Все товары
           </button>
           {categories.loading && !categories.data
@@ -112,10 +131,11 @@ export default function Catalog() {
                 <button
                   key={c.id}
                   type="button"
-                  className="site-pill"
+                  className="site-pill cat-chip"
                   aria-pressed={categoryId === c.id}
                   onClick={() => setParams({ q: params.q, category: c.id })}
                 >
+                  <ChipCover category={c} />
                   {nameOf(c)}
                 </button>
               ))}
@@ -147,8 +167,8 @@ export default function Catalog() {
             <p className="cat-empty__title">Ничего не нашлось</p>
             <p className="cat-empty__text">
               {params.q
-                ? `По запросу «${params.q}» товаров нет. Попробуйте другое слово или посмотрите все товары.`
-                : 'В этой категории пока нет товаров. Загляните в другие разделы.'}
+                ? `По запросу «${params.q}» товаров нет. Попробуй другое слово или посмотри все товары.`
+                : 'В этой категории пока пусто. Загляни в соседние разделы.'}
             </p>
             {filtered && (
               <button type="button" className="btn btn--primary" onClick={resetAll}>

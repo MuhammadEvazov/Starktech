@@ -22,8 +22,12 @@ export default function Portfolio() {
 
   return (
     <div className="site-container pf-page">
-      <h1 className="site-title">Наши работы</h1>
-      <p className="site-lead">Настоящие заказы наших клиентов: стикеры, брелки и чехлы с их фото.</p>
+      <header className="page-head">
+        <h1 className="site-title">Наши работы</h1>
+        <p className="site-lead">
+          Настоящие заказы наших клиентов: стикеры, брелки и чехлы с их фото. Посмотри, как это выглядит вживую.
+        </p>
+      </header>
 
       {cats.length > 0 && (
         <div className="pf-filter" role="group" aria-label="Фильтр по категории">
@@ -59,10 +63,10 @@ export default function Portfolio() {
               }
             >
               {categoryId ? (
-                'Загляните в другие категории.'
+                'Загляни в другие категории.'
               ) : (
                 <>
-                  Скоро покажем свежие работы. Пока загляните в наш{' '}
+                  Скоро покажем свежие работы. Пока загляни в наш{' '}
                   <a href={CONTACTS.instagram} target="_blank" rel="noopener noreferrer" className="text-link">
                     Instagram {CONTACTS.instagramHandle}
                   </a>
@@ -81,11 +85,11 @@ export default function Portfolio() {
                   return (
                     <li key={p.id}>
                       <figure className="pf-item">
-                        <Img src={p.imageUrl} alt={desc || 'Готовая работа StarkTech'} />
+                        <Img src={p.imageUrl} alt={desc || 'Готовая работа Stark Tech'} />
                         {(desc || cat) && (
                           <figcaption>
-                            {cat && <span className="pf-item__cat">{cat}</span>}
-                            {desc}
+                            {cat && <span className="brand-chip">{cat}</span>}
+                            {desc && <span>{desc}</span>}
                           </figcaption>
                         )}
                       </figure>
@@ -99,10 +103,13 @@ export default function Portfolio() {
         </Async>
       </div>
 
-      <div className="site-surface pf-cta">
-        <p>Хотите так же? Выберите товар и загрузите своё фото.</p>
+      <div className="pf-cta promo-panel">
+        <div>
+          <h2 className="pf-cta__title display-upper">Хочешь так же?</h2>
+          <p>Выбери товар и загрузи своё фото — остальное сделаем мы.</p>
+        </div>
         <Link to="/catalog" className="btn btn--primary btn--large">
-          Перейти в каталог
+          Выбрать товар
         </Link>
       </div>
     </div>

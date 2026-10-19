@@ -289,7 +289,7 @@ export default function PhotoEditor({
       onClose();
     } catch (e) {
       // SecurityError — canvas «заражён» чужим доменом без CORS.
-      setError(e?.name === 'SecurityError' ? { messages: ['Браузер не дал обработать фото. Попробуйте позже.'] } : e);
+      setError(e?.name === 'SecurityError' ? { messages: ['Браузер не дал обработать фото. Попробуй позже.'] } : e);
     } finally {
       setBusy(false);
     }
@@ -322,7 +322,7 @@ export default function PhotoEditor({
               <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
                 <path d={shapeSvgPath(fixedShape, 22, 22)} fill="currentColor" />
               </svg>
-              Форма «{SHAPE_LABEL[fixedShape]}» — как в выбранном варианте. Подгоните фото под неё.
+              Форма «{SHAPE_LABEL[fixedShape]}» — как в выбранном варианте. Подгони фото под неё.
             </p>
           ) : hasShapes ? (
             <div className="photo-editor__shapes" role="group" aria-label="Форма стикера">
@@ -426,7 +426,7 @@ export default function PhotoEditor({
             />
           </label>
           <p className="muted small" id={helpId}>
-            Перетащите фото, чтобы сдвинуть. Тяните за белые уголки, чтобы увеличить или уменьшить.
+            Перетащи фото, чтобы сдвинуть. Тяни за уголки, чтобы увеличить или уменьшить.
             {shape ? ' Всё вне контура не попадёт на стикер.' : ''}
             <span className="sr-only"> С клавиатуры: стрелки двигают фото, плюс и минус меняют размер.</span>
           </p>
@@ -455,13 +455,13 @@ export default function PhotoEditor({
               </button>
             </div>
             {copies >= copyLimit && maxCopies < MAX_COPIES && (
-              <span className="photo-editor__copies-hint">Все штуки позиции уже распределены по фото — чтобы добавить стикеров, сначала увеличьте количество товара.</span>
+              <span className="photo-editor__copies-hint">Все штуки позиции уже распределены по фото — чтобы добавить стикеров, сначала увеличь количество товара.</span>
             )}
           </div>
           {lowQuality && (
             <p className="photo-editor__quality" role="status">
-              Фото может получиться нечётким: на стикер {num(printCm)} см попадёт всего {qualityPx} px. Уменьшите фото в
-              кадре или выберите снимок крупнее.
+              Фото может получиться нечётким: на стикер {num(printCm)} см попадёт всего {qualityPx} px. Уменьши фото в
+              кадре или выбери снимок крупнее.
             </p>
           )}
           <ErrorBox error={error} />

@@ -1,7 +1,7 @@
 /* ───────── StarkTech — корзина, оформление, «заказ принят» ─────────
    Префиксы: cart-x- (корзина), chk- (оформление), done- (заказ принят).
-   Токены — из base.css и site/foundation.css. Заголовки — Unbounded,
-   всё остальное, включая цены, — Onest. */
+   Токены — из base.css и site/foundation.css. Заголовки, суммы и итоги — Oswald (бренд),
+   текст и кнопки — Manrope. Главная кнопка — кирпично-красная пилюля. */
 
 /* ═════════ Общая шапка страниц ═════════ */
 .cart-x-page,
@@ -34,15 +34,32 @@
   border-radius: var(--radius-xs);
 }
 .chk-back:hover {
-  color: var(--cobalt);
+  color: var(--arc-teal);
+}
+.chk-back::before {
+  content: '←';
+  margin-right: 6px;
+}
+.chk-back:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
 }
 
-/* Цифры — Onest, табличные */
+/* Цифры — табличные; суммы-итоги дополнительно Oswald (см. ниже) */
 .cart-x-money,
 .chk-money {
-  font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.cart-x-sum,
+.cart-x-row--total .cart-x-money,
+.cart-x-bar__value,
+.chk-bar__value,
+.chk-total,
+.done-facts .done-facts__main dd {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.005em;
 }
 
 /* ═════════ Корзина ═════════ */
@@ -69,9 +86,9 @@
 .cart-x-item .img-fallback {
   width: 76px;
   height: 76px;
-  border-radius: var(--site-radius-sm);
+  border-radius: 12px;
   object-fit: cover;
-  background: var(--sheet);
+  background: var(--mist);
   display: block;
 }
 .cart-x-info {
@@ -93,12 +110,21 @@
   color: var(--ink);
   border-radius: 4px;
 }
+.cart-x-name {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
 .cart-x-name:hover {
-  color: var(--cobalt);
+  color: var(--stark-red);
+}
+.cart-x-name:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
 }
 .cart-x-sum {
-  font-weight: 700;
-  font-size: var(--t-md);
+  font-size: var(--t-lg);
+  line-height: 1.2;
 }
 .cart-x-attrs {
   margin: 0;
@@ -172,11 +198,11 @@
   display: grid;
   gap: 10px;
   padding: 14px 16px 16px;
-  border-radius: var(--site-radius);
-  background: var(--site-bg);
+  border-radius: 12px;
+  background: var(--surface-raised);
 }
 .cart-x-photos.is-missing {
-  background: var(--lemon-tint);
+  background: var(--stark-red-tint);
 }
 .cart-x-photos__head {
   display: flex;
@@ -193,8 +219,8 @@
   color: var(--ink-soft);
 }
 .cart-x-photos.is-missing .cart-x-photos__state {
-  color: #8a6200;
-  font-weight: 600;
+  color: var(--stark-red-deep);
+  font-weight: 700;
 }
 .cart-x-photos .photo-picker__add {
   background: var(--paper);
@@ -216,9 +242,10 @@
 }
 .cart-x-summary h2,
 .chk-summary h2 {
+  margin: 0;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--t-lg);
+  font-weight: 600;
+  font-size: var(--t-h2);
   line-height: 1.2;
 }
 .cart-x-row,
@@ -230,17 +257,21 @@
 }
 .cart-x-row--total {
   font-weight: 700;
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
+}
+.cart-x-row--total .cart-x-money {
+  font-size: var(--t-price);
+  line-height: 1.1;
 }
 .cart-x-note,
 .chk-note {
   margin: 0;
   padding: 12px 14px;
-  border-radius: var(--site-radius-sm);
-  background: var(--site-bg);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
   font-size: var(--t-sm);
   line-height: 1.5;
-  color: var(--ink);
+  color: var(--text);
 }
 .cart-x-note--ok,
 .chk-note--ok {
@@ -249,8 +280,9 @@
 }
 .cart-x-note--warn,
 .chk-note--warn {
-  background: var(--lemon-tint);
-  color: #5c4300;
+  background: var(--stark-red-tint);
+  color: var(--stark-red-deep);
+  box-shadow: inset 4px 0 0 var(--stark-red);
 }
 .cart-x-fine,
 .chk-fine {
@@ -272,7 +304,11 @@
   border-radius: var(--radius-pill);
 }
 .cart-x-more:hover {
-  color: var(--cobalt);
+  color: var(--arc-teal);
+}
+.cart-x-more:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
 }
 
 /* Нижняя панель (мобильный) */
@@ -287,10 +323,10 @@
   gap: 16px;
   margin: 24px -16px 0;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(253, 253, 253, 0.96);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--site-line);
-  box-shadow: 0 -10px 24px -18px rgba(20, 22, 58, 0.4);
+  box-shadow: 0 -10px 24px -18px rgba(18, 19, 20, 0.4);
 }
 .cart-x-bar__sum,
 .chk-bar__sum {
@@ -304,8 +340,8 @@
 }
 .cart-x-bar__value,
 .chk-bar__value {
-  font-weight: 700;
-  font-size: var(--t-lg);
+  font-size: var(--t-xl);
+  line-height: 1.1;
 }
 .cart-x-bar .btn,
 .chk-bar .btn {
@@ -320,16 +356,17 @@ body:has(.chk-bar) .chat-fab {
 
 /* Пустая корзина */
 .cart-x-empty {
-  padding: 40px 24px;
+  padding: var(--space-4) var(--space-3);
   display: grid;
   gap: 12px;
   justify-items: start;
   max-width: 560px;
 }
 .cart-x-empty h2 {
+  margin: 0;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--t-xl);
+  font-weight: 600;
+  font-size: var(--t-h2);
   line-height: 1.2;
 }
 .cart-x-empty p {
@@ -361,23 +398,26 @@ body:has(.chk-bar) .chat-fab {
   align-items: center;
   gap: 12px;
 }
+/* Номер шага — графитовый круг с цифрой Oswald: шаги действительно идут по порядку */
 .chk-step {
   flex: none;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--cobalt-tint);
-  color: var(--cobalt);
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: var(--t-sm);
+  background: var(--graphite);
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-lg);
+  line-height: 1;
 }
 .chk-section h2 {
+  margin: 0;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--t-lg);
+  font-weight: 600;
+  font-size: var(--t-h2);
   line-height: 1.2;
 }
 .chk-fields {
@@ -411,14 +451,14 @@ body:has(.chk-bar) .chat-fab {
   gap: 2px 14px;
   min-height: 60px;
   padding: 12px 16px;
-  border: 1.5px solid var(--site-line);
-  border-radius: var(--site-radius);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-lg);
   background: var(--paper);
   cursor: pointer;
   transition: border-color 0.15s, background-color 0.15s;
 }
 .chk-pay__option:hover {
-  border-color: var(--ink-soft);
+  border-color: var(--graphite);
 }
 .chk-pay__option input {
   position: absolute;
@@ -432,7 +472,7 @@ body:has(.chk-bar) .chat-fab {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 2px solid var(--line);
+  border: 2px solid var(--silver);
   background: var(--paper);
   transition: border-color 0.15s, border-width 0.15s;
 }
@@ -446,11 +486,14 @@ body:has(.chk-bar) .chat-fab {
   line-height: 1.4;
 }
 .chk-pay__option.is-active {
-  border-color: var(--cobalt);
-  background: #f3f4ff;
+  border-color: var(--stark-red);
+  background: var(--stark-red-tint);
 }
 .chk-pay__option.is-active .chk-pay__dot {
-  border: 7px solid var(--cobalt);
+  border: 7px solid var(--stark-red);
+}
+.chk-pay__option.is-active .chk-pay__desc {
+  color: var(--text);
 }
 .chk-pay__option:has(input:focus-visible) {
   box-shadow: var(--focus);
@@ -565,9 +608,8 @@ body:has(.chk-bar) .chat-fab {
   align-items: center;
 }
 .chk-total {
-  font-size: var(--t-xl);
-  font-weight: 700;
-  line-height: 1;
+  font-size: var(--t-price);
+  line-height: 1.1;
 }
 .chk-summary .error-box {
   margin: 0;
@@ -586,29 +628,45 @@ body:has(.chk-bar) .chat-fab {
   justify-items: start;
   padding-top: 8px;
 }
+/* Номер заказа — промо-плашка бренда: тёмно-синий фон и неоновая рамка циана */
 .done-sticker {
   display: inline-grid;
-  gap: 2px;
-  padding: 14px 20px 16px;
-  margin: 6px 0 10px 4px;
-  border-radius: 18px;
-  background: var(--lemon);
-  color: var(--ink);
-  box-shadow: var(--sticker-edge);
-  transform: rotate(-3deg);
+  gap: 4px;
+  max-width: 100%;
+  padding: 16px 22px 18px;
+  margin: 4px 0 8px;
+  border: 2px solid var(--arc-cyan);
+  border-radius: var(--r-lg);
+  background: var(--promo-navy);
+  color: #ffffff;
+  box-shadow:
+    0 0 10px rgba(17, 242, 244, 0.5),
+    0 0 26px -6px rgba(17, 242, 244, 0.45),
+    inset 0 0 10px rgba(17, 242, 244, 0.22);
 }
 .done-sticker__label {
   font-size: var(--t-xs);
   font-weight: 600;
+  color: var(--text-muted-on-dark);
 }
 .done-sticker__number {
-  font-family: var(--font-body);
+  font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.6rem, 1.2rem + 2vw, 2.2rem);
-  line-height: 1;
+  font-size: var(--t-h1);
+  line-height: 1.05;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  color: var(--arc-cyan);
   word-break: break-all;
+}
+.done-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-hero);
+  line-height: 1.07;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 .done-hero .site-lead {
   margin: 0;
@@ -638,23 +696,25 @@ body:has(.chk-bar) .chat-fab {
   font-variant-numeric: tabular-nums;
 }
 .done-facts .done-facts__main dd {
-  font-size: var(--t-xl);
+  font-size: var(--t-price);
+  line-height: 1.1;
 }
 .done-note {
   margin: 0;
   padding: 14px 16px;
-  border-radius: var(--site-radius-sm);
-  background: var(--lemon-tint);
-  color: #5c4300;
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  box-shadow: inset 4px 0 0 var(--stark-red);
+  color: var(--text);
   font-size: var(--t-sm);
   line-height: 1.5;
 }
 
 .done-next h2 {
+  margin: 0 0 var(--space-3);
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--t-lg);
-  margin-bottom: 18px;
+  font-weight: 600;
+  font-size: var(--t-h2);
 }
 .done-steps {
   list-style: none;
@@ -690,14 +750,15 @@ body:has(.chk-bar) .chat-fab {
   height: 36px;
   border-radius: 50%;
   background: var(--paper);
-  border: 2px solid var(--site-line);
-  font-weight: 700;
-  font-size: var(--t-sm);
-  color: var(--ink-soft);
+  border: 2px solid var(--border);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-md);
+  color: var(--text-muted);
 }
 .done-steps li:first-child .done-steps__num {
-  background: var(--cobalt);
-  border-color: var(--cobalt);
+  background: var(--stark-red);
+  border-color: var(--stark-red);
   color: var(--paper);
 }
 .done-steps__title {
@@ -814,9 +875,6 @@ body:has(.chk-bar) .chat-fab {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .done-sticker {
-    transform: none;
-  }
   .chk-pay__option,
   .chk-pay__dot {
     transition: none;
@@ -827,9 +885,9 @@ body:has(.chk-bar) .chat-fab {
 .cart-x-login {
   margin: 0;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--cobalt-tint);
-  color: var(--ink);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: var(--t-sm);
   line-height: 1.45;
 }
@@ -841,24 +899,24 @@ body:has(.chk-bar) .chat-fab {
   gap: 10px;
   margin-top: 14px;
   padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--cobalt-tint);
-  color: var(--ink);
+  border-radius: var(--r-sm);
+  background: var(--surface-raised);
+  color: var(--text);
   font-size: var(--t-sm);
   line-height: 1.4;
   cursor: pointer;
 }
 .chk-remember input {
-  width: 18px;
-  height: 18px;
-  margin-top: 1px;
+  width: 20px;
+  height: 20px;
+  margin-top: 0;
   flex: none;
-  accent-color: var(--cobalt);
+  accent-color: var(--stark-red);
 }
 .chk-remember small {
   display: block;
   margin-top: 2px;
-  opacity: 0.7;
+  color: var(--text-muted);
 }
 
 /* Монет ввели больше, чем можно списать */
@@ -879,8 +937,9 @@ body:has(.chk-bar) .chat-fab {
 .chk-row--prepay {
   margin-top: 10px;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--lemon-tint);
+  border-radius: var(--r-sm);
+  background: var(--graphite);
+  color: #ffffff;
   font-weight: 600;
 }
 
@@ -917,7 +976,7 @@ body:has(.chk-bar) .chat-fab {
   gap: 12px;
   margin-bottom: 16px;
   padding: 16px 18px;
-  border-left: 4px solid var(--lemon);
+  box-shadow: inset 4px 0 0 var(--stark-red), var(--site-shadow);
 }
 .cart-x-pending h2 {
   margin: 0;
@@ -965,4 +1024,8 @@ body:has(.chk-bar) .chat-fab {
   font-size: var(--t-xs);
   text-align: center;
   overflow-wrap: anywhere;
+}
+.chk-legal .text-link,
+.chk-faq .text-link {
+  color: var(--arc-teal);
 }

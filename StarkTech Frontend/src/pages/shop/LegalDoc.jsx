@@ -24,15 +24,15 @@ export default function LegalDoc({ title, lead, sticker, sections }) {
 
   return (
     <div className="site-container faq-page legal-page">
-      <header className="faq-hero">
+      <header className="faq-hero legal-hero section-dark">
         <div className="faq-hero__text">
-          <h1 className="faq-hero__title">{title}</h1>
+          <h1 className="faq-hero__title display-upper">{title}</h1>
           <p className="faq-hero__lead">{lead}</p>
           <p className="legal-hero__date">
             Редакция от <time dateTime={LEGAL_UPDATED}>{legalUpdatedText()}</time>
           </p>
         </div>
-        <span className="faq-hero__sticker" aria-hidden="true">
+        <span className="faq-hero__mark neon-outline" aria-hidden="true">
           {sticker}
         </span>
       </header>
@@ -42,9 +42,9 @@ export default function LegalDoc({ title, lead, sticker, sections }) {
           <ul>
             {sections.map((s, i) => (
               <li key={s.id}>
-                <a href={`#${s.id}`} className={`faq-toc__link faq-tone--${s.tone || 'cobalt'}`}>
-                  <span className="faq-dot" aria-hidden="true" />
-                  {i + 1}. {s.title}
+                <a href={`#${s.id}`} className="faq-toc__link">
+                  <span className="legal-num">{i + 1}</span>
+                  {s.title}
                 </a>
               </li>
             ))}
@@ -56,18 +56,18 @@ export default function LegalDoc({ title, lead, sticker, sections }) {
             <section
               key={s.id}
               id={s.id}
-              className={`faq-section legal-section faq-tone--${s.tone || 'cobalt'}`}
+              className="faq-section legal-section"
               aria-labelledby={`${s.id}-title`}
             >
               <h2 id={`${s.id}-title`} className="faq-section__title">
-                <span className="faq-dot" aria-hidden="true" />
-                {i + 1}. {s.title}
+                <span className="legal-num">{i + 1}</span>
+                {s.title}
               </h2>
               <div className="legal-prose">{s.content}</div>
             </section>
           ))}
 
-          <aside className="faq-contact" aria-labelledby="legal-contact-title">
+          <aside className="faq-contact section-dark" aria-labelledby="legal-contact-title">
             <div>
               <h2 id="legal-contact-title">Остались вопросы?</h2>
               <p>
@@ -76,10 +76,10 @@ export default function LegalDoc({ title, lead, sticker, sections }) {
               </p>
             </div>
             <div className="faq-contact__buttons">
-              <a className="btn btn--large home-btn-wa" href={COMPANY.whatsapp} target="_blank" rel="noopener noreferrer">
+              <a className="btn btn--neon btn--large" href={COMPANY.whatsapp} target="_blank" rel="noopener noreferrer">
                 WhatsApp
               </a>
-              <a className="btn btn--large faq-contact__tg" href={COMPANY.telegram} target="_blank" rel="noopener noreferrer">
+              <a className="btn btn--on-dark btn--large" href={COMPANY.telegram} target="_blank" rel="noopener noreferrer">
                 Telegram
               </a>
             </div>
