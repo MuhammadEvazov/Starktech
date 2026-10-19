@@ -51,8 +51,15 @@ services:
         sync: false
       - key: Seed__SuperAdminPassword
         sync: false
-      # Пароль приложения Gmail для писем (сброс пароля)
-      - key: EmailSettings__Password
+      # Письма (код сброса пароля, статусы заказов). Бесплатный Render блокирует SMTP-порты
+      # 25/465/587, поэтому письма идут через HTTPS API Brevo (бесплатно до 300 писем в день).
+      - key: EmailSettings__Provider
+        value: brevo
+      # API-ключ Brevo: SMTP & API → API Keys
+      - key: EmailSettings__ApiKey
+        sync: false
+      # Адрес отправителя — должен быть подтверждён в Brevo (Senders)
+      - key: EmailSettings__Email
         sync: false
       # Файлы (фото заказов, чеки, макеты, аватары) — в S3-хранилище (Supabase Storage / Cloudflare R2 / Backblaze B2)
       - key: Storage__Provider

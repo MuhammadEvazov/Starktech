@@ -127,6 +127,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
 // DIP: регистрируем интерфейс → реализацию
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddHttpClient(); // EmailService → Brevo HTTPS API (на Render SMTP закрыт)
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<IUserService, UserService>();

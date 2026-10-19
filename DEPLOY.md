@@ -45,7 +45,9 @@
    | `Cors__OriginSuffixes__0` | окончание адресов превью Vercel, например `-muhammadevazovs-projects.vercel.app` (можно пусто) |
    | `Seed__SuperAdminEmail` | email суперадмина |
    | `Seed__SuperAdminPassword` | надёжный пароль (≥ 8 символов: заглавная, строчная, цифра, символ) |
-   | `EmailSettings__Password` | пароль приложения Gmail (письма для сброса пароля) |
+   | `EmailSettings__Provider` | `brevo` (уже задано в render.yaml) |
+   | `EmailSettings__ApiKey` | API-ключ Brevo — см. «Письма» ниже |
+   | `EmailSettings__Email` | адрес отправителя, подтверждённый в Brevo |
    | `Storage__S3__ServiceUrl` | Endpoint из шага 0, например `https://<project-ref>.supabase.co/storage/v1/s3` |
    | `Storage__S3__Region` | Region из шага 0, например `eu-central-1` |
    | `Storage__S3__Bucket` | `starktech` |
@@ -55,6 +57,18 @@
    `JWT__Key` Render сгенерирует сам; база и Redis подключатся автоматически.
 4. Дождитесь деплоя (первая сборка Docker — 5–10 минут). API сам применит миграции и создаст суперадмина.
 5. Проверка: `https://starktech-api.onrender.com/health` → `Healthy`.
+
+### Письма — Brevo (бесплатно, 300 писем в день)
+Бесплатный Render **блокирует исходящие SMTP-порты 25/465/587**, поэтому Gmail SMTP там не работает
+(ошибка тайм-аута в логах). Письма отправляются через HTTPS API Brevo:
+1. <https://www.brevo.com> → регистрация (бесплатный план).
+2. **Senders, Domains & Dedicated IPs → Senders → Add a sender**: ваш email (например Gmail) →
+   подтвердите письмом.
+3. **SMTP & API → API Keys → Generate a new API key** → скопируйте ключ (показывается один раз).
+4. В Render у `starktech-api` → Environment: `EmailSettings__Provider` = `brevo`,
+   `EmailSettings__ApiKey` = ключ, `EmailSettings__Email` = подтверждённый адрес → **Save, rebuild and deploy**.
+
+Локально ничего не меняется: без `Provider` письма идут через Gmail SMTP (`EmailSettings:Password` в user-secrets).
 
 ### База без срока годности — Neon (рекомендуется вместо бесплатной базы Render)
 1. <https://neon.tech> → New project (регион Frankfurt) → скопируйте **connection string** (`postgresql://…?sslmode=require`).
